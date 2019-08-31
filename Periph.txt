@@ -1,0 +1,12 @@
+Flasks periph
+
+SDRAM A13 D16
+LCD	RGB888
+Uart DBG
+U(S)art comm
+SPI Lora
+SPI WS2812
+SDIO
+SAI
+USB
+I2C
