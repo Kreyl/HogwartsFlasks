@@ -1,4 +1,4 @@
-update=04.09.2019 2:55:23
+update=22.09.2019 23:53:11
 version=1
 last_client=kicad
 [general]
@@ -19,7 +19,7 @@ LastNetListRead=
 LastSTEPExportPath=
 LastIDFExportPath=
 LastVRMLExportPath=
-LastSpecctraDSNExportPath=
+LastSpecctraDSNExportPath=HogwartsFlasksMain.dsn
 LastGenCADExportPath=
 CopperLayerCount=4
 BoardThickness=1.6
@@ -63,7 +63,7 @@ OthersTextUpright=1
 SolderMaskClearance=0.06
 SolderMaskMinWidth=0.15
 SolderPasteClearance=0
-SolderPasteRatio=-0
+SolderPasteRatio=0
 [pcbnew/Layer.F.Cu]
 Name=F.Cu
 Type=0
