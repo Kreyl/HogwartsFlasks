@@ -45,6 +45,19 @@
     )
   )
   (placement
+    (component Connectors:SLD_3_2D5
+      (place XL10 205800 -91100 front 90 (PN CONN_3))
+      (place XL9 205800 -101100 front 90 (PN CONN_3))
+    )
+    (component Resistors:RES_0603
+      (place R25 202000 -91100 front 180 (PN 33R))
+    )
+    (component "SOT:SOT23-5"
+      (place DA8 198450 -95200 front 0 (PN MC74VHC1))
+    )
+    (component Capacitors:CAP_0603
+      (place C87 195850 -95200 front 270 (PN 0.1u))
+    )
     (component Pictures:Ostranna_12d7_10d1
       (place Logo1 171300 -67100 front 0 (PN Logo))
     )
@@ -79,9 +92,6 @@
     )
     (component Quartz:03215C2
       (place XTAL2 137100 -102900 front 180 (PN 32768))
-    )
-    (component Connectors:SLD_5_2D5
-      (place XL9 205100 -98200 front 270 (PN CONN_5))
     )
     (component Connectors:FFC_0d5x40_flip
       (place XL8 177400 -115900 front 180 (PN CONN_40))
@@ -131,25 +141,24 @@
       (place TP10 119700 -98500 front 0 (PN TESTPOINT))
       (place TP9 121500 -98500 front 0 (PN TESTPOINT))
       (place TP8 123562 -98500 front 0 (PN TESTPOINT))
-      (place TP7 186300 -89200 front 0 (PN TESTPOINT))
-      (place TP6 194600 -91200 front 0 (PN TESTPOINT))
-      (place TP5 186300 -87600 front 0 (PN TESTPOINT))
-      (place TP4 186300 -86000 front 0 (PN TESTPOINT))
+      (place TP7 186300 -87600 front 0 (PN TESTPOINT))
+      (place TP6 194600 -89600 front 0 (PN TESTPOINT))
+      (place TP5 186300 -86000 front 0 (PN TESTPOINT))
+      (place TP4 186300 -84400 front 0 (PN TESTPOINT))
       (place TP3 158600 -99100 front 0 (PN TESTPOINT))
     )
-    (component Resistors:RES_0603
-      (place R23 201800 -98200 front 180 (PN 33R))
-      (place R22 197300 -102000 front 180 (PN 33R))
+    (component Resistors:RES_0603::1
+      (place R23 202000 -101100 front 180 (PN 33R))
       (place R21 114800 -76900 front 180 (PN 1k))
       (place R20 111262 -103100 front 180 (PN 33R))
       (place R19 111262 -101200 front 180 (PN 33R))
       (place R18 111262 -104700 front 180 (PN 100k))
       (place R17 111262 -99600 front 0 (PN 100k))
-      (place R16 197900 -90100 front 270 (PN 10k))
-      (place R15 196300 -90100 front 270 (PN 10k))
+      (place R16 197900 -88500 front 270 (PN 10k))
+      (place R15 196300 -88500 front 270 (PN 10k))
       (place R14 182800 -109100 front 270 (PN 20R))
-      (place R13 194200 -88900 front 270 (PN 33R))
-      (place R12 189400 -88900 front 90 (PN 100k))
+      (place R13 194200 -87300 front 270 (PN 33R))
+      (place R12 189400 -87300 front 90 (PN 100k))
       (place R11 181500 -111400 front 0 (PN 100k))
       (place R10 190400 -97600 front 0 (PN 5k6))
       (place R9 186300 -97600 front 0 (PN 18k))
@@ -174,7 +183,7 @@
       (place L10 111000 -85700 front 90 (PN 2.2nH))
       (place L9 112800 -83900 front 180 (PN 33nH))
       (place L8 182200 -99900 front 0 (PN BLM15AG102SN1))
-      (place L7 193300 -94300 front 0 (PN BLM15))
+      (place L7 192800 -93200 front 270 (PN BLM15))
       (place L6 115300 -96600 front 0 (PN Choke))
       (place L3 159000 -96100 front 270 (PN BLM15AG102SN1))
       (place L1 159100 -100600 front 0 (PN BLM15AG102SN1))
@@ -200,9 +209,9 @@
     (component "LQFP_TQFP:QFP-144_20x20_Pitch0.5mm"
       (place DD1 144400 -87700 front 90 (PN STM32F767Zx))
     )
-    (component "SOT:SOT23-5"
-      (place DA7 198000 -98200 front 0 (PN MC74VHC1))
-      (place DA3 189600 -92300 front 90 (PN NCP511SN25))
+    (component "SOT:SOT23-5::1"
+      (place DA7 198450 -99700 front 0 (PN MC74VHC1))
+      (place DA3 189600 -90700 front 90 (PN NCP511SN25))
     )
     (component SOT:SC70
       (place DA6 111700 -76400 front 0 (PN PE4259))
@@ -211,7 +220,7 @@
       (place DA5 118700 -102200 front 90 (PN ADM3485))
     )
     (component QFN_DFN:QFN40
-      (place DA4 193300 -82200 front 90 (PN CS42L52))
+      (place DA4 193300 -80600 front 90 (PN CS42L52))
     )
     (component "SOT:SOT89-5"
       (place DA2 177400 -109900 front 0 (PN PT4110))
@@ -229,9 +238,9 @@
     (component LEDs:LED_0603
       (place D1 125300 -74400 front 180 (PN LED))
     )
-    (component Capacitors:CAP_0603
+    (component Capacitors:CAP_0603::1
       (place C85 187700 -112700 front 0 (PN 0.1u))
-      (place C81 195400 -98300 front 270 (PN 0.1u))
+      (place C81 195850 -99800 front 270 (PN 0.1u))
       (place C80 164300 -94200 front 180 (PN 0.1u))
       (place C77 164300 -89400 front 180 (PN 0.1u))
       (place C75 182200 -91800 front 0 (PN 0.1u))
@@ -242,24 +251,24 @@
       (place C64 182200 -75800 front 180 (PN 10u))
       (place C63 104300 -94000 front 270 (PN 18pF))
       (place C61 110200 -96000 front 0 (PN 18pF))
-      (place C59 199700 -87000 front 180 (PN 10u))
+      (place C59 199700 -85400 front 180 (PN 10u))
       (place C58 116600 -106100 front 180 (PN 0.1u))
-      (place C57 193600 -76000 front 90 (PN 1u))
-      (place C56 199700 -85400 front 0 (PN 1u))
-      (place C53 195200 -76000 front 90 (PN 0.1u))
-      (place C52 199700 -83200 front 0 (PN 0.1u))
-      (place C50 190400 -76000 front 270 (PN 10u))
-      (place C49 188800 -76000 front 270 (PN 1u))
-      (place C48 199700 -78700 front 180 (PN 1u))
-      (place C47 192000 -76000 front 90 (PN 0.1u))
-      (place C46 199700 -81100 front 0 (PN 0.1u))
-      (place C45 197900 -76700 front 180 (PN 1u))
-      (place C42 186300 -92300 front 90 (PN 10u))
-      (place C39 192600 -88900 front 270 (PN 0.1u))
+      (place C57 193600 -74400 front 90 (PN 1u))
+      (place C56 199700 -83800 front 0 (PN 1u))
+      (place C53 195200 -74400 front 90 (PN 0.1u))
+      (place C52 199700 -81600 front 0 (PN 0.1u))
+      (place C50 190400 -74400 front 270 (PN 10u))
+      (place C49 188800 -74400 front 270 (PN 1u))
+      (place C48 199700 -77100 front 180 (PN 1u))
+      (place C47 192000 -74400 front 90 (PN 0.1u))
+      (place C46 199700 -79500 front 0 (PN 0.1u))
+      (place C45 197900 -75100 front 180 (PN 1u))
+      (place C42 186300 -90700 front 90 (PN 10u))
+      (place C39 192600 -87300 front 270 (PN 0.1u))
       (place C38 173300 -111400 front 180 (PN 0.1u))
-      (place C36 187000 -84000 front 0 (PN 150pF))
-      (place C35 187000 -82400 front 0 (PN 150pF))
-      (place C34 191000 -88900 front 270 (PN 1u))
+      (place C36 187000 -82400 front 0 (PN 150pF))
+      (place C35 187000 -80800 front 0 (PN 150pF))
+      (place C34 191000 -87300 front 270 (PN 1u))
       (place C33 170700 -110700 front 270 (PN 10u))
       (place C32 186300 -104700 front 0 (PN 10u))
       (place C31 186300 -103100 front 0 (PN 10u))
@@ -300,8 +309,8 @@
     (component Capacitors:CAP_0805
       (place C54 181000 -108700 front 270 (PN 4u7))
     )
-    (component Capacitors:CAP_0603::1
-      (place C37 193000 -91900 front 90 (PN 1u))
+    (component Capacitors:CAP_0603::2
+      (place C37 193000 -90300 front 90 (PN 1u))
     )
     (component Installation:BATTERY_CH7410
       (place B1 128500 -114600 front 0 (PN BAT))
@@ -311,6 +320,60 @@
     )
   )
   (library
+    (image Connectors:SLD_3_2D5
+      (outline (path signal 150  -3650 -1550  -3650 1550))
+      (outline (path signal 150  -3500 1550  -3800 1550))
+      (outline (path signal 150  -3800 1550  -3800 -1550))
+      (outline (path signal 150  -3800 -1550  -3500 -1550))
+      (outline (path signal 150  -3650 -1550  -3800 -1550))
+      (outline (path signal 150  -3800 -1550  -3800 1550))
+      (outline (path signal 150  -3800 1550  -3650 1550))
+      (outline (path signal 150  -3500 1550  3500 1550))
+      (outline (path signal 150  3500 1550  3500 -1550))
+      (outline (path signal 150  3500 -1550  -3500 -1550))
+      (outline (path signal 150  -3500 -1550  -3500 1550))
+      (outline (path signal 150  -3500 1550  -3650 1550))
+      (outline (path signal 150  -3650 1550  -3650 -1550))
+      (outline (path signal 150  -3650 -1550  -3500 -1550))
+      (outline (path signal 150  -3500 0  -3500 1550))
+      (outline (path signal 150  -3500 1550  3500 1550))
+      (outline (path signal 150  3500 1550  3500 -1550))
+      (outline (path signal 150  3500 -1550  -3500 -1550))
+      (outline (path signal 150  -3500 -1550  -3500 0))
+      (pin Rect[A]Pad_1700x2700_um 1 -2500 0)
+      (pin Oval[A]Pad_1700x2700_um 2 0 0)
+      (pin Oval[A]Pad_1700x2700_um 3 2500 0)
+    )
+    (image Resistors:RES_0603
+      (outline (path signal 150  -1500 -800  -1500 0))
+      (outline (path signal 150  1500 -800  -1500 -800))
+      (outline (path signal 150  1500 800  1500 -800))
+      (outline (path signal 150  -1500 800  1500 800))
+      (outline (path signal 150  -1500 0  -1500 800))
+      (pin Rect[T]Pad_900x1000_um 1 -750 0)
+      (pin Rect[T]Pad_900x1000_um 2 750 0)
+    )
+    (image "SOT:SOT23-5"
+      (outline (path signal 150  -1100 -600  -1100 600))
+      (outline (path signal 149.86  -1450.34 -600  -1450.34 600))
+      (outline (path signal 149.86  -1450.34 600  1450.34 600))
+      (outline (path signal 149.86  1450.34 600  1450.34 -600))
+      (outline (path signal 149.86  1450.34 -600  -1450.34 -600))
+      (pin Oval[T]Pad_635x1100_um 5 -950 1300)
+      (pin Oval[T]Pad_635x1100_um 4 950 1300)
+      (pin Oval[T]Pad_635x1100_um 3 950 -1300)
+      (pin Oval[T]Pad_635x1100_um 2 0 -1300)
+      (pin Rect[T]Pad_635x1100_um 1 -950 -1300)
+    )
+    (image Capacitors:CAP_0603
+      (outline (path signal 150  -1500 0  -1500 800))
+      (outline (path signal 150  -1500 800  1500 800))
+      (outline (path signal 150  1500 800  1500 -800))
+      (outline (path signal 150  1500 -800  -1500 -800))
+      (outline (path signal 150  -1500 -800  -1500 0))
+      (pin Rect[T]Pad_889x1016_um 2 762 0)
+      (pin Rect[T]Pad_889x1016_um 1 -762 0)
+    )
     (image Pictures:Ostranna_12d7_10d1
     )
     (image Capacitors:CAP_0402
@@ -377,32 +440,6 @@
       (outline (path signal 150  600 800  -600 800))
       (pin Rect[T]Pad_1100x1900_um 1 -1250 0)
       (pin Rect[T]Pad_1100x1900_um 2 1250 0)
-    )
-    (image Connectors:SLD_5_2D5
-      (outline (path signal 150  -6000 -1550  -6000 0))
-      (outline (path signal 150  6000 -1550  -6000 -1550))
-      (outline (path signal 150  6000 1550  6000 -1550))
-      (outline (path signal 150  -6000 1550  6000 1550))
-      (outline (path signal 150  -6000 0  -6000 1550))
-      (outline (path signal 150  -6150 -1550  -6000 -1550))
-      (outline (path signal 150  -6150 1550  -6150 -1550))
-      (outline (path signal 150  -6000 1550  -6150 1550))
-      (outline (path signal 150  -6000 -1550  -6000 1550))
-      (outline (path signal 150  6000 -1550  -6000 -1550))
-      (outline (path signal 150  6000 1550  6000 -1550))
-      (outline (path signal 150  -6000 1550  6000 1550))
-      (outline (path signal 150  -6300 1550  -6150 1550))
-      (outline (path signal 150  -6300 -1550  -6300 1550))
-      (outline (path signal 150  -6150 -1550  -6300 -1550))
-      (outline (path signal 150  -6300 -1550  -6000 -1550))
-      (outline (path signal 150  -6300 1550  -6300 -1550))
-      (outline (path signal 150  -6000 1550  -6300 1550))
-      (outline (path signal 150  -6150 -1550  -6150 1550))
-      (pin Oval[A]Pad_1700x2700_um 5 5000 0)
-      (pin Rect[A]Pad_1700x2700_um 1 -5000 0)
-      (pin Oval[A]Pad_1700x2700_um 2 -2500 0)
-      (pin Oval[A]Pad_1700x2700_um 3 0 0)
-      (pin Oval[A]Pad_1700x2700_um 4 2500 0)
     )
     (image Connectors:FFC_0d5x40_flip
       (outline (path signal 150  -12440 5155  -12440 3205))
@@ -604,7 +641,7 @@
     (image PCB:TESTPOINT_1MM
       (pin Round[T]Pad_1000_um 1 0 0)
     )
-    (image Resistors:RES_0603
+    (image Resistors:RES_0603::1
       (outline (path signal 150  -1500 0  -1500 800))
       (outline (path signal 150  -1500 800  1500 800))
       (outline (path signal 150  1500 800  1500 -800))
@@ -874,7 +911,7 @@
       (pin Oval[T]Pad_270x1350_um (rotate 90) 2 -10625 8250)
       (pin Rect[T]Pad_270x1350_um (rotate 90) 1 -10625 8750)
     )
-    (image "SOT:SOT23-5"
+    (image "SOT:SOT23-5::1"
       (outline (path signal 149.86  1450.34 -600  -1450.34 -600))
       (outline (path signal 149.86  1450.34 600  1450.34 -600))
       (outline (path signal 149.86  -1450.34 600  1450.34 600))
@@ -1066,7 +1103,7 @@
       (pin Rect[T]Pad_889x1016_um A -762 0)
       (pin Rect[T]Pad_889x1016_um C 762 0)
     )
-    (image Capacitors:CAP_0603
+    (image Capacitors:CAP_0603::1
       (outline (path signal 150  -1500 -800  -1500 0))
       (outline (path signal 150  1500 -800  -1500 -800))
       (outline (path signal 150  1500 800  1500 -800))
@@ -1110,7 +1147,7 @@
       (pin Rect[T]Pad_1143x1397_um 2 1016 0)
       (pin Rect[T]Pad_1143x1397_um 1 -1016 0)
     )
-    (image Capacitors:CAP_0603::1
+    (image Capacitors:CAP_0603::2
       (outline (path signal 150  -1500 0  -1500 800))
       (outline (path signal 150  -1500 800  1500 800))
       (outline (path signal 150  1500 800  1500 -800))
@@ -1490,20 +1527,20 @@
   )
   (network
     (net GND
-      (pins C55-2 C51-2 C43-2 C41-2 C40-2 C44-2 DD2-PAD DD2-26 DD2-23 DD2-15 XTAL3-H
-        XTAL3-H@1 XTAL1-H XTAL1-H@1 XL9-1 XL9-2 XL8-PAD XL8-PAD@1 XL8-36 XL8-29 XL8-1
-        XL7-8 XL7-7 XL7-4 XL7-3 XL4-1 XL3-H XL3-H@1 XL3-H@2 XL3-H@3 XL3-6 XL2-4 XL2-5
-        XL1-3 U1-2 R18-2 R14-2 R12-1 R11-2 R10-2 R1-2 HOLE4-H HOLE3-H HOLE2-H HOLE1-H
-        DD3-28 DD3-41 DD3-12 DD3-46 DD3-6 DD3-52 DD3-54 DD1-138 DD1-130 DD1-120 DD1-107
-        DD1-94 DD1-83 DD1-61 DD1-51 DD1-38 DD1-31 DD1-16 DA7-3 DA7-1 DA6-2 DA5-5 DA4-35
-        DA4-17 DA4-3 DA4-PAD DA3-2 DA2-2 DA2-2@1 DA1-2 DA1-PAD DA1-PAD@1 DA1-PAD@2
-        DA1-PAD@3 D4-A D3-A D1-C C86-2 C85-2 C84-2 C82-2 C81-2 C80-2 C79-2 C78-2 C77-2
-        C76-2 C75-2 C73-2 C72-2 C71-2 C70-2 C67-2 C66-2 C65-2 C64-1 C63-2 C62-2 C61-2
-        C60-2 C59-1 C58-1 C57-2 C56-2 C54-2 C53-2 C52-2 C50-1 C49-1 C48-1 C47-2 C46-2
-        C42-2 C39-2 C38-2 C37-2 C36-1 C35-1 C34-2 C33-2 C32-2 C31-2 C30-1 C29-2 C28-1
-        C27-2 C26-2 C25-2 C24-2 C23-2 C22-2 C21-2 C20-2 C19-2 C18-2 C17-2 C16-2 C15-1
-        C14-2 C13-1 C12-1 C11-1 C10-1 C9-1 C8-2 C7-1 C6-2 C5-2 C4-2 C3-2 C2-2 C1-1
-        B1-C ANT1-2)
+      (pins XL10-1 XL9-1 DA8-3 DA8-1 C87-2 C55-2 C51-2 C43-2 C41-2 C40-2 C44-2 DD2-PAD
+        DD2-26 DD2-23 DD2-15 XTAL3-H XTAL3-H@1 XTAL1-H XTAL1-H@1 XL8-PAD XL8-PAD@1
+        XL8-36 XL8-29 XL8-1 XL7-8 XL7-7 XL7-4 XL7-3 XL4-1 XL3-H XL3-H@1 XL3-H@2 XL3-H@3
+        XL3-6 XL2-4 XL2-5 XL1-3 U1-2 R18-2 R14-2 R12-1 R11-2 R10-2 R1-2 HOLE4-H HOLE3-H
+        HOLE2-H HOLE1-H DD3-28 DD3-41 DD3-12 DD3-46 DD3-6 DD3-52 DD3-54 DD1-138 DD1-130
+        DD1-120 DD1-107 DD1-94 DD1-83 DD1-61 DD1-51 DD1-38 DD1-31 DD1-16 DA7-3 DA7-1
+        DA6-2 DA5-5 DA4-35 DA4-17 DA4-3 DA4-PAD DA3-2 DA2-2 DA2-2@1 DA1-2 DA1-PAD
+        DA1-PAD@1 DA1-PAD@2 DA1-PAD@3 D4-A D3-A D1-C C86-2 C85-2 C84-2 C82-2 C81-2
+        C80-2 C79-2 C78-2 C77-2 C76-2 C75-2 C73-2 C72-2 C71-2 C70-2 C67-2 C66-2 C65-2
+        C64-1 C63-2 C62-2 C61-2 C60-2 C59-1 C58-1 C57-2 C56-2 C54-2 C53-2 C52-2 C50-1
+        C49-1 C48-1 C47-2 C46-2 C42-2 C39-2 C38-2 C37-2 C36-1 C35-1 C34-2 C33-2 C32-2
+        C31-2 C30-1 C29-2 C28-1 C27-2 C26-2 C25-2 C24-2 C23-2 C22-2 C21-2 C20-2 C19-2
+        C18-2 C17-2 C16-2 C15-1 C14-2 C13-1 C12-1 C11-1 C10-1 C9-1 C8-2 C7-1 C6-2
+        C5-2 C4-2 C3-2 C2-2 C1-1 B1-C ANT1-2)
     )
     (net "Net-(ANT1-Pad1)"
       (pins L15-2 C86-1 ANT1-1 ANT1-1@1 ANT1-1@2 ANT1-1@3 ANT1-1@4 ANT1-1@5 ANT1-1@6
@@ -1539,8 +1576,8 @@
       (pins DD1-106 C13-2)
     )
     (net +5v
-      (pins XL9-5 XL9-4 XL4-2 L7-2 L5-1 DA7-5 DA2-1 DA1-6 DA1-5 DA1-4 C81-1 C78-1
-        C38-1 C33-1 C18-1 C14-1)
+      (pins XL10-3 XL9-3 DA8-5 C87-1 XL4-2 L7-2 L5-1 DA7-5 DA2-1 DA1-6 DA1-5 DA1-4
+        C81-1 C78-1 C38-1 C33-1 C18-1 C14-1)
     )
     (net "Net-(C22-Pad1)"
       (pins XTAL1-2 R6-1 C22-1)
@@ -1662,7 +1699,7 @@
       (pins R10-1 R9-2 DA1-1)
     )
     (net /LCD_BACKLT
-      (pins R11-1 DD1-135 DA2-3)
+      (pins R11-1 DD1-18 DA2-3)
     )
     (net /AU_RST
       (pins R12-2 DD1-112 DA4-32 DA3-3)
@@ -1702,9 +1739,6 @@
     )
     (net "Net-(DA7-Pad4)"
       (pins R23-2 DA7-4)
-    )
-    (net "Net-(DA7-Pad2)"
-      (pins R22-1 DA7-2)
     )
     (net /FMC_NBL1
       (pins DD3-39 DD1-142)
@@ -1956,7 +1990,7 @@
       (pins XL8-34 TP26-1 DD1-22)
     )
     (net /NPX_CTRL
-      (pins R22-2 DD1-21)
+      (pins DD1-21 DA7-2)
     )
     (net "Net-(DD1-Pad19)"
       (pins R5-2 DD1-19)
@@ -2028,7 +2062,16 @@
       (pins XL7-6 R20-2)
     )
     (net "Net-(R23-Pad1)"
-      (pins XL9-3 R23-1)
+      (pins XL9-2 R23-1)
+    )
+    (net "Net-(DA8-Pad4)"
+      (pins R25-2 DA8-4)
+    )
+    (net /NPX_CTRL2
+      (pins DA8-2 DD1-135)
+    )
+    (net "Net-(R25-Pad1)"
+      (pins XL10-2 R25-1)
     )
     (class kicad_default "" /5V_USB /AU_LRCK /AU_MCLK /AU_RST /AU_SCLK /AU_SDIN
       /DIN+ "/DIN-" /DIN2+ "/DIN2-" /FMC_A0 /FMC_A1 /FMC_A10 /FMC_A11 /FMC_A12
@@ -2040,22 +2083,32 @@
       /LTDC_B4 /LTDC_B5 /LTDC_B6 /LTDC_B7 /LTDC_CLK /LTDC_DE /LTDC_G0 /LTDC_G1
       /LTDC_G2 /LTDC_G3 /LTDC_G4 /LTDC_G5 /LTDC_G6 /LTDC_G7 /LTDC_HSYNC /LTDC_R0
       /LTDC_R1 /LTDC_R2 /LTDC_R3 /LTDC_R4 /LTDC_R5 /LTDC_R6 /LTDC_R7 /LTDC_VSYNC
-      /NPX_CTRL /OC32IN /OC32OUT /RS485_A /RS485_B /RS485_MCU_RX /RS485_MCU_TX
-      /RS485_TXEN /SCL /SDA /SD_CLK /SD_CMD /SD_DAT0 /SD_DAT1 /SD_DAT2 /SD_DAT3
-      /SD_PWR_EN /SWCLK /SWDIO /SX_DIO0 /SX_DIO1 /SX_DIO2 /SX_DIO3 /SX_MISO
-      /SX_MOSI /SX_NSS /SX_RST /SX_SCK /UART_RX /UART_TX /USB_D+ "/USB_D-"
-      "Net-(ANT1-Pad1)" "Net-(B1-PadA)" "Net-(C1-Pad2)" "Net-(C10-Pad2)" "Net-(C12-Pad2)"
-      "Net-(C13-Pad2)" "Net-(C22-Pad1)" "Net-(C25-Pad1)" "Net-(C28-Pad2)"
-      "Net-(C35-Pad2)" "Net-(C36-Pad2)" "Net-(C4-Pad1)" "Net-(C45-Pad1)" "Net-(C45-Pad2)"
-      "Net-(C48-Pad2)" "Net-(C49-Pad2)" "Net-(C50-Pad2)" "Net-(C51-Pad1)"
-      "Net-(C55-Pad1)" "Net-(C60-Pad1)" "Net-(C61-Pad1)" "Net-(C63-Pad1)"
-      "Net-(C65-Pad1)" "Net-(C66-Pad1)" "Net-(C68-Pad1)" "Net-(C69-Pad1)"
-      "Net-(C7-Pad2)" "Net-(C73-Pad1)" "Net-(C74-Pad1)" "Net-(C79-Pad1)" "Net-(C83-Pad1)"
-      "Net-(C83-Pad2)" "Net-(D1-PadA)" "Net-(D2-PadA)" "Net-(D3-PadC)" "Net-(D4-PadC)"
-      "Net-(DA1-Pad1)" "Net-(DA1-Pad3)" "Net-(DA4-Pad37)" "Net-(DA7-Pad2)"
-      "Net-(DA7-Pad4)" "Net-(DD1-Pad101)" "Net-(DD1-Pad110)" "Net-(DD1-Pad19)"
-      "Net-(DD1-Pad24)" "Net-(DD2-Pad20)" "Net-(DD2-Pad21)" "Net-(DD2-Pad27)"
-      "Net-(R23-Pad1)"
+      /NPX_CTRL /NPX_CTRL2 /OC32IN /OC32OUT /RS485_A /RS485_B /RS485_MCU_RX
+      /RS485_MCU_TX /RS485_TXEN /SCL /SDA /SD_CLK /SD_CMD /SD_DAT0 /SD_DAT1
+      /SD_DAT2 /SD_DAT3 /SD_PWR_EN /SWCLK /SWDIO /SX_DIO0 /SX_DIO1 /SX_DIO2
+      /SX_DIO3 /SX_MISO /SX_MOSI /SX_NSS /SX_RST /SX_SCK /UART_RX /UART_TX
+      /USB_D+ "/USB_D-" "Net-(ANT1-Pad1)" "Net-(B1-PadA)" "Net-(C1-Pad2)"
+      "Net-(C10-Pad2)" "Net-(C12-Pad2)" "Net-(C13-Pad2)" "Net-(C22-Pad1)"
+      "Net-(C25-Pad1)" "Net-(C28-Pad2)" "Net-(C35-Pad2)" "Net-(C36-Pad2)"
+      "Net-(C4-Pad1)" "Net-(C45-Pad1)" "Net-(C45-Pad2)" "Net-(C48-Pad2)" "Net-(C49-Pad2)"
+      "Net-(C50-Pad2)" "Net-(C51-Pad1)" "Net-(C55-Pad1)" "Net-(C60-Pad1)"
+      "Net-(C61-Pad1)" "Net-(C63-Pad1)" "Net-(C65-Pad1)" "Net-(C66-Pad1)"
+      "Net-(C68-Pad1)" "Net-(C69-Pad1)" "Net-(C7-Pad2)" "Net-(C73-Pad1)" "Net-(C74-Pad1)"
+      "Net-(C79-Pad1)" "Net-(C83-Pad1)" "Net-(C83-Pad2)" "Net-(D1-PadA)" "Net-(D2-PadA)"
+      "Net-(D3-PadC)" "Net-(D4-PadC)" "Net-(DA1-Pad1)" "Net-(DA1-Pad3)" "Net-(DA3-Pad4)"
+      "Net-(DA4-Pad14)" "Net-(DA4-Pad15)" "Net-(DA4-Pad20)" "Net-(DA4-Pad21)"
+      "Net-(DA4-Pad22)" "Net-(DA4-Pad23)" "Net-(DA4-Pad24)" "Net-(DA4-Pad25)"
+      "Net-(DA4-Pad26)" "Net-(DA4-Pad29)" "Net-(DA4-Pad30)" "Net-(DA4-Pad31)"
+      "Net-(DA4-Pad36)" "Net-(DA4-Pad37)" "Net-(DA7-Pad2)" "Net-(DA7-Pad4)"
+      "Net-(DA8-Pad2)" "Net-(DA8-Pad4)" "Net-(DD1-Pad101)" "Net-(DD1-Pad110)"
+      "Net-(DD1-Pad119)" "Net-(DD1-Pad19)" "Net-(DD1-Pad20)" "Net-(DD1-Pad24)"
+      "Net-(DD1-Pad25)" "Net-(DD1-Pad7)" "Net-(DD1-Pad88)" "Net-(DD2-Pad1)"
+      "Net-(DD2-Pad12)" "Net-(DD2-Pad13)" "Net-(DD2-Pad20)" "Net-(DD2-Pad21)"
+      "Net-(DD2-Pad22)" "Net-(DD2-Pad27)" "Net-(DD2-Pad28)" "Net-(DD3-Pad40)"
+      "Net-(R23-Pad1)" "Net-(R25-Pad1)" "Net-(U1-Pad5)" "Net-(XL2-PadH2)"
+      "Net-(XL7-Pad1)" "Net-(XL7-Pad10)" "Net-(XL7-Pad2)" "Net-(XL7-Pad9)"
+      "Net-(XL8-Pad35)" "Net-(XL8-Pad37)" "Net-(XL8-Pad38)" "Net-(XL8-Pad39)"
+      "Net-(XL8-Pad40)"
       (circuit
         (use_via Via[0-3]_700:300_um)
       )
