@@ -2751,6 +2751,96 @@ uint32_t Clk_t::GetTimInputFreq(TIM_TypeDef* ITmr) {
     return InputFreq;
 }
 
+#if 1 // ==== Clock setup ====
+void Clk_t::SwitchToHSI() {
+    if(EnableHSI() != retvOk) return;
+    uint32_t tmp = RCC->CFGR;
+    tmp &= ~RCC_CFGR_SW;
+    tmp |= RCC_CFGR_SW_HSI;
+    RCC->CFGR = tmp;
+    while((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSI); // Wait until ready
+}
+
+void Clk_t::SwitchToPLL() {
+    uint32_t tmp = RCC->CFGR;
+    tmp &= ~RCC_CFGR_SW;
+    tmp |= RCC_CFGR_SW_PLL;
+    RCC->CFGR = tmp;
+    while((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL); // Wait until ready
+}
+
+void Clk_t::SetCoreClk80MHz() {
+    EnablePrefeth();
+    // First, switch to HSI if clock src is not HSI
+    if((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSI) SwitchToHSI();
+    // Disable PLL and SAI, enable HSE
+    DisablePLL();
+    DisablePLLSai();
+    DisablePLLI2S();
+    if(EnableHSE() != retvOk) return;
+    SetupPllSrc(pllsrcHse);
+    SetVoltageScale(mvScale3);
+    // Setup dividers
+    if(AHBFreqHz < 80000000) SetupFlashLatency(80, 3300);
+    // 12MHz / 6 = 2; 2 * 160 / 4 = 80; Q and R are don't care
+    SetupPllMulDiv(6, 160, 4, 8, 2);
+    SetupFlashLatency(80, 3300);
+    // APB1 is 54MHz max, APB2 is 108MHz max
+    SetupBusDividers(ahbDiv1, apbDiv2, apbDiv1);
+    if(EnablePLL() == retvOk) SwitchToPLL();
+}
+
+// Scale3: f<=144Mhz; Scale2: 144<f<=169MHz; Scale1: 168<f<=216MHz
+void Clk_t::SetVoltageScale(MCUVoltScale_t VoltScale) {
+    uint32_t tmp = PWR->CR1;
+    tmp &= ~PWR_CR1_VOS;
+    tmp |= ((uint32_t)VoltScale) << 14;
+    PWR->CR1 = tmp;
+}
+
+static const uint32_t FlashLatencyTbl[4][10] = {
+        {30, 60, 90, 120, 150, 180, 210, 216}, // 2.7...3.6 V
+        {24, 48, 72, 96, 120, 144, 168, 192, 216}, // 2.4...2.7 V
+        {22, 44, 66, 88, 110, 132, 154, 176, 198, 216}, // 2.1...2.4 V
+        {20, 40, 60, 80, 100, 120, 140, 160, 180}, // 1.8...2.1 V
+};
+void Clk_t::SetupFlashLatency(uint8_t AHBClk_MHz, uint32_t MCUVoltage_mv) {
+    uint32_t VoltIndx;
+    if(MCUVoltage_mv < 2100) VoltIndx = 3;
+    else if(MCUVoltage_mv < 2400) VoltIndx = 2;
+    else if(MCUVoltage_mv < 2700) VoltIndx = 1;
+    else VoltIndx = 0;
+    // Iterate freqs
+    for(uint32_t i=0; i<10; i++) {
+        if(AHBClk_MHz <= FlashLatencyTbl[VoltIndx][i]) {
+            // Setup latency (which equals to i)
+            uint32_t tmp = FLASH->ACR & ~FLASH_ACR_LATENCY;
+            tmp |= i;
+            FLASH->ACR |= tmp;
+            return;
+        }
+    }
+}
+
+void Clk_t::SetupPllMulDiv(uint32_t M, uint32_t N, uint32_t P, uint32_t Q, uint32_t R) {
+    if(RCC->CR & RCC_CR_PLLON) return; // PLL must be disabled to change dividers
+    P = (P / 2) - 1;    // 2,4,6,8 => 0,1,2,3
+    uint32_t tmp = RCC->PLLCFGR;
+    tmp &= ~(RCC_PLLCFGR_PLLR | RCC_PLLCFGR_PLLQ | RCC_PLLCFGR_PLLP | RCC_PLLCFGR_PLLN | RCC_PLLCFGR_PLLM);
+    tmp |= (M << 0) | (N << 6) | (P << 16) | (Q << 24) | (R << 28);
+    RCC->PLLCFGR = tmp;
+}
+
+void Clk_t::SetupBusDividers(AHBDiv_t AHBDiv, APBDiv_t APB1Div, APBDiv_t APB2Div) {
+    uint32_t tmp = RCC->CFGR;
+    tmp &= ~(RCC_CFGR_HPRE | RCC_CFGR_PPRE1 | RCC_CFGR_PPRE2);  // Clear bits
+    tmp |= ((uint32_t)AHBDiv)  << 4;
+    tmp |= ((uint32_t)APB1Div) << 10;
+    tmp |= ((uint32_t)APB2Div) << 13;
+    RCC->CFGR = tmp;
+}
+#endif
+
 void Clk_t::PrintFreqs() {
     Printf("AHBFreq=%uMHz; APB1Freq=%uMHz; APB2Freq=%uMHz\r",
             AHBFreqHz/1000000, APB1FreqHz/1000000, APB2FreqHz/1000000);
@@ -2766,6 +2856,42 @@ uint8_t Clk_t::EnableHSI() {
         StartUpCounter++;
     } while(StartUpCounter < CLK_STARTUP_TIMEOUT);
     return retvTimeout;
+}
+
+uint8_t Clk_t::EnableHSE() {
+    RCC->CR |= RCC_CR_HSEON;    // Enable HSE
+    // Wait until ready
+    uint32_t StartupCounter=0;
+    do {
+        if(RCC->CR & RCC_CR_HSERDY) return retvOk;   // HSE is ready
+        StartupCounter++;
+    } while(StartupCounter < CLK_STARTUP_TIMEOUT);
+    return retvTimeout;
+}
+
+uint8_t Clk_t::EnablePLL() {
+    RCC->CR |= RCC_CR_PLLON;
+    // Wait until ready
+    uint32_t StartUpCounter=0;
+    do {
+        if(RCC->CR & RCC_CR_PLLRDY) return retvOk;   // PLL is ready
+        StartUpCounter++;
+    } while(StartUpCounter < CLK_STARTUP_TIMEOUT);
+    return retvTimeout;
+}
+
+void Clk_t::DisablePLL() {
+    RCC->CR &= ~RCC_CR_PLLON;
+    while(RCC->CR & RCC_CR_PLLRDY); // Wait until ready
+}
+
+void Clk_t::DisablePLLSai() {
+    RCC->CR &= ~RCC_CR_PLLSAION;
+    while(RCC->CR & RCC_CR_PLLSAIRDY); // Wait until ready
+}
+void Clk_t::DisablePLLI2S() {
+    RCC->CR &= ~RCC_CR_PLLI2SON;
+    while(RCC->CR & RCC_CR_PLLI2SRDY); // Wait until ready
 }
 #endif
 

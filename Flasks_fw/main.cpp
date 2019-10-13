@@ -21,7 +21,7 @@ static TmrKL_t TmrOneSecond {TIME_MS2I(999), evtIdEverySecond, tktPeriodic};
 
 int main() {
     // ==== Setup clock ====
-//    Clk.SetCoreClk(cclk48MHz);
+    Clk.SetCoreClk80MHz();
     Clk.UpdateFreqValues();
 
     // ==== Init OS ====

@@ -2081,9 +2081,9 @@ enum AHBDiv_t {
 };
 
 enum APBDiv_t {apbDiv1=0b000, apbDiv2=0b100, apbDiv4=0b101, apbDiv8=0b110, apbDiv16=0b111};
-enum MCUVoltRange_t {mvrHiPerf, mvrLoPerf};
+enum MCUVoltScale_t {mvScale1=0b11, mvScale2=0b10, mvScale3=0b01};
 enum Src48MHz_t { src48None = 0b00, src48PllSai1Q = 0b01, src48PllQ = 0b10, src48Msi = 0b11 };
-enum PllSrc_t { pllsrcNone = 0b00, pllsrcMsi = 0b01, pllsrcHsi16 = 0b10, pllsrcHse = 0b11 };
+enum PllSrc_t { pllsrcHsi = 0, pllsrcHse = (1UL << 22) };
 
 enum McoSrc_t {mcoNone=0b0000, mcoSYSCLK=0b0001, mcoMSI=0b0010, mcoHSI16=0b0011, mcoHSE=0b0100, mcoMainPLL=0b0101, mcoLSI=0b0110, mcoLSE=0b0111 };
 enum McoDiv_t {mcoDiv1=0b000, mcoDiv2=0b001, mcoDiv4=0b010, mcoDiv8=0b011, mcoDiv16 = 0b100};
@@ -2106,9 +2106,9 @@ public:
     uint32_t APB1FreqHz;    // PCLK1: APB1 Bus clock
     uint32_t APB2FreqHz;    // PCLK2: APB2 Bus clock
     // SysClk switching
-    uint8_t SwitchToHSI();
-    uint8_t SwitchToHSE();
-    uint8_t SwitchToPLL();
+    void SwitchToHSI();
+    void SwitchToHSE();
+    void SwitchToPLL();
 
     uint8_t EnableHSI();
     void EnableLSE()  { RCC->BDCR |= RCC_BDCR_LSEON; }
@@ -2116,7 +2116,8 @@ public:
     void DisableHSE() { RCC->CR &= ~RCC_CR_HSEON; }
     void DisableHSI() { RCC->CR &= ~RCC_CR_HSION; }
     void DisablePLL();
-    void DisableSai1();
+    void DisablePLLSai();
+    void DisablePLLI2S();
 
     bool IsLseOn()      { return (RCC->BDCR & RCC_BDCR_LSERDY); }
 
@@ -2124,16 +2125,16 @@ public:
 
     // PLL and PLLSAI
     void SetupPllSrc(PllSrc_t Src) { MODIFY_REG(RCC->PLLCFGR, RCC_PLLCFGR_PLLSRC, ((uint32_t)Src)); }
-    uint8_t SetupPllMulDiv(uint32_t M, uint32_t N, uint32_t R, uint32_t Q);
+    void SetupPllMulDiv(uint32_t M, uint32_t N, uint32_t P, uint32_t Q, uint32_t R);
     void SetupPllSai1(uint32_t N, uint32_t R, uint32_t Q, uint32_t P);
 //    void EnableSai1ROut() { SET_BIT(RCC->PLLSAI1CFGR, RCC_PLLSAI1CFGR_PLLSAI1REN); }
 //    void EnableSai1QOut() { SET_BIT(RCC->PLLSAI1CFGR, RCC_PLLSAI1CFGR_PLLSAI1QEN); }
 //    void EnableSai1POut() { SET_BIT(RCC->PLLSAI1CFGR, RCC_PLLSAI1CFGR_PLLSAI1PEN); }
 
     void UpdateFreqValues();
-//    void EnablePrefeth() { FLASH->ACR |= FLASH_ACR_PRFTEN | FLASH_ACR_DCEN | FLASH_ACR_ICEN; }
-    void SetupFlashLatency(uint8_t AHBClk_MHz, MCUVoltRange_t VoltRange);
-    void SetVoltageRange(MCUVoltRange_t VoltRange);
+    void EnablePrefeth() { FLASH->ACR |= FLASH_ACR_PRFTEN | FLASH_ACR_PRFTEN; }
+    void SetupFlashLatency(uint8_t AHBClk_MHz, uint32_t MCUVoltage_mv);
+    void SetVoltageScale(MCUVoltScale_t VoltScale);
     void SetupSai1Qas48MhzSrc();
     // LSI
     void EnableLSI() {
@@ -2142,7 +2143,7 @@ public:
     }
     void DisableLSI() { RCC->CSR &= RCC_CSR_LSION; }
 
-    void SetCoreClk(CoreClk_t CoreClk);
+    void SetCoreClk80MHz();
 
     uint32_t GetSysClkHz();
 
