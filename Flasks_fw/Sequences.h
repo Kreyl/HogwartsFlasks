@@ -89,7 +89,7 @@ const LedRGBChunk_t lsqChargingDone[] = {
 
 #endif
 
-#if 1 // =========================== LED Smooth ================================
+#if 0 // =========================== LED Smooth ================================
 #define LED_TOP_BRIGHTNESS  100
 
 const LedSmoothChunk_t lsqFadeIn[] = {

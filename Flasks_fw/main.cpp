@@ -4,7 +4,7 @@
 #include "Sequences.h"
 #include "uart.h"
 #include "shell.h"
-//#include "led.h"
+#include "led.h"
 //#include "buttons.h"
 //#include "PinSnsSettings.h"
 
@@ -17,6 +17,8 @@ static void ITask();
 static void OnCmd(Shell_t *PShell);
 
 static TmrKL_t TmrOneSecond {TIME_MS2I(999), evtIdEverySecond, tktPeriodic};
+
+LedBlinker_t Led{LED_PIN};
 #endif
 
 int main() {
@@ -34,6 +36,10 @@ int main() {
     Printf("\r%S %S\r\n", APP_NAME, XSTRINGIFY(BUILD_TIME));
     Clk.PrintFreqs();
 
+    Led.Init();
+    Led.StartOrRestart(lsqIdle);
+
+
 //    TmrOneSecond.StartOrRestart();
 
     // ==== Main cycle ====
@@ -46,6 +52,7 @@ void ITask() {
         EvtMsg_t Msg = EvtQMain.Fetch(TIME_INFINITE);
         switch(Msg.ID) {
             case evtIdShellCmd:
+                Led.StartOrRestart(lsqCmd);
                 OnCmd((Shell_t*)Msg.Ptr);
                 ((Shell_t*)Msg.Ptr)->SignalCmdProcessed();
                 break;

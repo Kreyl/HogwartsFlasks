@@ -35,6 +35,9 @@
 // EXTI
 #define INDIVIDUAL_EXTI_IRQ_REQUIRED    FALSE
 
+// LED
+#define LED_PIN         GPIOF, 7, omPushPull
+
 // UART
 #define UART_TX_PIN     GPIOG, 14
 #define UART_RX_PIN     GPIOG, 9
