@@ -38,6 +38,18 @@
 // LED
 #define LED_PIN         GPIOF, 7, omPushPull
 
+// Neopixel LEDs
+#define NPX1_SPI        SPI5
+#define NPX1_GPIO       GPIOF
+#define NPX1_PIN        9
+#define NPX1_AF         AF5
+
+#define NPX2_SPI        SPI1
+#define NPX2_GPIO       GPIOB
+#define NPX2_PIN        5
+#define NPX2_AF         AF5
+
+
 // UART
 #define UART_TX_PIN     GPIOG, 14
 #define UART_RX_PIN     GPIOG, 9
@@ -79,6 +91,12 @@
 #define UART_DMA_CHNL   5
 #define UART_DMA_TX_MODE(Chnl) (STM32_DMA_CR_CHSEL(Chnl) | DMA_PRIORITY_LOW | STM32_DMA_CR_MSIZE_BYTE | STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MINC | STM32_DMA_CR_DIR_M2P | STM32_DMA_CR_TCIE)
 #define UART_DMA_RX_MODE(Chnl) (STM32_DMA_CR_CHSEL(Chnl) | DMA_PRIORITY_MEDIUM | STM32_DMA_CR_MSIZE_BYTE | STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MINC | STM32_DMA_CR_DIR_P2M | STM32_DMA_CR_CIRC)
+
+// NPX
+#define NPX1_DMA        STM32_DMA_STREAM_ID(2, 4)  // SPI5 TX
+#define NPX1_DMA_CHNL   2
+#define NPX2_DMA        STM32_DMA_STREAM_ID(2, 3)  // SPI1 TX
+#define NPX2_DMA_CHNL   3
 
 #if I2C1_ENABLED // ==== I2C1 ====
 #define I2C1_DMA_TX     STM32_DMA1_STREAM6

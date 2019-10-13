@@ -2910,6 +2910,15 @@ void Spi_t::Setup(BitOrder_t BitOrder, CPOL_t CPOL, CPHA_t CPHA,
 #ifdef SPI3
     else if (PSpi == SPI3) { rccEnableSPI3(FALSE); }
 #endif
+#ifdef SPI4
+    else if (PSpi == SPI4) { rccEnableSPI4(FALSE); }
+#endif
+#ifdef SPI5
+    else if (PSpi == SPI5) { rccEnableSPI5(FALSE); }
+#endif
+#ifdef SPI6
+    else if (PSpi == SPI6) { rccEnableSPI6(FALSE); }
+#endif
     // Mode: Master, NSS software controlled and is 1, 8bit, NoCRC, FullDuplex
     PSpi->CR1 = SPI_CR1_SSM | SPI_CR1_SSI | SPI_CR1_MSTR;
     if(BitOrder == boLSB) PSpi->CR1 |= SPI_CR1_LSBFIRST;    // MSB/LSB
@@ -2929,19 +2938,19 @@ void Spi_t::Setup(BitOrder_t BitOrder, CPOL_t CPOL, CPHA_t CPHA,
 #error "SPI div not defined"
 #endif
     SpiClkDivider_t ClkDiv = sclkDiv2;
-    if     (div >= 128) ClkDiv = sclkDiv256;
-    else if(div >= 64) ClkDiv = sclkDiv128;
-    else if(div >= 32) ClkDiv = sclkDiv64;
-    else if(div >= 16) ClkDiv = sclkDiv32;
-    else if(div >= 8)  ClkDiv = sclkDiv16;
-    else if(div >= 4)  ClkDiv = sclkDiv8;
-    else if(div >= 2)  ClkDiv = sclkDiv4;
+    if     (div > 128) ClkDiv = sclkDiv256;
+    else if(div > 64) ClkDiv = sclkDiv128;
+    else if(div > 32) ClkDiv = sclkDiv64;
+    else if(div > 16) ClkDiv = sclkDiv32;
+    else if(div > 8)  ClkDiv = sclkDiv16;
+    else if(div > 4)  ClkDiv = sclkDiv8;
+    else if(div > 2)  ClkDiv = sclkDiv4;
     PSpi->CR1 |= ((uint16_t)ClkDiv) << 3;
     // Bit number
 #if defined STM32L1XX || defined STM32F10X_LD_VL || defined STM32F2XX || defined STM32F4XX
     if(BitNumber == bitn16) PSpi->CR1 |= SPI_CR1_DFF;
     PSpi->CR2 = 0;
-#elif defined STM32F030 || defined STM32F072xB || defined STM32L4XX
+#elif defined STM32F030 || defined STM32F072xB || defined STM32L4XX || defined STM32F7XX
     if(BitNumber == bitn16) PSpi->CR2 = (uint16_t)0b1111 << 8;  // 16 bit, RXNE generated when 16 bit is received
     else PSpi->CR2 = ((uint16_t)0b0111 << 8) | SPI_CR2_FRXTH;   // 8 bit, RXNE generated when 8 bit is received
 #endif
@@ -2955,6 +2964,15 @@ static ftVoidVoid Spi2RxIrqHandler = nullptr;
 #ifdef SPI3
 static ftVoidVoid Spi3RxIrqHandler = nullptr;
 #endif
+#ifdef SPI4
+static ftVoidVoid Spi4RxIrqHandler = nullptr;
+#endif
+#ifdef SPI5
+static ftVoidVoid Spi5RxIrqHandler = nullptr;
+#endif
+#ifdef SPI6
+static ftVoidVoid Spi6RxIrqHandler = nullptr;
+#endif
 
 void Spi_t::SetupRxIrqCallback(ftVoidVoid AIrqHandler) const {
     if(PSpi == SPI1) Spi1RxIrqHandler = AIrqHandler;
@@ -2963,6 +2981,15 @@ void Spi_t::SetupRxIrqCallback(ftVoidVoid AIrqHandler) const {
 #endif
 #ifdef SPI3
     else if(PSpi == SPI3) Spi3RxIrqHandler = AIrqHandler;
+#endif
+#ifdef SPI4
+    else if(PSpi == SPI4) Spi4RxIrqHandler = AIrqHandler;
+#endif
+#ifdef SPI5
+    else if(PSpi == SPI5) Spi5RxIrqHandler = AIrqHandler;
+#endif
+#ifdef SPI6
+    else if(PSpi == SPI6) Spi6RxIrqHandler = AIrqHandler;
 #endif
 }
 
