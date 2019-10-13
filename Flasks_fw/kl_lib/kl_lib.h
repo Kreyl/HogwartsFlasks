@@ -2096,10 +2096,7 @@ class Clk_t {
 private:
     uint8_t EnableHSE();
     uint8_t EnablePLL();
-//    void EnablePLLROut() { RCC->PLLCFGR |= RCC_PLLCFGR_PLLREN; }
-//    void EnablePLLQOut() { RCC->PLLCFGR |= RCC_PLLCFGR_PLLQEN; }
-
-    uint8_t EnableSai1();
+    uint8_t EnablePLLSai();
 public:
     // Frequency values
     uint32_t AHBFreqHz;     // HCLK: AHB Buses, Core, Memory, DMA
@@ -2126,7 +2123,7 @@ public:
     // PLL and PLLSAI
     void SetupPllSrc(PllSrc_t Src) { MODIFY_REG(RCC->PLLCFGR, RCC_PLLCFGR_PLLSRC, ((uint32_t)Src)); }
     void SetupPllMulDiv(uint32_t M, uint32_t N, uint32_t P, uint32_t Q, uint32_t R);
-    void SetupPllSai1(uint32_t N, uint32_t R, uint32_t Q, uint32_t P);
+    void SetupPllSai(uint32_t N, uint32_t P, uint32_t Q, uint32_t R);
 //    void EnableSai1ROut() { SET_BIT(RCC->PLLSAI1CFGR, RCC_PLLSAI1CFGR_PLLSAI1REN); }
 //    void EnableSai1QOut() { SET_BIT(RCC->PLLSAI1CFGR, RCC_PLLSAI1CFGR_PLLSAI1QEN); }
 //    void EnableSai1POut() { SET_BIT(RCC->PLLSAI1CFGR, RCC_PLLSAI1CFGR_PLLSAI1PEN); }
@@ -2135,7 +2132,7 @@ public:
     void EnablePrefeth() { FLASH->ACR |= FLASH_ACR_PRFTEN | FLASH_ACR_PRFTEN; }
     void SetupFlashLatency(uint8_t AHBClk_MHz, uint32_t MCUVoltage_mv);
     void SetVoltageScale(MCUVoltScale_t VoltScale);
-    void SetupSai1Qas48MhzSrc();
+    void Setup48Mhz();
     // LSI
     void EnableLSI() {
         RCC->CSR |= RCC_CSR_LSION;
@@ -2146,74 +2143,6 @@ public:
     void SetCoreClk80MHz();
 
     uint32_t GetSysClkHz();
-
-    // Setup independent clock
-//    void SetI2CClkSrc(I2C_TypeDef *i2c, i2cClk_t ClkSrc) {
-//        uint32_t tmp = RCC->CCIPR;
-//        if(i2c == I2C1) {
-//            tmp &= ~RCC_CCIPR_I2C1SEL;
-//            tmp |= ((uint32_t)ClkSrc) << 12;
-//        }
-//        else if(i2c == I2C2) {
-//            tmp &= ~RCC_CCIPR_I2C2SEL;
-//            tmp |= ((uint32_t)ClkSrc) << 14;
-//        }
-//        else if(i2c == I2C3) {
-//            tmp &= ~RCC_CCIPR_I2C3SEL;
-//            tmp |= ((uint32_t)ClkSrc) << 16;
-//        }
-//        RCC->CCIPR = tmp;
-//    }
-
-//    void SetUartClkSrc(USART_TypeDef *uart, uartClk_t ClkSrc) {
-//        uint32_t tmp = RCC->CCIPR;
-//        if(uart == USART1) {
-//            tmp &= ~RCC_CCIPR_USART1SEL;
-//            tmp |= ((uint32_t)ClkSrc) << 0;
-//        }
-//        else if(uart == USART2) {
-//            tmp &= ~RCC_CCIPR_USART2SEL;
-//            tmp |= ((uint32_t)ClkSrc) << 2;
-//        }
-//        else if(uart == USART3) {
-//            tmp &= ~RCC_CCIPR_USART3SEL;
-//            tmp |= ((uint32_t)ClkSrc) << 4;
-//        }
-//        else if(uart == UART4) {
-//            tmp &= ~RCC_CCIPR_UART4SEL;
-//            tmp |= ((uint32_t)ClkSrc) << 6;
-//        }
-//        else if(uart == UART5) {
-//            tmp &= ~RCC_CCIPR_UART5SEL;
-//            tmp |= ((uint32_t)ClkSrc) << 8;
-//        }
-//        RCC->CCIPR = tmp;
-//    }
-//    uint32_t GetUartClkHz(USART_TypeDef *uart) {
-//        // Get clock src
-//        uartClk_t ClkSrc = uartclkPCLK;
-//        if     (uart == USART1) ClkSrc = (uartClk_t)((RCC->CCIPR & RCC_CCIPR_USART1SEL) >> 0);
-//        else if(uart == USART2) ClkSrc = (uartClk_t)((RCC->CCIPR & RCC_CCIPR_USART2SEL) >> 2);
-//        else if(uart == USART3) ClkSrc = (uartClk_t)((RCC->CCIPR & RCC_CCIPR_USART3SEL) >> 4);
-//        else if(uart == UART4)  ClkSrc = (uartClk_t)((RCC->CCIPR & RCC_CCIPR_UART4SEL)  >> 6);
-//        else if(uart == UART5)  ClkSrc = (uartClk_t)((RCC->CCIPR & RCC_CCIPR_UART5SEL)  >> 8);
-//        // Get clock
-//        switch(ClkSrc) {
-//            case uartclkPCLK:
-//                if(uart == USART1) return APB2FreqHz;
-//                else return APB1FreqHz;
-//                break;
-//            case uartclkSYSCLK:
-//                return (AHBFreqHz << AHBPrescTable[((RCC->CFGR & RCC_CFGR_HPRE) >> 4)]);
-//                break;
-//            case uartclkHSI:
-//                return 16000000;
-//                break;
-//            default: // uartclkLSE:
-//                return 32768;
-//                break;
-//        }
-//    }
 
     uint32_t GetTimInputFreq(TIM_TypeDef* ITmr);
 

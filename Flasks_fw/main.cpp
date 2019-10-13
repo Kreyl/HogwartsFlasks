@@ -6,6 +6,8 @@
 #include "shell.h"
 #include "led.h"
 #include "ws2812b.h"
+#include "kl_sd.h"
+#include "kl_fs_utils.h"
 
 #if 1 // =============== Defines ================
 // Forever
@@ -29,6 +31,7 @@ LedBlinker_t Led{LED_PIN};
 int main() {
     // ==== Setup clock ====
     Clk.SetCoreClk80MHz();
+    Clk.Setup48Mhz();
     Clk.UpdateFreqValues();
 
     // ==== Init OS ====
@@ -43,6 +46,10 @@ int main() {
 
     Led.Init();
     Led.StartOrRestart(lsqIdle);
+
+    SD.Init();
+    if(SD.IsReady) {
+    }
 
 //    PinSetupOut(GPIOF,  9, omPushPull);
 //    PinSetHi(GPIOF, 9);

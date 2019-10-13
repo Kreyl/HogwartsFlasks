@@ -2790,6 +2790,32 @@ void Clk_t::SetCoreClk80MHz() {
     if(EnablePLL() == retvOk) SwitchToPLL();
 }
 
+// PLL_SAI output P used to produce 48MHz, it is selected as PLL48CLK
+void Clk_t::Setup48Mhz() {
+    // Get SAI input freq
+    uint32_t InputFreq;
+    uint32_t PllM = RCC->PLLCFGR & RCC_PLLCFGR_PLLM;
+    // 0 is HSI, 1 is HSE
+    if(RCC->PLLCFGR & RCC_PLLCFGR_PLLSRC) InputFreq = (CRYSTAL_FREQ_HZ / PllM);
+    else InputFreq = (HSI_FREQ_HZ / PllM);
+
+    // Setup PLLSai
+    DisablePLLSai();
+    switch(InputFreq) {
+        case 2000000:  SetupPllSai(96, 4, 8, 2); break; // 2 * 96 / 4 = 48
+        case 3000000:  SetupPllSai(32, 2, 2, 7); break; // 3 * 32 / 2 = 48
+        case 4000000:  SetupPllSai(24, 2, 2, 7); break; // 4 * 24 / 2 = 48
+        case 12000000: SetupPllSai( 8, 2, 2, 7); break; // 12 * 8 / 2 = 48
+        default: return;
+    }
+    // Setup Sai1P as 48MHz source
+    if(EnablePLLSai() == retvOk) {
+        RCC->DCKCFGR2 &= ~RCC_DCKCFGR2_SDMMC2SEL; // 48MHz selected as SDMMC2 clk
+        RCC->DCKCFGR2 &= ~RCC_DCKCFGR2_SDMMC1SEL; // 48MHz selected as SDMMC1 clk
+        RCC->DCKCFGR2 |=  RCC_DCKCFGR2_CK48MSEL;  // 48MHz clk from PLLSAI selected
+    }
+}
+
 // Scale3: f<=144Mhz; Scale2: 144<f<=169MHz; Scale1: 168<f<=216MHz
 void Clk_t::SetVoltageScale(MCUVoltScale_t VoltScale) {
     uint32_t tmp = PWR->CR1;
@@ -2839,6 +2865,14 @@ void Clk_t::SetupBusDividers(AHBDiv_t AHBDiv, APBDiv_t APB1Div, APBDiv_t APB2Div
     tmp |= ((uint32_t)APB2Div) << 13;
     RCC->CFGR = tmp;
 }
+
+void Clk_t::SetupPllSai(uint32_t N, uint32_t P, uint32_t Q, uint32_t R) {
+    uint32_t tmp = RCC->PLLSAICFGR;
+    tmp &= ~(RCC_PLLSAICFGR_PLLSAIR | RCC_PLLSAICFGR_PLLSAIQ | RCC_PLLSAICFGR_PLLSAIP | RCC_PLLSAICFGR_PLLSAIN);
+    P = (P / 2) - 1;    // 2,4,6,8 => 0,1,2,3
+    tmp |= (R << 28) | (Q << 24) | (P << 16) | (N << 6);
+    RCC->PLLSAICFGR = tmp;
+}
 #endif
 
 void Clk_t::PrintFreqs() {
@@ -2877,6 +2911,18 @@ uint8_t Clk_t::EnablePLL() {
         if(RCC->CR & RCC_CR_PLLRDY) return retvOk;   // PLL is ready
         StartUpCounter++;
     } while(StartUpCounter < CLK_STARTUP_TIMEOUT);
+    return retvTimeout;
+}
+
+uint8_t Clk_t::EnablePLLSai() {
+    RCC->CR |= RCC_CR_PLLSAION; // Enable SAI
+    // Wait till PLLSAI1 is ready. May fail if PLL source disabled or not selected.
+    uint32_t StartUpCounter=0;
+    do {
+        if(RCC->CR & RCC_CR_PLLSAIRDY) return retvOk;   // PLL is ready
+        StartUpCounter++;
+    } while(StartUpCounter < 45000);
+    Printf("SaiRdy Timeout %X\r", RCC->CR);
     return retvTimeout;
 }
 

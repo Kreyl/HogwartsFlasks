@@ -54,11 +54,20 @@
 #define UART_TX_PIN     GPIOG, 14
 #define UART_RX_PIN     GPIOG, 9
 
+// SD
+#define SDC_DRV         SDCD2
+#define SD_PWR_PIN      GPIOB, 2
+#define SD_DAT0         GPIOB, 14, omPushPull, pudPullUp, AF10
+#define SD_DAT1         GPIOB, 15, omPushPull, pudPullUp, AF10
+#define SD_DAT2         GPIOB,  3, omPushPull, pudPullUp, AF10
+#define SD_DAT3         GPIOB,  4, omPushPull, pudPullUp, AF10
+#define SD_CLK          GPIOD,  6, omPushPull, pudNone,   AF11
+#define SD_CMD          GPIOD,  7, omPushPull, pudPullUp, AF11
+
 #endif // GPIO
 
 #if 1 // =========================== SPI =======================================
 #endif
-
 #if I2C2_ENABLED // ====================== I2C ================================
 #define I2C2_BAUDRATE   400000
 #define I2C_PILL        i2c2
@@ -106,6 +115,10 @@
 #define I2C2_DMA_TX     STM32_DMA1_STREAM7
 #define I2C2_DMA_RX     STM32_DMA1_STREAM3
 #endif
+
+// ==== SDMMC ====
+#define STM32_SDC_SDMMC2_DMA_STREAM     STM32_DMA_STREAM_ID(2, 0)
+
 
 #if ADC_REQUIRED
 #define ADC_DMA         STM32_DMA_STREAM_ID(2, 0)
