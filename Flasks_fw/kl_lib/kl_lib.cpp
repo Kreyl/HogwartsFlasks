@@ -232,7 +232,11 @@ void Timer_t::Init() const {
     else if(ITmr == TIM17)  { rccEnableTIM17(FALSE); }
 #endif
 #ifdef LPTIM1
+#if defined STM32F7XX
+    else if(ILPTim == LPTIM1)  { rccEnableAPB1(RCC_APB1ENR_LPTIM1EN, FALSE); }
+#else
     else if(ILPTim == LPTIM1)  { rccEnableAPB1R1(RCC_APB1ENR1_LPTIM1EN, FALSE); }
+#endif // MCU
 #endif
 #ifdef LPTIM2
     else if(ILPTim == LPTIM2)  { rccEnableAPB1R2(RCC_APB1ENR2_LPTIM2EN, FALSE); }
@@ -293,7 +297,11 @@ void Timer_t::Deinit() const {
     else if(ITmr == TIM17)  { rccDisableTIM17(); }
 #endif
 #ifdef LPTIM1
+#if defined STM32F7XX
+    else if(ILPTim == LPTIM1)  { rccDisableAPB1(RCC_APB1ENR_LPTIM1EN); }
+#else
     else if(ILPTim == LPTIM1)  { rccDisableAPB1R1(RCC_APB1ENR1_LPTIM1EN); }
+#endif // MCU
 #endif
 #ifdef LPTIM2
     else if(ILPTim == LPTIM2)  { rccDisableAPB1R2(RCC_APB1ENR2_LPTIM2EN); }
@@ -492,6 +500,8 @@ void ClearPendingFlags() {
     FLASH->SR = FLASH_SR_EOP | FLASH_SR_PROGERR | FLASH_SR_WRPERR;
 #elif defined STM32F2XX
 
+#elif defined STM32F7XX
+
 #else
     FLASH->SR = FLASH_SR_EOP | FLASH_SR_PGERR | FLASH_SR_WRPRTERR;
 #endif
@@ -530,6 +540,8 @@ static uint8_t GetStatus(void) {
     else if(FLASH->SR & FLASH_SR_WRPERR) return retvWriteProtect;
     else if(FLASH->SR & (uint32_t)0x1E00) return retvFail;
 #elif defined STM32F2XX
+
+#elif defined STM32F7XX
 
 #else
     else if(FLASH->SR & FLASH_SR_PGERR) return retvFail;
@@ -616,6 +628,8 @@ uint8_t ErasePage(uint32_t PageAddress) {
         FLASH->CR &= ~FLASH_CR_PER; // Disable the PageErase Bit
         chSysUnlock();
 #elif defined STM32F2XX
+
+#elif defined STM32F7XX
 
 #else
         FLASH->CR |= FLASH_CR_PER;
@@ -722,6 +736,8 @@ void UnlockOptionBytes() {
     FLASH->OPTKEYR = 0x24252627;
 #elif defined STM32F2XX
 
+#elif defined STM32F7XX
+
 #else
     UnlockFlash();
     FLASH->OPTKEYR = FLASH_OPTKEY1;
@@ -735,6 +751,8 @@ void LockOptionBytes() {
     // To lock the option byte block again, the software only needs to set the OPTLOCK bit in FLASH_PECR
     FLASH->PECR |= FLASH_PECR_OPTLOCK;
 #elif defined STM32F2XX
+
+#elif defined STM32F7XX
 
 #else
     CLEAR_BIT(FLASH->CR, FLASH_CR_OPTWRE);
@@ -763,6 +781,8 @@ void WriteOptionByteRDP(uint8_t Value) {
         WaitForLastOperation(FLASH_ProgramTimeout);
 #elif defined STM32F2XX
 
+#elif defined STM32F7XX
+
 #else
         // Erase option bytes
         SET_BIT(FLASH->CR, FLASH_CR_OPTER);
@@ -788,6 +808,8 @@ bool FirmwareIsLocked() {
 #elif defined STM32L1XX
     return (FLASH->OBR & 0xFF) != 0xAA;
 #elif defined STM32F2XX
+    return false;
+#elif defined STM32F7XX
     return false;
 #else
     return (FLASH->OBR & 0b0110);
@@ -822,6 +844,8 @@ void LockFirmware() {
 #ifdef STM32L1XX
     FLASH->PECR |= FLASH_PECR_OBL_LAUNCH;
 #elif defined STM32F2XX || defined STM32F1XX
+
+#elif defined STM32F7XX
 
 #else
     SET_BIT(FLASH->CR, FLASH_CR_OBL_LAUNCH);
@@ -2307,7 +2331,7 @@ void Clk_t::UpdateFreqValues() {
 void Clk_t::PrintFreqs() {
     Printf(
             "AHBFreq=%uMHz; APB1Freq=%uMHz; APB2Freq=%uMHz\r",
-            Clk.AHBFreqHz/1000000, Clk.APB1FreqHz/1000000, Clk.APB2FreqHz/1000000);
+            AHBFreqHz/1000000, APB1FreqHz/1000000, APB2FreqHz/1000000);
 }
 
 uint32_t Clk_t::GetTimInputFreq(TIM_TypeDef* ITmr) {
@@ -2645,10 +2669,107 @@ uint32_t Clk_t::GetSaiClkHz() {
         }
         return FreqRslt;
     }
-#elif defined STM32
 
+#elif defined STM32F7XX
+const uint8_t AHBPrescTable[16] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 6, 7, 8, 9};
+const uint8_t APBPrescTable[8] = {0, 0, 0, 0, 1, 2, 3, 4};
 
+uint32_t Clk_t::GetSysClkHz() {
+    uint32_t ClkSwitch = (RCC->CFGR & RCC_CFGR_SWS) >> 2;  // System clock switch status
+    switch(ClkSwitch) {
+        case 0b00: return HSI_FREQ_HZ; break; // HSI
+        case 0b01: return CRYSTAL_FREQ_HZ; break;// HSE
+        case 0b10: { // PLL
+            /* PLL used as system clock source
+             * PLL_VCO = (CRYSTAL_FREQ_HZ or HSI_FREQ_HZ) / PLLM * PLLN
+             * SYSCLK = PLL_VCO / PLLP */
+            uint32_t PllSrc = (RCC->PLLCFGR & RCC_PLLCFGR_PLLSRC);
+            uint32_t PllM = RCC->PLLCFGR & RCC_PLLCFGR_PLLM;
+            uint32_t PllVCO = (PllSrc == 0)? (HSI_FREQ_HZ / PllM) : (CRYSTAL_FREQ_HZ / PllM);
+            PllVCO *= ((RCC->PLLCFGR & RCC_PLLCFGR_PLLN) >> 6);
+            uint32_t PllP = (((RCC->PLLCFGR & RCC_PLLCFGR_PLLP) >> 16) + 1) * 2;
+            return PllVCO / PllP;
+        } break;
+        default: return 0; break;
+    } // switch
+}
+
+void Clk_t::UpdateFreqValues() {
+    // AHB freq
+    uint32_t tmp = AHBPrescTable[((RCC->CFGR & RCC_CFGR_HPRE) >> 4)];
+    AHBFreqHz = GetSysClkHz() >> tmp;
+    // APB freq
+    uint32_t APB1prs = (RCC->CFGR & RCC_CFGR_PPRE1) >> 10;
+    uint32_t APB2prs = (RCC->CFGR & RCC_CFGR_PPRE2) >> 13;
+    tmp = APBPrescTable[APB1prs];
+    APB1FreqHz = AHBFreqHz >> tmp;
+    tmp = APBPrescTable[APB2prs];
+    APB2FreqHz = AHBFreqHz >> tmp;
+
+    // ==== Update prescaler in System Timer ====
+    uint32_t Psc = (SYS_TIM_CLK / OSAL_ST_FREQUENCY) - 1;
+    TMR_DISABLE(STM32_ST_TIM);          // Stop counter
+    uint32_t Cnt = STM32_ST_TIM->CNT;   // Save current time
+    STM32_ST_TIM->PSC = Psc;
+    TMR_GENERATE_UPD(STM32_ST_TIM);
+    STM32_ST_TIM->CNT = Cnt;            // Restore time
+    TMR_ENABLE(STM32_ST_TIM);
+}
+
+uint32_t Clk_t::GetTimInputFreq(TIM_TypeDef* ITmr) {
+    uint32_t InputFreq = 0;
+    // APB2
+    if(ITmr == TIM1 or ITmr == TIM8 or ITmr == TIM9 or ITmr == TIM10 or ITmr == TIM11) {
+        uint32_t APB2prs = (RCC->CFGR & RCC_CFGR_PPRE2) >> 13;
+        if(RCC->DCKCFGR1 & RCC_DCKCFGR1_TIMPRE) {
+            if(APB2prs == 1 or APB2prs == 2 or APB2prs == 4) InputFreq = AHBFreqHz;
+            else InputFreq = Clk.APB2FreqHz * 4;
+        }
+        else {
+            if(APB2prs == 1) InputFreq = Clk.APB2FreqHz;
+            else InputFreq = Clk.APB2FreqHz * 2;
+        }
+    }
+    // APB1
+    else {
+        LPTIM_TypeDef* ILPTim = (LPTIM_TypeDef*)ITmr;
+        if(ILPTim == LPTIM1) {
+            InputFreq = Clk.APB1FreqHz; // Others clock options are not implemented
+        }
+        else { // not a LPTIM
+            uint32_t APB1prs = (RCC->CFGR & RCC_CFGR_PPRE1) >> 10;
+            if(RCC->DCKCFGR1 & RCC_DCKCFGR1_TIMPRE) {
+                if(APB1prs == 1 or APB1prs == 2 or APB1prs == 4) InputFreq = AHBFreqHz;
+                else InputFreq = Clk.APB1FreqHz * 4;
+            }
+            else {
+                if(APB1prs == 1) InputFreq = Clk.APB1FreqHz;
+                else InputFreq = Clk.APB1FreqHz * 2;
+            }
+        }
+    }
+    return InputFreq;
+}
+
+void Clk_t::PrintFreqs() {
+    Printf("AHBFreq=%uMHz; APB1Freq=%uMHz; APB2Freq=%uMHz\r",
+            AHBFreqHz/1000000, APB1FreqHz/1000000, APB2FreqHz/1000000);
+}
+
+#if 1 // ==== Enable/Disable ====
+uint8_t Clk_t::EnableHSI() {
+    RCC->CR |= RCC_CR_HSION;
+    // Wait until ready
+    uint32_t StartUpCounter=0;
+    do {
+        if(RCC->CR & RCC_CR_HSIRDY) return retvOk;
+        StartUpCounter++;
+    } while(StartUpCounter < CLK_STARTUP_TIMEOUT);
+    return retvTimeout;
+}
 #endif
+
+#endif // MCU
 
 #endif // Clocking
 
@@ -2675,6 +2796,11 @@ void Spi_t::Setup(BitOrder_t BitOrder, CPOL_t CPOL, CPHA_t CPHA,
     else div = Clk.APB1FreqHz / Bitrate_Hz;
 #elif defined STM32F030 || defined STM32F0
     div = Clk.APBFreqHz / Bitrate_Hz;
+#elif defined STM32F7XX
+    if(PSpi == SPI2 or PSpi == SPI3) div = Clk.APB1FreqHz / Bitrate_Hz;
+    else div = Clk.APB2FreqHz / Bitrate_Hz;
+#else
+#error "SPI div not defined"
 #endif
     SpiClkDivider_t ClkDiv = sclkDiv2;
     if     (div >= 128) ClkDiv = sclkDiv256;

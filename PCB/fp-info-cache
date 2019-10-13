@@ -1,4 +1,4 @@
-704936160122929
+711368734517059
 Antennas
 ANT_868_10d4x36
 PCB{space}75.7x37.5,{space}AntPcb{space}14.8mm
@@ -36,6 +36,13 @@ PCB{space}24.384x61.722,{space}AntPcb{space}15mm
 1
 Antennas
 ANT_868_IFA_SIMPLEJOY
+
+
+0
+16
+2
+Antennas
+ANT_868_IFA_SIMPLEJOY_MIRR
 
 
 0
@@ -1701,6 +1708,13 @@ Cree_J3030
 2
 2
 LEDs
+Cree_XML
+
+
+0
+3
+3
+LEDs
 EpistarRGB
 
 
@@ -1735,6 +1749,13 @@ LED_0603_DOUBLE
 0
 4
 4
+LEDs
+LED_0603_ch
+
+
+0
+2
+2
 LEDs
 LED_0805
 
@@ -2169,6 +2190,13 @@ Oval3x1.5
 0
 1
 1
+PCB
+Oval3x1.5wHole0d9_x2
+
+
+0
+4
+2
 PCB
 Oval3x1.5wHole0d9mm
 

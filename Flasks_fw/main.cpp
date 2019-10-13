@@ -22,7 +22,7 @@ static TmrKL_t TmrOneSecond {TIME_MS2I(999), evtIdEverySecond, tktPeriodic};
 int main() {
     // ==== Setup clock ====
 //    Clk.SetCoreClk(cclk48MHz);
-//    Clk.UpdateFreqValues();
+    Clk.UpdateFreqValues();
 
     // ==== Init OS ====
     halInit();
@@ -32,7 +32,7 @@ int main() {
     EvtQMain.Init();
     Uart.Init();
     Printf("\r%S %S\r\n", APP_NAME, XSTRINGIFY(BUILD_TIME));
-//    Clk.PrintFreqs();
+    Clk.PrintFreqs();
 
 //    TmrOneSecond.StartOrRestart();
 

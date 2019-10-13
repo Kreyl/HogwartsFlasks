@@ -33,6 +33,8 @@
 #include "stm32l4xx.h"
 #elif defined STM32F103xE
 #include "stm32f1xx.h"
+#elif defined STM32F7XX
+#include "stm32f7xx.h"
 #endif
 
 #if 1 // ============================ General ==================================
@@ -622,7 +624,7 @@ enum PinSpeed_t {
     psHigh = 0b11
 };
 #define PIN_SPEED_DEFAULT   psMedium
-#elif defined STM32L4XX
+#elif defined STM32L4XX || defined STM32F7XX
 enum PinSpeed_t {
     psLow = 0b00,
     psMedium = 0b01,
@@ -643,7 +645,7 @@ struct LPTimPwmSetup_t {
 
 enum AlterFunc_t {
     AF0=0, AF1=1, AF2=2, AF3=3, AF4=4, AF5=5, AF6=6, AF7=7,
-#if defined STM32F2XX || defined STM32F4XX || defined STM32L1XX || defined STM32L4XX
+#if defined STM32F2XX || defined STM32F4XX || defined STM32L1XX || defined STM32L4XX || defined STM32F7XX
     AF8=8, AF9=9,AF10=10, AF11=11, AF12=12, AF13=13, AF14=14, AF15=15
 #endif
 };
@@ -654,7 +656,7 @@ __always_inline
 static inline void PinSetHi(GPIO_TypeDef *PGpio, uint16_t APin) { PGpio->BSRRL = (1 << APin); }
 __always_inline
 static inline void PinSetLo(GPIO_TypeDef *PGpio, uint16_t APin) { PGpio->BSRRH = (1 << APin); }
-#elif defined STM32F2XX || defined STM32L1XX
+#elif defined STM32F2XX || defined STM32L1XX || defined STM32F7XX
 __always_inline
 static inline void PinSetHi(GPIO_TypeDef *PGpio, uint32_t APin) { PGpio->BSRR = 1 << APin; }
 __always_inline
@@ -679,12 +681,18 @@ static inline bool PinIsLo(const GPIO_TypeDef *PGpio, uint32_t APin) { return !(
 
 // Setup
 static void PinClockEnable(const GPIO_TypeDef *PGpioPort) {
-#if defined STM32F2XX || defined STM32F4XX
+#if defined STM32F2XX || defined STM32F4XX || defined STM32F7XX
     if     (PGpioPort == GPIOA) RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
     else if(PGpioPort == GPIOB) RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN;
     else if(PGpioPort == GPIOC) RCC->AHB1ENR |= RCC_AHB1ENR_GPIOCEN;
     else if(PGpioPort == GPIOD) RCC->AHB1ENR |= RCC_AHB1ENR_GPIODEN;
     else if(PGpioPort == GPIOE) RCC->AHB1ENR |= RCC_AHB1ENR_GPIOEEN;
+    else if(PGpioPort == GPIOF) RCC->AHB1ENR |= RCC_AHB1ENR_GPIOFEN;
+    else if(PGpioPort == GPIOG) RCC->AHB1ENR |= RCC_AHB1ENR_GPIOGEN;
+    else if(PGpioPort == GPIOH) RCC->AHB1ENR |= RCC_AHB1ENR_GPIOHEN;
+    else if(PGpioPort == GPIOI) RCC->AHB1ENR |= RCC_AHB1ENR_GPIOIEN;
+    else if(PGpioPort == GPIOJ) RCC->AHB1ENR |= RCC_AHB1ENR_GPIOJEN;
+    else if(PGpioPort == GPIOK) RCC->AHB1ENR |= RCC_AHB1ENR_GPIOKEN;
 #elif defined STM32F10X_LD_VL || defined STM32F10X_HD
     if     (PGpioPort == GPIOA) RCC->APB2ENR |= RCC_APB2ENR_IOPAEN;
     else if(PGpioPort == GPIOB) RCC->APB2ENR |= RCC_APB2ENR_IOPBEN;
@@ -920,7 +928,7 @@ static inline void PortInit(GPIO_TypeDef *PGpioPort,
         case psLow:      PGpioPort->OSPEEDR = 0x55555555; break;
         case psMedium:   PGpioPort->OSPEEDR = 0xAAAAAAAA; break;
         case psHigh:     PGpioPort->OSPEEDR = 0xFFFFFFFF; break;
-#elif defined STM32L4XX
+#elif defined STM32L4XX || defined STM32F7XX
         case psVeryHigh: PGpioPort->OSPEEDR = 0xFFFFFFFF; break;
         case psLow:      PGpioPort->OSPEEDR = 0x00000000; break;
         case psMedium:   PGpioPort->OSPEEDR = 0x55555555; break;
@@ -1044,7 +1052,7 @@ class cc1101_t : public IrqHandler_t {
 */
 
 // Pin to IRQ channel
-#if defined STM32L1XX || defined STM32F4XX || defined STM32F2XX || defined STM32L4XX || defined STM32F1XX
+#if defined STM32L1XX || defined STM32F4XX || defined STM32F2XX || defined STM32L4XX || defined STM32F1XX || defined STM32F7XX
 #define PIN2IRQ_CHNL(Pin)   (((Pin) > 9)? EXTI15_10_IRQn : (((Pin) > 4)? EXTI9_5_IRQn : ((Pin) + EXTI0_IRQn)))
 #elif defined STM32F030 || defined STM32F0
 #define PIN2IRQ_CHNL(Pin)   (((Pin) > 3)? EXTI4_15_IRQn : (((Pin) > 1)? EXTI2_3_IRQn : EXTI0_1_IRQn))
@@ -1055,7 +1063,7 @@ extern "C" {
 #if INDIVIDUAL_EXTI_IRQ_REQUIRED
 extern IrqHandler_t *ExtiIrqHandler[16];
 #else
-#if defined STM32L1XX || defined STM32F4XX || defined STM32F2XX || defined STM32L4XX || defined STM32F1XX
+#if defined STM32L1XX || defined STM32F4XX || defined STM32F2XX || defined STM32L4XX || defined STM32F1XX || defined STM32F7XX
 extern ftVoidVoid ExtiIrqHandler[5], ExtiIrqHandler_9_5, ExtiIrqHandler_15_10;
 #elif defined STM32F030 || defined STM32F0
 extern ftVoidVoid ExtiIrqHandler_0_1, ExtiIrqHandler_2_3, ExtiIrqHandler_4_15;
@@ -1073,7 +1081,7 @@ public:
 #if INDIVIDUAL_EXTI_IRQ_REQUIRED
         ExtiIrqHandler[APinN] = PIrqHandler;
 #else
-    #if defined STM32L1XX || defined STM32F4XX || defined STM32F2XX || defined STM32L4XX || defined STM32F1XX
+    #if defined STM32L1XX || defined STM32F4XX || defined STM32F2XX || defined STM32L4XX || defined STM32F1XX || defined STM32F7XX
         if(APinN >= 0 and APinN <= 4) ExtiIrqHandler[APinN] = PIrqHandler;
         else if(APinN <= 9) ExtiIrqHandler_9_5 = PIrqHandler;
         else ExtiIrqHandler_15_10 = PIrqHandler;
@@ -1264,14 +1272,19 @@ static inline void ClearStandbyFlag()  { PWR->SCR |= PWR_SCR_CSBF; }
 static inline void ClearWUFFlags()     { PWR->SCR |= 0x1F; }
 #else
 static inline void EnterStandby() {
-#if defined STM32F0XX || defined STM32L4XX || defined STM32F2XX
+#if defined STM32F0XX || defined STM32L4XX || defined STM32F2XX || defined STM32F7XX
     SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
 #else
     SCB->SCR |= SCB_SCR_SLEEPDEEP;
 #endif
+#if defined STM32F7XX
+    PWR->CR1 |= PWR_CR1_PDDS;
+    PWR->CR1 |= PWR_CR1_CSBF; // Clear standby flag
+#else
     PWR->CR = PWR_CR_PDDS;
     // Command to clear WUF (wakeup flag) and wait two sys clock cycles to allow it be cleared
     PWR->CR |= PWR_CR_CWUF;
+#endif
     __NOP(); __NOP();
     __WFI();
 }
@@ -1281,16 +1294,18 @@ static inline void EnableWakeupPin()  { PWR->CSR |=  PWR_CSR_EWUP; }
 static inline void DisableWakeupPin() { PWR->CSR &= ~PWR_CSR_EWUP; }
 #elif defined STM32F1XX
 // Not implemented
+#elif defined STM32F7XX
+
 #else
 static inline void EnableWakeup1Pin()  { PWR->CSR |=  PWR_CSR_EWUP1; }
 static inline void DisableWakeup1Pin() { PWR->CSR &= ~PWR_CSR_EWUP1; }
 static inline void EnableWakeup2Pin()  { PWR->CSR |=  PWR_CSR_EWUP2; }
 static inline void DisableWakeup2Pin() { PWR->CSR &= ~PWR_CSR_EWUP2; }
-#endif
 static inline bool WasInStandby() { return (PWR->CSR & PWR_CSR_SBF); }
 static inline void ClearStandbyFlag() { PWR->CR |= PWR_CR_CSBF; }
 #endif
 
+#endif // if L476 or others
 }; // namespace
 #endif
 
@@ -2047,6 +2062,176 @@ public:
 
     void PrintFreqs();
 };
+
+#elif defined STM32F7XX
+#define HSI_FREQ_HZ     16000000UL
+#define LSI_FREQ_HZ     32000UL
+#define LSE_FREQ_HZ     32768UL
+
+enum AHBDiv_t {
+    ahbDiv1=0b0000,
+    ahbDiv2=0b1000,
+    ahbDiv4=0b1001,
+    ahbDiv8=0b1010,
+    ahbDiv16=0b1011,
+    ahbDiv64=0b1100,
+    ahbDiv128=0b1101,
+    ahbDiv256=0b1110,
+    ahbDiv512=0b1111
+};
+
+enum APBDiv_t {apbDiv1=0b000, apbDiv2=0b100, apbDiv4=0b101, apbDiv8=0b110, apbDiv16=0b111};
+enum MCUVoltRange_t {mvrHiPerf, mvrLoPerf};
+enum Src48MHz_t { src48None = 0b00, src48PllSai1Q = 0b01, src48PllQ = 0b10, src48Msi = 0b11 };
+enum PllSrc_t { pllsrcNone = 0b00, pllsrcMsi = 0b01, pllsrcHsi16 = 0b10, pllsrcHse = 0b11 };
+
+enum McoSrc_t {mcoNone=0b0000, mcoSYSCLK=0b0001, mcoMSI=0b0010, mcoHSI16=0b0011, mcoHSE=0b0100, mcoMainPLL=0b0101, mcoLSI=0b0110, mcoLSE=0b0111 };
+enum McoDiv_t {mcoDiv1=0b000, mcoDiv2=0b001, mcoDiv4=0b010, mcoDiv8=0b011, mcoDiv16 = 0b100};
+
+enum i2cClk_t { i2cclkPCLK1 = 0, i2cclkSYSCLK = 1, i2cclkHSI = 2 };
+enum uartClk_t { uartclkPCLK = 0b00, uartclkSYSCLK = 0b01, uartclkHSI = 0b10, uartclkLSE = 0b11 };
+
+
+class Clk_t {
+private:
+    uint8_t EnableHSE();
+    uint8_t EnablePLL();
+//    void EnablePLLROut() { RCC->PLLCFGR |= RCC_PLLCFGR_PLLREN; }
+//    void EnablePLLQOut() { RCC->PLLCFGR |= RCC_PLLCFGR_PLLQEN; }
+
+    uint8_t EnableSai1();
+public:
+    // Frequency values
+    uint32_t AHBFreqHz;     // HCLK: AHB Buses, Core, Memory, DMA
+    uint32_t APB1FreqHz;    // PCLK1: APB1 Bus clock
+    uint32_t APB2FreqHz;    // PCLK2: APB2 Bus clock
+    // SysClk switching
+    uint8_t SwitchToHSI();
+    uint8_t SwitchToHSE();
+    uint8_t SwitchToPLL();
+
+    uint8_t EnableHSI();
+    void EnableLSE()  { RCC->BDCR |= RCC_BDCR_LSEON; }
+
+    void DisableHSE() { RCC->CR &= ~RCC_CR_HSEON; }
+    void DisableHSI() { RCC->CR &= ~RCC_CR_HSION; }
+    void DisablePLL();
+    void DisableSai1();
+
+    bool IsLseOn()      { return (RCC->BDCR & RCC_BDCR_LSERDY); }
+
+    void SetupBusDividers(AHBDiv_t AHBDiv, APBDiv_t APB1Div, APBDiv_t APB2Div);
+
+    // PLL and PLLSAI
+    void SetupPllSrc(PllSrc_t Src) { MODIFY_REG(RCC->PLLCFGR, RCC_PLLCFGR_PLLSRC, ((uint32_t)Src)); }
+    uint8_t SetupPllMulDiv(uint32_t M, uint32_t N, uint32_t R, uint32_t Q);
+    void SetupPllSai1(uint32_t N, uint32_t R, uint32_t Q, uint32_t P);
+//    void EnableSai1ROut() { SET_BIT(RCC->PLLSAI1CFGR, RCC_PLLSAI1CFGR_PLLSAI1REN); }
+//    void EnableSai1QOut() { SET_BIT(RCC->PLLSAI1CFGR, RCC_PLLSAI1CFGR_PLLSAI1QEN); }
+//    void EnableSai1POut() { SET_BIT(RCC->PLLSAI1CFGR, RCC_PLLSAI1CFGR_PLLSAI1PEN); }
+
+    void UpdateFreqValues();
+//    void EnablePrefeth() { FLASH->ACR |= FLASH_ACR_PRFTEN | FLASH_ACR_DCEN | FLASH_ACR_ICEN; }
+    void SetupFlashLatency(uint8_t AHBClk_MHz, MCUVoltRange_t VoltRange);
+    void SetVoltageRange(MCUVoltRange_t VoltRange);
+    void SetupSai1Qas48MhzSrc();
+    // LSI
+    void EnableLSI() {
+        RCC->CSR |= RCC_CSR_LSION;
+        while(!(RCC->CSR & RCC_CSR_LSIRDY));
+    }
+    void DisableLSI() { RCC->CSR &= RCC_CSR_LSION; }
+
+    void SetCoreClk(CoreClk_t CoreClk);
+
+    uint32_t GetSysClkHz();
+
+    // Setup independent clock
+//    void SetI2CClkSrc(I2C_TypeDef *i2c, i2cClk_t ClkSrc) {
+//        uint32_t tmp = RCC->CCIPR;
+//        if(i2c == I2C1) {
+//            tmp &= ~RCC_CCIPR_I2C1SEL;
+//            tmp |= ((uint32_t)ClkSrc) << 12;
+//        }
+//        else if(i2c == I2C2) {
+//            tmp &= ~RCC_CCIPR_I2C2SEL;
+//            tmp |= ((uint32_t)ClkSrc) << 14;
+//        }
+//        else if(i2c == I2C3) {
+//            tmp &= ~RCC_CCIPR_I2C3SEL;
+//            tmp |= ((uint32_t)ClkSrc) << 16;
+//        }
+//        RCC->CCIPR = tmp;
+//    }
+
+//    void SetUartClkSrc(USART_TypeDef *uart, uartClk_t ClkSrc) {
+//        uint32_t tmp = RCC->CCIPR;
+//        if(uart == USART1) {
+//            tmp &= ~RCC_CCIPR_USART1SEL;
+//            tmp |= ((uint32_t)ClkSrc) << 0;
+//        }
+//        else if(uart == USART2) {
+//            tmp &= ~RCC_CCIPR_USART2SEL;
+//            tmp |= ((uint32_t)ClkSrc) << 2;
+//        }
+//        else if(uart == USART3) {
+//            tmp &= ~RCC_CCIPR_USART3SEL;
+//            tmp |= ((uint32_t)ClkSrc) << 4;
+//        }
+//        else if(uart == UART4) {
+//            tmp &= ~RCC_CCIPR_UART4SEL;
+//            tmp |= ((uint32_t)ClkSrc) << 6;
+//        }
+//        else if(uart == UART5) {
+//            tmp &= ~RCC_CCIPR_UART5SEL;
+//            tmp |= ((uint32_t)ClkSrc) << 8;
+//        }
+//        RCC->CCIPR = tmp;
+//    }
+//    uint32_t GetUartClkHz(USART_TypeDef *uart) {
+//        // Get clock src
+//        uartClk_t ClkSrc = uartclkPCLK;
+//        if     (uart == USART1) ClkSrc = (uartClk_t)((RCC->CCIPR & RCC_CCIPR_USART1SEL) >> 0);
+//        else if(uart == USART2) ClkSrc = (uartClk_t)((RCC->CCIPR & RCC_CCIPR_USART2SEL) >> 2);
+//        else if(uart == USART3) ClkSrc = (uartClk_t)((RCC->CCIPR & RCC_CCIPR_USART3SEL) >> 4);
+//        else if(uart == UART4)  ClkSrc = (uartClk_t)((RCC->CCIPR & RCC_CCIPR_UART4SEL)  >> 6);
+//        else if(uart == UART5)  ClkSrc = (uartClk_t)((RCC->CCIPR & RCC_CCIPR_UART5SEL)  >> 8);
+//        // Get clock
+//        switch(ClkSrc) {
+//            case uartclkPCLK:
+//                if(uart == USART1) return APB2FreqHz;
+//                else return APB1FreqHz;
+//                break;
+//            case uartclkSYSCLK:
+//                return (AHBFreqHz << AHBPrescTable[((RCC->CFGR & RCC_CFGR_HPRE) >> 4)]);
+//                break;
+//            case uartclkHSI:
+//                return 16000000;
+//                break;
+//            default: // uartclkLSE:
+//                return 32768;
+//                break;
+//        }
+//    }
+
+    uint32_t GetTimInputFreq(TIM_TypeDef* ITmr);
+
+    uint32_t GetSaiClkHz();
+
+    // Clock output
+//    void EnableMCO(McoSrc_t Src, McoDiv_t Div) {
+//        PinSetupAlterFunc(GPIOA, 8, omPushPull, pudNone, AF0, psHigh);
+//        RCC->CFGR &= ~(RCC_CFGR_MCOSEL | RCC_CFGR_MCOPRE);   // First, disable output and clear settings
+//        RCC->CFGR |= (((uint32_t)Src) << 24) | ((uint32_t)Div << 28);
+//    }
+//    void DisableMCO() {
+//        PinSetupAnalog(GPIOA, 8);
+//        RCC->CFGR &= ~(RCC_CFGR_MCOSEL | RCC_CFGR_MCOPRE);
+//    }
+
+    void PrintFreqs();
+};
+
 #endif
 
 extern Clk_t Clk;
