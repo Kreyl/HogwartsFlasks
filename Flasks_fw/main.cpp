@@ -51,6 +51,13 @@ int main() {
     if(SD.IsReady) {
     }
 
+    BackupSpc::EnableAccess();
+    uint32_t t32 = BackupSpc::ReadRegister(1);
+    Printf("Reg1: %X\r", t32);
+
+    // USB
+//    UsbMsdCdc.Init();
+
 //    PinSetupOut(GPIOF,  9, omPushPull);
 //    PinSetHi(GPIOF, 9);
     // Npx
@@ -101,6 +108,14 @@ void OnCmd(Shell_t *PShell) {
         for(int i=0; i<2; i++) Npx.ClrBuf[i] = Clr;
         Npx.SetCurrentColors();
     }
+
+    else if(PCmd->NameIs("t32")) {
+        uint32_t w32;
+        if(PCmd->GetNext<uint32_t>(&w32) != retvOk) { PShell->Ack(retvCmdError); return; }
+        BackupSpc::WriteRegister(1, w32);
+        PShell->Ack(retvOk);
+    }
+
     else {
         Printf("%S\r\n", PCmd->Name);
         PShell->Ack(retvCmdUnknown);

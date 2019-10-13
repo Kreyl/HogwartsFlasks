@@ -51,6 +51,7 @@
 									<listOptionValue builtIn="false" value="../os/include"/>
 									<listOptionValue builtIn="false" value="../os/stm32F7xx"/>
 									<listOptionValue builtIn="false" value="../sd"/>
+									<listOptionValue builtIn="false" value="../usb"/>
 								</option>
 								<option id="com.atollic.truestudio.common_options.target.endianess.1753676572" name="Endianess" superClass="com.atollic.truestudio.common_options.target.endianess" useByScannerDiscovery="false"/>
 								<option id="com.atollic.truestudio.common_options.target.mcpu.63282321" name="Microcontroller" superClass="com.atollic.truestudio.common_options.target.mcpu" useByScannerDiscovery="false" value="STM32F767ZI" valueType="enumerated"/>
@@ -82,6 +83,7 @@
 									<listOptionValue builtIn="false" value="../os/include"/>
 									<listOptionValue builtIn="false" value="../os/stm32F7xx"/>
 									<listOptionValue builtIn="false" value="../sd"/>
+									<listOptionValue builtIn="false" value="../usb"/>
 								</option>
 								<option id="com.atollic.truestudio.common_options.target.endianess.558096091" name="Endianess" superClass="com.atollic.truestudio.common_options.target.endianess" useByScannerDiscovery="false"/>
 								<option id="com.atollic.truestudio.common_options.target.mcpu.655177417" name="Microcontroller" superClass="com.atollic.truestudio.common_options.target.mcpu" useByScannerDiscovery="false" value="STM32F767ZI" valueType="enumerated"/>
@@ -171,6 +173,7 @@
 									<listOptionValue builtIn="false" value="../os/stm32F767"/>
 									<listOptionValue builtIn="false" value="../os/stm32F7xx"/>
 									<listOptionValue builtIn="false" value="../sd"/>
+									<listOptionValue builtIn="false" value="../usb"/>
 								</option>
 								<inputType id="com.atollic.truestudio.as.input.141353547" name="Input" superClass="com.atollic.truestudio.as.input"/>
 							</tool>
@@ -192,6 +195,7 @@
 									<listOptionValue builtIn="false" value="../os/stm32F767"/>
 									<listOptionValue builtIn="false" value="../os/stm32F7xx"/>
 									<listOptionValue builtIn="false" value="../sd"/>
+									<listOptionValue builtIn="false" value="../usb"/>
 								</option>
 								<option id="com.atollic.truestudio.common_options.target.endianess.421058670" name="Endianess" superClass="com.atollic.truestudio.common_options.target.endianess"/>
 								<option id="com.atollic.truestudio.common_options.target.mcpu.727170201" name="Microcontroller" superClass="com.atollic.truestudio.common_options.target.mcpu" value="STM32F767ZI" valueType="enumerated"/>
@@ -229,6 +233,7 @@
 									<listOptionValue builtIn="false" value="../os/stm32F767"/>
 									<listOptionValue builtIn="false" value="../os/stm32F7xx"/>
 									<listOptionValue builtIn="false" value="../sd"/>
+									<listOptionValue builtIn="false" value="../usb"/>
 								</option>
 								<option id="com.atollic.truestudio.common_options.target.endianess.1634639355" name="Endianess" superClass="com.atollic.truestudio.common_options.target.endianess"/>
 								<option id="com.atollic.truestudio.common_options.target.mcpu.1461472557" name="Microcontroller" superClass="com.atollic.truestudio.common_options.target.mcpu" value="STM32F767ZI" valueType="enumerated"/>
