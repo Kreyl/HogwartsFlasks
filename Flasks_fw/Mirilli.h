@@ -19,12 +19,12 @@
 #define MIRILLI_M_CNT   12
 
 // Tables of accordance between hours/minutes and LED indxs. Hours and hyperminutes are 12
-static const uint32_t H2LedN[12] = { 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
+static const uint32_t H2LedN[12] = { 12, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14 };
 #define SECOND_0_LED_INDX   13
-static const uint32_t M2LedN[12] = { 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13};
+static const uint32_t M2LedN[12] = { 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
 
 // Do not touch
-#define LED_CNT         (MIRILLI_H_CNT + MIRILLI_M_CNT)   // Number of WS2812 LEDs
+#define MIRILLI_LED_CNT         (MIRILLI_H_CNT + MIRILLI_M_CNT)   // Number of WS2812 LEDs
 
 void InitMirilli();
 void SetTargetClrH(uint32_t H, Color_t Clr);

@@ -17,7 +17,7 @@ extern Neopixels_t LumeLeds;
 static thread_reference_t PThd = nullptr;
 
 // Target colors
-static Color_t ITargetClr[LED_CNT];
+static Color_t ITargetClr[MIRILLI_LED_CNT];
 static bool ColorsDone = true;
 
 static uint32_t ICalcDelayN(uint32_t n, uint32_t SmoothValue) {
@@ -36,7 +36,7 @@ static void MirilliThread(void *arg) {
         }
         else {
             uint32_t Delay = 0;
-            for(int32_t i=0; i<LED_CNT; i++) {
+            for(int32_t i=0; i<MIRILLI_LED_CNT; i++) {
                 uint32_t tmp = ICalcDelayN(i, SMOOTH_VALUE);  // }
                 if(tmp > Delay) Delay = tmp;                  // } Calculate Delay
                 LumeLeds.ClrBuf[i].Adjust(ITargetClr[i]);    // Adjust current color
@@ -49,7 +49,7 @@ static void MirilliThread(void *arg) {
 }
 
 void InitMirilli() {
-    LumeLeds.Init(LED_CNT);
+    LumeLeds.Init(MIRILLI_LED_CNT);
     chThdCreateStatic(waMirilli, sizeof(waMirilli), NORMALPRIO, (tfunc_t)MirilliThread, NULL);
 }
 
@@ -61,7 +61,6 @@ void SetTargetClrH(uint32_t H, Color_t Clr) {
 #ifdef SECOND_0_LED_INDX
     if(H == 0) {
         ITargetClr[SECOND_0_LED_INDX] = Clr;
-//        Printf("H=%u; Indx=%u\r\r", H, Indx);
     }
 #endif
 }

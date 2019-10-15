@@ -19,7 +19,7 @@ CmdUart_t Uart{&CmdUartParams};
 static void ITask();
 static void OnCmd(Shell_t *PShell);
 
-#define NPX1_LED_CNT    3 //516
+#define NPX1_LED_CNT    516
 static const NeopixelParams_t LedParams(NPX1_SPI, NPX1_GPIO, NPX1_PIN, NPX1_AF, NPX1_DMA, NPX_DMA_MODE(NPX1_DMA_CHNL));
 static const NeopixelParams_t LedParams2(NPX2_SPI, NPX2_GPIO, NPX2_PIN, NPX2_AF, NPX2_DMA, NPX_DMA_MODE(NPX2_DMA_CHNL));
 Neopixels_t Npx(&LedParams);
@@ -29,6 +29,8 @@ LedBlinker_t Led{LED_PIN};
 #endif
 
 #if 1 // ========= Lume =========
+#define BCKP_REG_CLRH_INDX  1
+#define BCKP_REG_CLRM_INDX  2
 static void IndicateNewSecond();
 Color_t ClrH(0, 0, 255);
 Color_t ClrM(0, 255, 0);
@@ -45,8 +47,7 @@ public:
         }
         // Minutes
         int32_t S = Time.Curr.M * 60 + Time.Curr.S;
-        int32_t FMin = (S + 150) / 300;    // 300s in one hyperminute (== 5 minutes)
-        if(FMin > 11) FMin = 0;
+        int32_t FMin = S / 150;    // 150s in one hyperminute (== 2.5 minutes)
         if(M != FMin) {
             M = FMin;
             NewM = true;
@@ -58,6 +59,11 @@ public:
 #endif
 
 #if 1 // ============================== Points =================================
+#define BCKP_REG_GRIF_INDX  11
+#define BCKP_REG_SLYZ_INDX  12
+#define BCKP_REG_RAVE_INDX  13
+#define BCKP_REG_HUFF_INDX  14
+
 #define FLASK_MIN_VALUE     0L    // }
 #define FLASK_MAX_VALUE     1000L // } This will be translated to LEDs; real points should be translated to this.
 #define FLASK_LEN           (FLASK_MAX_VALUE - FLASK_MIN_VALUE)
@@ -192,6 +198,11 @@ private:
     TmrKL_t ITmr {TIME_MS2I(18), evtIdPointsTick, tktPeriodic};
 public:
     void SetNewValues(int32_t AGrif, int32_t ASlyze, int32_t ARave, int32_t AHuff) {
+        // Store in Backup Regs
+        BackupSpc::WriteRegister(BCKP_REG_GRIF_INDX, AGrif);
+        BackupSpc::WriteRegister(BCKP_REG_SLYZ_INDX, ASlyze);
+        BackupSpc::WriteRegister(BCKP_REG_RAVE_INDX, ARave);
+        BackupSpc::WriteRegister(BCKP_REG_HUFF_INDX, AHuff);
         // Find max, min is always 0
         int32_t max = FLASK_MAX_VALUE;
         if(AGrif  > max) max = AGrif;
@@ -212,6 +223,12 @@ public:
     }
     void Init() {
         ITmr.StartOrRestart();
+        int32_t G, S, R, H;
+        G = BackupSpc::ReadRegister(BCKP_REG_GRIF_INDX);
+        S = BackupSpc::ReadRegister(BCKP_REG_SLYZ_INDX);
+        R = BackupSpc::ReadRegister(BCKP_REG_RAVE_INDX);
+        H = BackupSpc::ReadRegister(BCKP_REG_HUFF_INDX);
+        SetNewValues(G, S, R, H);
     }
     void OnTick() {
         FlaskGrif.OnTick();
@@ -248,6 +265,8 @@ int main() {
 
     // Time
     BackupSpc::EnableAccess();
+    ClrH.DWord32 = BackupSpc::ReadRegister(BCKP_REG_CLRH_INDX);
+    ClrM.DWord32 = BackupSpc::ReadRegister(BCKP_REG_CLRM_INDX);
     InitMirilli();
     Time.Init();
 
@@ -257,11 +276,6 @@ int main() {
 
     // USB
 //    UsbMsdCdc.Init();
-
-//    PinSetupOut(GPIOF,  9, omPushPull);
-//    PinSetHi(GPIOF, 9);
-    // Npx
-    Npx.Init(NPX1_LED_CNT);
 
     // ==== Main cycle ====
     ITask();
@@ -292,14 +306,15 @@ void ITask() {
 
 #if 1 // ============================== Lume ===================================
 void IndicateNewSecond() {
+    Time.GetDateTime();
     Hypertime.ConvertFromTime();
-//    Printf("HyperH: %u; HyperM: %u\r", Hypertime.H, Hypertime.M);
+//    Printf("HyperH: %u; HyperM: %u;   ", Hypertime.H, Hypertime.M);
     ResetColorsToOffState(ClrH, ClrM);
 
     SetTargetClrH(Hypertime.H, ClrH);
     if(Hypertime.M == 0) {
         SetTargetClrM(0, ClrM);
-        SetTargetClrM(12, ClrM);
+        SetTargetClrM(11, ClrM);
     }
     else {
         uint32_t N = Hypertime.M / 2;
@@ -342,6 +357,9 @@ void OnCmd(Shell_t *PShell) {
     }
     else if(PCmd->NameIs("SetTime")) {
         DateTime_t dt = Time.Curr;
+        if(PCmd->GetNext<int32_t>(&dt.Year) != retvOk) return;
+        if(PCmd->GetNext<int32_t>(&dt.Month) != retvOk) return;
+        if(PCmd->GetNext<int32_t>(&dt.Day) != retvOk) return;
         if(PCmd->GetNext<int32_t>(&dt.H) != retvOk) return;
         if(PCmd->GetNext<int32_t>(&dt.M) != retvOk) return;
         Time.Curr = dt;
@@ -356,6 +374,25 @@ void OnCmd(Shell_t *PShell) {
     }
     else if(PCmd->NameIs("Norm")) {
         Time.BeNormal();
+        PShell->Ack(retvOk);
+    }
+
+    else if(PCmd->NameIs("ClrH")) {
+        Color_t Clr;
+        if(PCmd->GetNext<uint8_t>(&Clr.R) != retvOk) { PShell->Ack(retvCmdError); return; }
+        if(PCmd->GetNext<uint8_t>(&Clr.G) != retvOk) { PShell->Ack(retvCmdError); return; }
+        if(PCmd->GetNext<uint8_t>(&Clr.B) != retvOk) { PShell->Ack(retvCmdError); return; }
+        ClrH = Clr;
+        BackupSpc::WriteRegister(BCKP_REG_CLRH_INDX, Clr.DWord32);
+        PShell->Ack(retvOk);
+    }
+    else if(PCmd->NameIs("ClrM")) {
+        Color_t Clr;
+        if(PCmd->GetNext<uint8_t>(&Clr.R) != retvOk) { PShell->Ack(retvCmdError); return; }
+        if(PCmd->GetNext<uint8_t>(&Clr.G) != retvOk) { PShell->Ack(retvCmdError); return; }
+        if(PCmd->GetNext<uint8_t>(&Clr.B) != retvOk) { PShell->Ack(retvCmdError); return; }
+        ClrM = Clr;
+        BackupSpc::WriteRegister(BCKP_REG_CLRM_INDX, Clr.DWord32);
         PShell->Ack(retvOk);
     }
 #endif
