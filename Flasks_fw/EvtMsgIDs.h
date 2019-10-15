@@ -14,14 +14,5 @@ enum EvtMsgId_t {
     evtIdShellCmd,
     evtIdEverySecond,
 
-    evtIdButtons,
-
-    evtMeasuredVoltage,
-
-    evtTickStep,
-    evtTickLoad,
-
-    evtStaticTestEnd,
-    evtDynamicTestEnd,
-    evtTestEnd,
+    evtIdPointsTick,
 };

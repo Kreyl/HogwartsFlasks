@@ -8,6 +8,8 @@
 #include "ws2812b.h"
 #include "kl_sd.h"
 #include "kl_fs_utils.h"
+#include "kl_time.h"
+#include "Mirilli.h"
 
 #if 1 // =============== Defines ================
 // Forever
@@ -19,13 +21,206 @@ static void OnCmd(Shell_t *PShell);
 
 #define NPX1_LED_CNT    3 //516
 static const NeopixelParams_t LedParams(NPX1_SPI, NPX1_GPIO, NPX1_PIN, NPX1_AF, NPX1_DMA, NPX_DMA_MODE(NPX1_DMA_CHNL));
-//static const NeopixelParams_t LedParams2(NPX2_SPI, NPX2_GPIO, NPX2_PIN, NPX2_AF, NPX2_DMA, NPX_DMA_MODE(NPX2_DMA_CHNL));
+static const NeopixelParams_t LedParams2(NPX2_SPI, NPX2_GPIO, NPX2_PIN, NPX2_AF, NPX2_DMA, NPX_DMA_MODE(NPX2_DMA_CHNL));
 Neopixels_t Npx(&LedParams);
-
-
-static TmrKL_t TmrOneSecond {TIME_MS2I(999), evtIdEverySecond, tktPeriodic};
+Neopixels_t LumeLeds(&LedParams2);
 
 LedBlinker_t Led{LED_PIN};
+#endif
+
+#if 1 // ========= Lume =========
+static void IndicateNewSecond();
+Color_t ClrH(0, 0, 255);
+Color_t ClrM(0, 255, 0);
+
+class Hypertime_t {
+public:
+    void ConvertFromTime() {
+        // Hours
+        int32_t FH = Time.Curr.H;
+        if(FH > 11) FH -= 12;
+        if(H != FH) {
+            H = FH;
+            NewH = true;
+        }
+        // Minutes
+        int32_t S = Time.Curr.M * 60 + Time.Curr.S;
+        int32_t FMin = (S + 150) / 300;    // 300s in one hyperminute (== 5 minutes)
+        if(FMin > 11) FMin = 0;
+        if(M != FMin) {
+            M = FMin;
+            NewM = true;
+        }
+    }
+    int32_t H, M;
+    bool NewH = true, NewM = true;
+} Hypertime;
+#endif
+
+#if 1 // ============================== Points =================================
+#define FLASK_MIN_VALUE     0L    // }
+#define FLASK_MAX_VALUE     1000L // } This will be translated to LEDs; real points should be translated to this.
+#define FLASK_LEN           (FLASK_MAX_VALUE - FLASK_MIN_VALUE)
+#define FLASK_OFF_CLR       clBlack
+#define EFF_LED2LED_DIST    27
+class Flask_t {
+private:
+    int32_t StartIndx, EndIndx, CurrIndx = -1; // LEDs' IDs
+    int32_t TotalLedCount() { return (StartIndx < EndIndx) ? (1 + EndIndx - StartIndx) : (1 + StartIndx - EndIndx); }
+    Color_t Clr;
+    int32_t CurrValue = 0;
+    void SetColorAt(int32_t x, Color_t AColor) {
+        int32_t LedIndx = (StartIndx < EndIndx)? (StartIndx + x) : (StartIndx - x);
+        if(LedIndx >= StartIndx and LedIndx <= EndIndx) Npx.ClrBuf[LedIndx] = AColor;
+    }
+    // Effect
+    class {
+    public:
+        int32_t Count = 0, FirstIndx = 0;
+        int32_t ValueModifier = 0;
+        void SetCount(int32_t NewCount) {
+            Count = NewCount;
+            if(Count == 0) {
+                Count = 1;
+                ValueModifier = 0;
+            }
+            else ValueModifier = 1;
+        }
+    } Flash;
+public:
+    enum Eff_t {effNone, effAdd, effRemove} Eff;
+    Flask_t (int32_t AStarID, int32_t AEndID, Color_t AColor) :
+        StartIndx(AStarID), EndIndx(AEndID), Clr(AColor) {}
+    // Value must be within [FLASK_MIN_VALUE; FLASK_MAX_VALUE]
+    void SetNewValue(int32_t AValue) {
+        if(AValue < FLASK_MIN_VALUE or AValue > FLASK_MAX_VALUE) {
+            Printf("FlaskBadValue: %d\r", AValue);
+            return;
+        }
+        if(AValue == CurrValue) return; // Nothing to do
+        int32_t TargetIndx = ((AValue * TotalLedCount()) / FLASK_LEN) - 1;
+        if(AValue > 0 and TargetIndx < 0) TargetIndx = 0;
+        // Select effect
+        if(AValue > CurrValue) {
+            Eff = effAdd;
+            Flash.SetCount(TargetIndx - CurrIndx);
+            Flash.FirstIndx = TotalLedCount();
+        }
+        else {
+            Eff = effRemove;
+            Flash.SetCount(CurrIndx - TargetIndx);
+            Flash.FirstIndx = CurrIndx;
+        }
+        CurrValue = AValue;
+    }
+
+    void SetNewValueNow(int32_t AValue) {
+        if(AValue < FLASK_MIN_VALUE or AValue > FLASK_MAX_VALUE) {
+            Printf("FlaskBadValue: %d\r", AValue);
+            return;
+        }
+        // Do what needed depending on direction of chunk
+        if(StartIndx < EndIndx) { // Normal direction
+            int32_t TargetLedID = StartIndx + (AValue * TotalLedCount()) / FLASK_LEN;
+            // Set LEDs on
+            for(int32_t i=StartIndx; i<TargetLedID; i++) Npx.ClrBuf[i] = Clr;
+            // Set LEDs off
+            for(int32_t i=TargetLedID; i<=EndIndx; i++) Npx.ClrBuf[i] = FLASK_OFF_CLR;
+        }
+        else {
+            int32_t TargetLedID = StartIndx - (AValue * TotalLedCount()) / FLASK_LEN;
+            // Set LEDs on
+            for(int32_t i=StartIndx; i>TargetLedID; i--) Npx.ClrBuf[i] = Clr;
+            // Set LEDs off
+            for(int32_t i=TargetLedID; i>=EndIndx; i--) Npx.ClrBuf[i] = FLASK_OFF_CLR;
+        }
+    }
+
+    void OnTick() {
+        if(Eff == effAdd) {
+            // Move what moves by one pixel
+            Flash.FirstIndx--;
+            int32_t Indx = Flash.FirstIndx;
+            for(int32_t i=0; i<Flash.Count; i++) {
+                SetColorAt(Indx, Clr);
+                SetColorAt(Indx+1, clBlack);
+                Indx += EFF_LED2LED_DIST;
+            }
+            // Check if threshold touched
+            if(Flash.FirstIndx == CurrIndx) {
+                Flash.FirstIndx += EFF_LED2LED_DIST;
+                Flash.Count--;
+                if(Flash.Count == 0) Eff = effNone;
+                CurrIndx += Flash.ValueModifier;
+                SetColorAt(CurrIndx, Clr);
+            }
+        }
+        else if(Eff == effRemove) {
+            // Move what moves by one pixel
+            Flash.FirstIndx++;
+            int32_t Indx = Flash.FirstIndx;
+            for(int32_t i=0; (i<Flash.Count and Indx > CurrIndx); i++) {
+                SetColorAt(Indx, Clr);
+                // Check if curr indx touched
+                if(Indx == (CurrIndx+1)) {
+                    if(Flash.ValueModifier != 0) {
+                        SetColorAt(CurrIndx, clBlack);
+                        CurrIndx--;
+                    }
+                }
+                else SetColorAt(Indx-1, clBlack); // if Indx is not CurrIndx, then it definitely higher at least by 2.
+                Indx -= EFF_LED2LED_DIST;
+            }
+            // Check if top reached
+            if(Flash.FirstIndx == (EndIndx+1)) { // to fade top LED
+                Flash.FirstIndx -= EFF_LED2LED_DIST;
+                Flash.Count--;
+                if(Flash.Count == 0) Eff = effNone;
+            }
+        }
+    }
+};
+
+Flask_t
+    FlaskGrif(0, 128, clRed),
+    FlaskSlyze(129, 257, clGreen),
+    FlaskRave(258, 386, clBlue),
+    FlaskHuff(387, 515, {255, 200, 0});
+
+class Points_t {
+private:
+    TmrKL_t ITmr {TIME_MS2I(18), evtIdPointsTick, tktPeriodic};
+public:
+    void SetNewValues(int32_t AGrif, int32_t ASlyze, int32_t ARave, int32_t AHuff) {
+        // Find max, min is always 0
+        int32_t max = FLASK_MAX_VALUE;
+        if(AGrif  > max) max = AGrif;
+        if(ASlyze > max) max = ASlyze;
+        if(ARave  > max) max = ARave;
+        if(AHuff  > max) max = AHuff;
+        // Process negative values
+        if(AGrif  < 0) AGrif = 0;
+        if(ASlyze < 0) ASlyze = 0;
+        if(ARave  < 0) ARave = 0;
+        if(AHuff  < 0) AHuff = 0;
+        // Calculate normalized values
+        // XXX Add command queue
+        FlaskGrif.SetNewValue ((AGrif  * FLASK_MAX_VALUE) / max);
+        FlaskSlyze.SetNewValue((ASlyze * FLASK_MAX_VALUE) / max);
+        FlaskRave.SetNewValue ((ARave  * FLASK_MAX_VALUE) / max);
+        FlaskHuff.SetNewValue ((AHuff  * FLASK_MAX_VALUE) / max);
+    }
+    void Init() {
+        ITmr.StartOrRestart();
+    }
+    void OnTick() {
+        FlaskGrif.OnTick();
+        FlaskSlyze.OnTick();
+        FlaskRave.OnTick();
+        FlaskHuff.OnTick();
+        Npx.SetCurrentColors();
+    }
+} Points;
 #endif
 
 int main() {
@@ -51,9 +246,14 @@ int main() {
     if(SD.IsReady) {
     }
 
+    // Time
     BackupSpc::EnableAccess();
-    uint32_t t32 = BackupSpc::ReadRegister(1);
-    Printf("Reg1: %X\r", t32);
+    InitMirilli();
+    Time.Init();
+
+    // Points
+    Npx.Init(NPX1_LED_CNT);
+    Points.Init();
 
     // USB
 //    UsbMsdCdc.Init();
@@ -62,8 +262,6 @@ int main() {
 //    PinSetHi(GPIOF, 9);
     // Npx
     Npx.Init(NPX1_LED_CNT);
-
-//    TmrOneSecond.StartOrRestart();
 
     // ==== Main cycle ====
     ITask();
@@ -80,14 +278,42 @@ void ITask() {
                 ((Shell_t*)Msg.Ptr)->SignalCmdProcessed();
                 break;
 
+            case evtIdPointsTick: Points.OnTick(); break;
+
             case evtIdEverySecond:
 //                Printf("Second\r");
+                IndicateNewSecond();
                 break;
 
             default: break;
         } // switch
     } // while true
 }
+
+#if 1 // ============================== Lume ===================================
+void IndicateNewSecond() {
+    Hypertime.ConvertFromTime();
+//    Printf("HyperH: %u; HyperM: %u\r", Hypertime.H, Hypertime.M);
+    ResetColorsToOffState(ClrH, ClrM);
+
+    SetTargetClrH(Hypertime.H, ClrH);
+    if(Hypertime.M == 0) {
+        SetTargetClrM(0, ClrM);
+        SetTargetClrM(12, ClrM);
+    }
+    else {
+        uint32_t N = Hypertime.M / 2;
+        if(Hypertime.M & 1) { // Odd, single
+            SetTargetClrM(N, ClrM);
+        }
+        else { // Even, couple
+            SetTargetClrM(N, ClrM);
+            SetTargetClrM(N-1, ClrM);
+        }
+    }
+    WakeMirilli();
+}
+#endif
 
 #if 1 // ======================= Command processing ============================
 void OnCmd(Shell_t *PShell) {
@@ -109,10 +335,38 @@ void OnCmd(Shell_t *PShell) {
         Npx.SetCurrentColors();
     }
 
-    else if(PCmd->NameIs("t32")) {
-        uint32_t w32;
-        if(PCmd->GetNext<uint32_t>(&w32) != retvOk) { PShell->Ack(retvCmdError); return; }
-        BackupSpc::WriteRegister(1, w32);
+#if 1 // Lume
+    else if(PCmd->NameIs("GetTime")) {
+        Time.GetDateTime();
+        Time.Curr.Print();
+    }
+    else if(PCmd->NameIs("SetTime")) {
+        DateTime_t dt = Time.Curr;
+        if(PCmd->GetNext<int32_t>(&dt.H) != retvOk) return;
+        if(PCmd->GetNext<int32_t>(&dt.M) != retvOk) return;
+        Time.Curr = dt;
+        Time.SetDateTime();
+        IndicateNewSecond();
+        PShell->Ack(retvOk);
+    }
+
+    else if(PCmd->NameIs("Fast")) {
+        Time.BeFast();
+        PShell->Ack(retvOk);
+    }
+    else if(PCmd->NameIs("Norm")) {
+        Time.BeNormal();
+        PShell->Ack(retvOk);
+    }
+#endif
+
+    else if(PCmd->NameIs("Set")) {
+        int32_t Grif, Slyze, Rave, Huff;
+        if(PCmd->GetNext<int32_t>(&Grif) != retvOk) { PShell->Ack(retvCmdError); return; }
+        if(PCmd->GetNext<int32_t>(&Slyze) != retvOk) { PShell->Ack(retvCmdError); return; }
+        if(PCmd->GetNext<int32_t>(&Rave) != retvOk) { PShell->Ack(retvCmdError); return; }
+        if(PCmd->GetNext<int32_t>(&Huff) != retvOk) { PShell->Ack(retvCmdError); return; }
+        Points.SetNewValues(Grif, Slyze, Rave, Huff);
         PShell->Ack(retvOk);
     }
 

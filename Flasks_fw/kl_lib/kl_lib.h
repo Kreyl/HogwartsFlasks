@@ -392,7 +392,7 @@ namespace BackupSpc {
 } // namespace
 #endif
 
-#if 0 // ============================= RTC =====================================
+#if 1 // ============================= RTC =====================================
 namespace Rtc {
 #if defined STM32F10X_LD_VL
 // Wait until the RTC registers (RTC_CNT, RTC_ALR and RTC_PRL) are synchronized with RTC APB clock.
@@ -422,7 +422,7 @@ static inline void SetCounter(uint32_t CounterValue) {
     RTC->CNTL = (CounterValue & RTC_LSB_MASK);
     ExitConfigMode();
 }
-#elif defined STM32F072xB || defined STM32L4XX
+#elif defined STM32F072xB || defined STM32L4XX || defined STM32F7XX
 static inline void DisableWriteProtection() {
     RTC->WPR = 0xCAU;
     RTC->WPR = 0x53U;
@@ -2091,6 +2091,7 @@ enum McoDiv_t {mcoDiv1=0b000, mcoDiv2=0b001, mcoDiv4=0b010, mcoDiv8=0b011, mcoDi
 enum i2cClk_t { i2cclkPCLK1 = 0, i2cclkSYSCLK = 1, i2cclkHSI = 2 };
 enum uartClk_t { uartclkPCLK = 0b00, uartclkSYSCLK = 0b01, uartclkHSI = 0b10, uartclkLSE = 0b11 };
 
+enum LseLvl_t {lselvlLow=0b00, lselvlMedLow=0b01, lselvlMedHi=0b11, lselvlHigh=0b11};
 
 class Clk_t {
 private:
@@ -2116,7 +2117,14 @@ public:
     void DisablePLLSai();
     void DisablePLLI2S();
 
-    bool IsLseOn()      { return (RCC->BDCR & RCC_BDCR_LSERDY); }
+    // LSE
+    bool IsLseOn() { return (RCC->BDCR & RCC_BDCR_LSERDY); }
+    void SetLSELevel(LseLvl_t Lvl) {
+        uint32_t tmp = RCC->BDCR;
+        tmp &= ~RCC_BDCR_LSEDRV;
+        tmp |= ((uint32_t)Lvl) << 3;
+        RCC->BDCR = tmp;
+    }
 
     void SetupBusDividers(AHBDiv_t AHBDiv, APBDiv_t APB1Div, APBDiv_t APB2Div);
 
@@ -2124,9 +2132,6 @@ public:
     void SetupPllSrc(PllSrc_t Src) { MODIFY_REG(RCC->PLLCFGR, RCC_PLLCFGR_PLLSRC, ((uint32_t)Src)); }
     void SetupPllMulDiv(uint32_t M, uint32_t N, uint32_t P, uint32_t Q, uint32_t R);
     void SetupPllSai(uint32_t N, uint32_t P, uint32_t Q, uint32_t R);
-//    void EnableSai1ROut() { SET_BIT(RCC->PLLSAI1CFGR, RCC_PLLSAI1CFGR_PLLSAI1REN); }
-//    void EnableSai1QOut() { SET_BIT(RCC->PLLSAI1CFGR, RCC_PLLSAI1CFGR_PLLSAI1QEN); }
-//    void EnableSai1POut() { SET_BIT(RCC->PLLSAI1CFGR, RCC_PLLSAI1CFGR_PLLSAI1PEN); }
 
     void UpdateFreqValues();
     void EnablePrefeth() { FLASH->ACR |= FLASH_ACR_PRFTEN | FLASH_ACR_PRFTEN; }
