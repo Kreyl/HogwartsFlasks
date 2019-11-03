@@ -10,6 +10,7 @@
 #include "kl_fs_utils.h"
 #include "kl_time.h"
 #include "Mirilli.h"
+#include "usb_msdcdc.h"
 
 #if 1 // =============== Defines ================
 // Forever
@@ -25,6 +26,7 @@ static const NeopixelParams_t LedParams2(NPX2_SPI, NPX2_GPIO, NPX2_PIN, NPX2_AF,
 Neopixels_t Npx(&LedParams);
 Neopixels_t LumeLeds(&LedParams2);
 
+static bool UsbPinWasHi = false;
 LedBlinker_t Led{LED_PIN};
 #endif
 
@@ -276,6 +278,7 @@ int main() {
 
     // USB
 //    UsbMsdCdc.Init();
+//    PinSetupInput(USB_DETECT_PIN, pudPullDown); // Usb detect pin
 
     // ==== Main cycle ====
     ITask();
@@ -297,8 +300,30 @@ void ITask() {
             case evtIdEverySecond:
 //                Printf("Second\r");
                 IndicateNewSecond();
+                // Check if USB connected/disconnected
+                if(PinIsHi(USB_DETECT_PIN) and !UsbPinWasHi) {
+                    UsbPinWasHi = true;
+                    EvtQMain.SendNowOrExit(EvtMsg_t(evtIdUsbConnect));
+                }
+                else if(!PinIsHi(USB_DETECT_PIN) and UsbPinWasHi) {
+                    UsbPinWasHi = false;
+                    EvtQMain.SendNowOrExit(EvtMsg_t(evtIdUsbDisconnect));
+                }
                 break;
 
+#if 1 // ======= USB =======
+            case evtIdUsbConnect:
+                Printf("USB connect\r");
+                UsbMsdCdc.Connect();
+                break;
+            case evtIdUsbDisconnect:
+                UsbMsdCdc.Disconnect();
+                Printf("USB disconnect\r");
+                break;
+            case evtIdUsbReady:
+                Printf("USB ready\r");
+                break;
+#endif
             default: break;
         } // switch
     } // while true

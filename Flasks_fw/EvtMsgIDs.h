@@ -15,4 +15,8 @@ enum EvtMsgId_t {
     evtIdEverySecond,
 
     evtIdPointsTick,
+
+    evtIdUsbConnect,
+    evtIdUsbDisconnect,
+    evtIdUsbReady,
 };

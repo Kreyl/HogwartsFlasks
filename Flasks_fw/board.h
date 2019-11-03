@@ -49,7 +49,6 @@
 #define NPX2_PIN        5
 #define NPX2_AF         AF5
 
-
 // UART
 #define UART_TX_PIN     GPIOG, 14
 #define UART_RX_PIN     GPIOG, 9
@@ -63,6 +62,13 @@
 #define SD_DAT3         GPIOB,  4, omPushPull, pudPullUp, AF10
 #define SD_CLK          GPIOD,  6, omPushPull, pudNone,   AF11
 #define SD_CMD          GPIOD,  7, omPushPull, pudPullUp, AF11
+
+// USB
+#define USB_DETECT_PIN  GPIOA, 9
+#define USB_DM          GPIOA, 11
+#define USB_DP          GPIOA, 12
+#define USB_AF          AF10
+//#define BOARD_OTG_NOVBUSSENS    TRUE
 
 #endif // GPIO
 
