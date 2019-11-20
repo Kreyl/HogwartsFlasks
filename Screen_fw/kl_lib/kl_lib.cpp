@@ -417,6 +417,13 @@ void PinOutputPWM_t::Init() const {
     else if(ILPTim == LPTIM2) AF = AF14;
 #endif
     PinSetupAlterFunc(ISetup.PGpio, ISetup.Pin, ISetup.OutputType, pudNone, AF);
+#elif defined STM32F7XX
+    AlterFunc_t AF = AF1;
+    if(ITmr == TIM1 or ITmr == TIM2) AF = AF1;
+    else if(ITmr == TIM3 or ITmr == TIM4 or ITmr == TIM5) AF = AF2;
+    else if(ITmr == TIM8 or ITmr == TIM9 or ITmr == TIM10 or ITmr == TIM11 or ILPTim == LPTIM1) AF = AF3;
+    else if(ITmr == TIM12 or ITmr == TIM13 or ITmr == TIM14) AF = AF9;
+    PinSetupAlterFunc(ISetup.PGpio, ISetup.Pin, ISetup.OutputType, pudNone, AF);
 #endif
 }
 
@@ -2791,7 +2798,7 @@ void Clk_t::SetCoreClk80MHz() {
 }
 
 // PLL_SAI output P used to produce 48MHz, it is selected as PLL48CLK
-void Clk_t::Setup48Mhz() {
+void Clk_t::Setup48Mhz(uint32_t SAI_Rdiv) {
     // Get SAI input freq
     uint32_t InputFreq;
     uint32_t PllM = RCC->PLLCFGR & RCC_PLLCFGR_PLLM;
@@ -2802,10 +2809,10 @@ void Clk_t::Setup48Mhz() {
     // Setup PLLSai
     DisablePLLSai();
     switch(InputFreq) {
-        case 2000000:  SetupPllSai(96, 4, 8, 2); break; // 2 * 96 / 4 = 48
-        case 3000000:  SetupPllSai(32, 2, 2, 7); break; // 3 * 32 / 2 = 48
-        case 4000000:  SetupPllSai(24, 2, 2, 7); break; // 4 * 24 / 2 = 48
-        case 12000000: SetupPllSai( 8, 2, 2, 7); break; // 12 * 8 / 2 = 48
+        case 2000000:  SetupPllSai(96, 4, 8, SAI_Rdiv); break; // 2 * 96 / 4 = 48
+        case 3000000:  SetupPllSai(32, 2, 2, SAI_Rdiv); break; // 3 * 32 / 2 = 48
+        case 4000000:  SetupPllSai(24, 2, 2, SAI_Rdiv); break; // 4 * 24 / 2 = 48
+        case 12000000: SetupPllSai( 8, 2, 2, SAI_Rdiv); break; // 12 * 8 / 2 = 48
         default: return;
     }
     // Setup Sai1P as 48MHz source
@@ -2814,6 +2821,20 @@ void Clk_t::Setup48Mhz() {
         RCC->DCKCFGR2 &= ~RCC_DCKCFGR2_SDMMC1SEL; // 48MHz selected as SDMMC1 clk
         RCC->DCKCFGR2 |=  RCC_DCKCFGR2_CK48MSEL;  // 48MHz clk from PLLSAI selected
     }
+}
+
+// DivR = 2,4,8,16
+void Clk_t::SetSaiDivR(uint32_t DivR) {
+    uint32_t tmp = RCC->DCKCFGR1;
+    tmp &= ~RCC_DCKCFGR1_PLLSAIDIVR;
+    switch(DivR) {
+        case 2: break;
+        case 4: tmp |= (0b01UL << 16); break;
+        case 8: tmp |= (0b01UL << 16); break;
+        case 16: tmp |= (0b01UL << 16); break;
+        default: break;
+    } // switch
+    RCC->DCKCFGR1 = tmp;
 }
 
 // Scale3: f<=144Mhz; Scale2: 144<f<=169MHz; Scale1: 168<f<=216MHz

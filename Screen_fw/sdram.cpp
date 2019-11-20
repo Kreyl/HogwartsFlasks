@@ -12,10 +12,8 @@
 #define FMC_SDRAM   FMC_Bank5_6
 
 void SdramInit() {
-    // FMC
+    // Enable clock
     RCC->AHB3ENR |= RCC_AHB3ENR_FMCEN;
-    // Delay after an RCC peripheral clock enabling
-    (void)(RCC->AHB3ENR & RCC_AHB3ENR_FMCEN);
 #if 1 // GPIO
     // PortA
     PinSetupAlterFunc(GPIOA, 7, omPushPull, pudNone, AF12, psVeryHigh); // SDNWE

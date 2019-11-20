@@ -6,6 +6,7 @@
 #include "led.h"
 #include "Sequences.h"
 #include "sdram.h"
+#include "lcdtft.h"
 
 #if 1 // =============== Defines ================
 // Forever
@@ -22,7 +23,8 @@ LedBlinker_t Led{LED_PIN};
 int main() {
     // ==== Setup clock ====
     Clk.SetCoreClk80MHz();
-    Clk.Setup48Mhz();
+    Clk.Setup48Mhz(2); // SAI R div = 3 => R = 2*96/3 = 64 MHz
+    Clk.SetSaiDivR(8); // LCD_CLK = 64 / 8 = 8MHz
     Clk.UpdateFreqValues();
 
     // ==== Init OS ====
@@ -39,6 +41,7 @@ int main() {
     Led.StartOrRestart(lsqIdle);
 
     SdramInit();
+    LcdInit();
 
     // ==== Main cycle ====
     ITask();

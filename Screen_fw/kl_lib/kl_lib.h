@@ -2137,7 +2137,8 @@ public:
     void EnablePrefeth() { FLASH->ACR |= FLASH_ACR_PRFTEN | FLASH_ACR_PRFTEN; }
     void SetupFlashLatency(uint8_t AHBClk_MHz, uint32_t MCUVoltage_mv);
     void SetVoltageScale(MCUVoltScale_t VoltScale);
-    void Setup48Mhz();
+    void Setup48Mhz(uint32_t SAI_Rdiv = 2);
+    void SetSaiDivR(uint32_t DivR);
     // LSI
     void EnableLSI() {
         RCC->CSR |= RCC_CSR_LSION;

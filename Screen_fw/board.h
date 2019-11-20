@@ -38,6 +38,10 @@
 // LED
 #define LED_PIN         GPIOF, 7, omPushPull
 
+// LCD
+#define LCD_BCKLT       GPIOF, 6, TIM10, 1, invNotInverted, omPushPull, 99
+#define LCD_DISP        GPIOD, 4
+
 // UART
 #define UART_TX_PIN     GPIOG, 14
 #define UART_RX_PIN     GPIOG, 9
