@@ -8,6 +8,7 @@
 #include "board.h"
 #include "kl_lib.h"
 #include "shell.h"
+#include "sdram.h"
 
 // horizontal synchronization width (in units of pixel clock period)
 #define HSW
@@ -40,8 +41,10 @@ PinOutputPWM_t Backlight{LCD_BCKLT};
 
 #define LBUF_CNT32      8192
 #define LBUF_SZ         (LBUF_CNT32 * 4)
-uint32_t FrameBuf1[LBUF_CNT32];
+//uint32_t FrameBuf1[LBUF_CNT32];
 uint32_t FrameBuf2[LBUF_CNT32];
+
+volatile uint32_t *FrameBuf1 = (volatile uint32_t*)SDRAM_ADDR;
 
 struct RGB_t {
     uint8_t R, G, B;
@@ -121,7 +124,7 @@ porch, active data area and the front porch timings  */
 
     // === Layer 1 ===
     // layer window horizontal and vertical position
-    LTDC_Layer1->WHPCR = (54UL << 16) | 18UL; // Stop and Start positions
+    LTDC_Layer1->WHPCR = (135UL << 16) | 45UL; // Stop and Start positions
     LTDC_Layer1->WVPCR = (72UL << 16) | 36UL; // Stop and Start positions
 //    LTDC_Layer1->PFCR  = 0b001UL;    // RGB888
     LTDC_Layer1->PFCR  = 0b000UL;    // ARGB8888
