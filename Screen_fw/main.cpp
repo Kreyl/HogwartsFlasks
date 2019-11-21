@@ -73,6 +73,22 @@ void OnCmd(Shell_t *PShell) {
     else if(PCmd->NameIs("Version")) PShell->Print("%S %S\r\n", APP_NAME, XSTRINGIFY(BUILD_TIME));
     else if(PCmd->NameIs("mem")) PrintMemoryInfo();
 
+    else if(PCmd->NameIs("Paint")) {
+        uint32_t Left, Top, Right, Bottom;
+        uint32_t A, R, G, B;
+        if(PCmd->GetNext<uint32_t>(&Left) != retvOk) { PShell->Ack(retvBadValue); return; }
+        if(PCmd->GetNext<uint32_t>(&Top) != retvOk) { PShell->Ack(retvBadValue); return; }
+        if(PCmd->GetNext<uint32_t>(&Right) != retvOk) { PShell->Ack(retvBadValue); return; }
+        if(PCmd->GetNext<uint32_t>(&Bottom) != retvOk) { PShell->Ack(retvBadValue); return; }
+        if(PCmd->GetNext<uint32_t>(&A) != retvOk) { PShell->Ack(retvBadValue); return; }
+        if(PCmd->GetNext<uint32_t>(&R) != retvOk) { PShell->Ack(retvBadValue); return; }
+        if(PCmd->GetNext<uint32_t>(&G) != retvOk) { PShell->Ack(retvBadValue); return; }
+        if(PCmd->GetNext<uint32_t>(&B) != retvOk) { PShell->Ack(retvBadValue); return; }
+        LcdPaintL1(Left, Top, Right, Bottom, A, R, G, B);
+        PShell->Ack(retvOk);
+    }
+
+
     else if(PCmd->NameIs("WR")) {
         uint32_t Addr, Value;
         if(PCmd->GetNext<uint32_t>(&Addr) != retvOk) { PShell->Ack(retvBadValue); return; }
