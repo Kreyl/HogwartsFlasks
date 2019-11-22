@@ -431,3 +431,14 @@ struct ColorHSV_t {
 #define clRGBWCyan      ((Color_t){0, 255, 255,   0})
 #define clRGBWWhite     ((Color_t){0,   0,   0, 255})
 #endif
+
+#if 1 // ============================== ARGB ===================================
+struct ColorARGB_t {
+    union {
+        uint32_t DWord32;
+        struct {
+            uint8_t B, G, R, A;
+        } __attribute__((packed));
+    } __attribute__((packed));
+} __attribute__((packed));
+#endif

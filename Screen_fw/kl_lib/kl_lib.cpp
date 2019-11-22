@@ -2829,9 +2829,9 @@ void Clk_t::SetSaiDivR(uint32_t DivR) {
     tmp &= ~RCC_DCKCFGR1_PLLSAIDIVR;
     switch(DivR) {
         case 2: break;
-        case 4: tmp |= (0b01UL << 16); break;
-        case 8: tmp |= (0b01UL << 16); break;
-        case 16: tmp |= (0b01UL << 16); break;
+        case 4:  tmp |= (0b01UL << 16); break;
+        case 8:  tmp |= (0b10UL << 16); break;
+        case 16: tmp |= (0b11UL << 16); break;
         default: break;
     } // switch
     RCC->DCKCFGR1 = tmp;
