@@ -8,7 +8,7 @@
 #include "sdram.h"
 #include "lcdtft.h"
 
-#include "LogoUnc.h"
+#include "LogoPal8.h"
 #include "bitmap.h"
 
 #if 1 // =============== Defines ================
@@ -47,7 +47,7 @@ int main() {
 
     CBitmap bmp;
     systime_t start = chVTGetSystemTimeX();
-    bmp.Load((uint8_t*)LogoUnc, LOGOUNC_SZ);
+    bmp.Load((uint8_t*)LogoPal8, LOGOPAL8_SZ);
     Printf("Time: %u\r", TIME_I2MS(chVTTimeElapsedSinceX(start)));
 
 //    unsigned char* image = 0;

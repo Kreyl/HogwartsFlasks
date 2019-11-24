@@ -207,7 +207,7 @@ public:
 						m_BitmapData[Index].Red = ColorTable[Color].Red;
 						m_BitmapData[Index].Green = ColorTable[Color].Green;
 						m_BitmapData[Index].Blue = ColorTable[Color].Blue;
-						m_BitmapData[Index].Alpha = ColorTable[Color].Alpha;
+						m_BitmapData[Index].Alpha = 255; // As Alpha value of table is alwais zero
 						Index++;
 						LinePtr++;
 					} else if (m_BitmapHeader.BitCount == 16) {
@@ -219,10 +219,6 @@ public:
 						Index++;
 						LinePtr += 2;
 					} else if (m_BitmapHeader.BitCount == 24) {
-//						uint32_t Color = *((uint32_t*) LinePtr);
-//						m_BitmapData[Index].Blue = Color & 0xff;
-//						m_BitmapData[Index].Green = (Color >> 8) & 0xff;
-//						m_BitmapData[Index].Red = (Color >> 16) & 0xff;
                         m_BitmapData[Index].Red   = *LinePtr++;
 						m_BitmapData[Index].Green = *LinePtr++;
                         m_BitmapData[Index].Blue  = *LinePtr++;
