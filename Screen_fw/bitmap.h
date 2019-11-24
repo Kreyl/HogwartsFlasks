@@ -18,51 +18,21 @@
  * There is only a minimal error handling in this code. (Notice added 20111211)
  */
 
-#ifndef BITMAP_H
-#define BITMAP_H
+#pragma once
 
-#include <iostream>
-#include <fstream>
 #include <string>
+#include <stdint.h>
 
-#ifndef __LITTLE_ENDIAN__
-	#ifndef __BIG_ENDIAN__
-		#define __LITTLE_ENDIAN__
-	#endif
-#endif
+#define BITMAP_SIGNATURE 0x4d42
 
-#ifdef __LITTLE_ENDIAN__
-	#define BITMAP_SIGNATURE 0x4d42
-#else
-	#define BITMAP_SIGNATURE 0x424d
-#endif
-
-#if defined(_MSC_VER) || defined(__INTEL_COMPILER)
-	typedef unsigned __int32 uint32_t;
-	typedef unsigned __int16 uint16_t;
-	typedef unsigned __int8 uint8_t;
-	typedef __int32 int32_t;
-#elif defined(__GNUC__) || defined(__CYGWIN__) || defined(__MWERKS__) || defined(__WATCOMC__) || defined(__PGI) || defined(__LCC__)
-	#include <stdint.h>
-#else
-	typedef unsigned int uint32_t;
-	typedef unsigned short int uint16_t;
-	typedef unsigned char uint8_t;
-	typedef int int32_t;
-#endif
-
-#pragma pack(push, 1)
-
-typedef struct _BITMAP_FILEHEADER {
+struct BmpFileHeader_t {
 	uint16_t Signature;
 	uint32_t Size;
 	uint32_t Reserved;
 	uint32_t BitsOffset;
-} BITMAP_FILEHEADER;
+} __attribute__((packed));
 
-#define BITMAP_FILEHEADER_SIZE 14
-
-typedef struct _BITMAP_HEADER {
+struct BmpHeader_t {
 	uint32_t HeaderSize;
 	int32_t Width;
 	int32_t Height;
@@ -83,31 +53,27 @@ typedef struct _BITMAP_HEADER {
 	uint32_t GammaRed;
 	uint32_t GammaGreen;
 	uint32_t GammaBlue;
-} BITMAP_HEADER;
+} __attribute__((packed));
 
-typedef struct _RGBA {
+struct RGBA_t {
 	uint8_t Red;
 	uint8_t Green;
 	uint8_t Blue;
 	uint8_t Alpha;
-} RGBA;
+} __attribute__((packed));
 
-typedef struct _BGRA {
+struct BGRA_t {
 	uint8_t Blue;
 	uint8_t Green;
 	uint8_t Red;
 	uint8_t Alpha;
-} BGRA;
-
-#pragma pack(pop)
+} __attribute__((packed));
 
 class CBitmap {
 private:
-	BITMAP_FILEHEADER m_BitmapFileHeader;
-	BITMAP_HEADER m_BitmapHeader;
+    BmpFileHeader_t m_BitmapFileHeader;
+    BmpHeader_t m_BitmapHeader;
 	unsigned int m_BitmapSize;
-
-	// Masks and bit counts shouldn't exceed 32 Bits
 public:
 	class CColor {
 public:
@@ -147,7 +113,7 @@ public:
 	};
 
 public:
-	RGBA *m_BitmapData;
+	RGBA_t *m_BitmapData;
 
 	CBitmap() : m_BitmapSize(0), m_BitmapData(0)  {
 		Dispose();
@@ -166,45 +132,33 @@ public:
 		memset(&m_BitmapHeader, 0, sizeof(m_BitmapHeader));
 	}
 
-	/* Load specified Bitmap and stores it as RGBA in an internal buffer */
-
-	bool Load(char *Buff, int32_t Sz) {
+	bool Load(uint8_t *Buff, int32_t Sz) {
 		Dispose();
 
-		char *Ptr = Buff;
+		uint8_t *Ptr = Buff;
 
-		memcpy(&m_BitmapFileHeader, Ptr, BITMAP_FILEHEADER_SIZE);
+		memcpy(&m_BitmapFileHeader, Ptr, sizeof(BmpFileHeader_t));
 		if (m_BitmapFileHeader.Signature != BITMAP_SIGNATURE) {
 			return false;
 		}
-		Ptr += BITMAP_FILEHEADER_SIZE;
+		Ptr += sizeof(BmpFileHeader_t);
 
-		memcpy(&m_BitmapHeader, Ptr, sizeof(BITMAP_HEADER));
+		memcpy(&m_BitmapHeader, Ptr, sizeof(BmpHeader_t));
 
-		/* Load Color Table */
+		// Load Color Table
+		uint16_t ColorTableSize = 0;
+		if     (m_BitmapHeader.BitCount == 1) ColorTableSize = 2;
+		else if(m_BitmapHeader.BitCount == 4) ColorTableSize = 16;
+		else if(m_BitmapHeader.BitCount == 8) ColorTableSize = 256;
 
-		unsigned int ColorTableSize = 0;
-
-		if (m_BitmapHeader.BitCount == 1) {
-			ColorTableSize = 2;
-		} else if (m_BitmapHeader.BitCount == 4) {
-			ColorTableSize = 16;
-		} else if (m_BitmapHeader.BitCount == 8) {
-			ColorTableSize = 256;
-		}
-
-		// Always allocate full sized color table
-
-		BGRA* ColorTable = new BGRA[ColorTableSize]; // std::bad_alloc exception should be thrown if memory is not available
-
-		Ptr = Buff + BITMAP_FILEHEADER_SIZE + m_BitmapHeader.HeaderSize;
-
-		memcpy(ColorTable, Ptr, sizeof(BGRA) * m_BitmapHeader.ClrUsed);
-
-		/* ... Color Table for 16 bits images are not supported yet */
+        // Always allocate full sized color table
+        BGRA_t* ColorTable = new BGRA_t[ColorTableSize]; // std::bad_alloc exception should be thrown if memory is not available
+        Ptr = Buff + sizeof(BmpFileHeader_t) + m_BitmapHeader.HeaderSize;
+        memcpy(ColorTable, Ptr, sizeof(BGRA_t) * m_BitmapHeader.ClrUsed);
+        // Color Table for 16 bits images are not supported yet
 
 		m_BitmapSize = GetWidth() * GetHeight();
-		m_BitmapData = new RGBA[m_BitmapSize];
+		m_BitmapData = new RGBA_t[m_BitmapSize];
 
 		unsigned int LineWidth = ((GetWidth() * GetBitCount() / 8) + 3) & ~3;
 		uint8_t *Line = new uint8_t[LineWidth];
@@ -408,7 +362,7 @@ public:
 	bool GetBits(void* Buffer, unsigned int &Size) {
 		bool Result = false;
 		if (Size == 0 || Buffer == 0) {
-			Size = m_BitmapSize * sizeof(RGBA);
+			Size = m_BitmapSize * sizeof(RGBA_t);
 			Result = m_BitmapSize != 0;
 		} else {
 			memcpy(Buffer, m_BitmapData, Size);
@@ -512,7 +466,7 @@ public:
 	 * Todo: Optimize, use optimized palette, do ditehring (see my dithering class), support padding for 4 bit bitmaps
 	 */
 
-	bool GetBitsWithPalette(void* Buffer, unsigned int &Size, unsigned int BitCount, BGRA* &Palette, unsigned int &PaletteSize, bool OptimalPalette = false, bool IncludePadding = true) {
+	bool GetBitsWithPalette(void* Buffer, unsigned int &Size, unsigned int BitCount, BGRA_t* &Palette, unsigned int &PaletteSize, bool OptimalPalette = false, bool IncludePadding = true) {
 		bool Result = false;
 
 		if (BitCount > 16) {
@@ -538,7 +492,7 @@ public:
 				// Not implemented: Who need that?
 			} else if (BitCount == 4) { // 2:2:1
 				PaletteSize = 16;
-				Palette = new BGRA[PaletteSize];
+				Palette = new BGRA_t[PaletteSize];
 				for (int r = 0; r < 4; r++) {
 					for (int g = 0; g < 2; g++) {
 						for (int b = 0; b < 2; b++) {
@@ -551,7 +505,7 @@ public:
 				}
 			} else if (BitCount == 8) { // 3:3:2
 				PaletteSize = 256;
-				Palette = new BGRA[PaletteSize];
+				Palette = new BGRA_t[PaletteSize];
 				for (int r = 0; r < 8; r++) {
 					for (int g = 0; g < 8; g++) {
 						for (int b = 0; b < 4; b++) {
@@ -618,7 +572,7 @@ public:
 		m_BitmapHeader.Compression = 3;
 
 		m_BitmapSize = GetWidth() * GetHeight();
-		m_BitmapData = new RGBA[m_BitmapSize];
+		m_BitmapData = new RGBA_t[m_BitmapSize];
 
 		/* Find bit count by masks (rounded to next 8 bit boundary) */
 
@@ -656,5 +610,3 @@ public:
 		return true;
 	}
 };
-
-#endif

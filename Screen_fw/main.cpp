@@ -47,10 +47,8 @@ int main() {
 
     CBitmap bmp;
     systime_t start = chVTGetSystemTimeX();
-    bmp.Load((char*)LogoUnc, LOGOUNC_SZ);
+    bmp.Load((uint8_t*)LogoUnc, LOGOUNC_SZ);
     Printf("Time: %u\r", TIME_I2MS(chVTTimeElapsedSinceX(start)));
-
-
 
 //    unsigned char* image = 0;
 //    unsigned width = 440, height = 234;
