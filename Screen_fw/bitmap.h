@@ -69,11 +69,14 @@ struct BGRA_t {
 	uint8_t Alpha;
 } __attribute__((packed));
 
+static uint8_t Line[2048];
+static BGRA_t ColorTable[256];
+
 class CBitmap {
 private:
     BmpFileHeader_t m_BitmapFileHeader;
     BmpHeader_t m_BitmapHeader;
-	unsigned int m_BitmapSize;
+	uint32_t m_BitmapSize;
 public:
 	class CColor {
 public:
@@ -124,19 +127,15 @@ public:
 	}
 
 	void Dispose() {
-		if (m_BitmapData) {
+		if(m_BitmapData) {
 			delete[] m_BitmapData;
 			m_BitmapData = 0;
 		}
-		memset(&m_BitmapFileHeader, 0, sizeof(m_BitmapFileHeader));
-		memset(&m_BitmapHeader, 0, sizeof(m_BitmapHeader));
 	}
 
 	bool Load(uint8_t *Buff, int32_t Sz) {
 		Dispose();
-
 		uint8_t *Ptr = Buff;
-
 		memcpy(&m_BitmapFileHeader, Ptr, sizeof(BmpFileHeader_t));
 		if (m_BitmapFileHeader.Signature != BITMAP_SIGNATURE) {
 			return false;
@@ -146,22 +145,15 @@ public:
 		memcpy(&m_BitmapHeader, Ptr, sizeof(BmpHeader_t));
 
 		// Load Color Table
-		uint16_t ColorTableSize = 0;
-		if     (m_BitmapHeader.BitCount == 1) ColorTableSize = 2;
-		else if(m_BitmapHeader.BitCount == 4) ColorTableSize = 16;
-		else if(m_BitmapHeader.BitCount == 8) ColorTableSize = 256;
-
-        // Always allocate full sized color table
-        BGRA_t* ColorTable = new BGRA_t[ColorTableSize]; // std::bad_alloc exception should be thrown if memory is not available
-        Ptr = Buff + sizeof(BmpFileHeader_t) + m_BitmapHeader.HeaderSize;
-        memcpy(ColorTable, Ptr, sizeof(BGRA_t) * m_BitmapHeader.ClrUsed);
-        // Color Table for 16 bits images are not supported yet
+		if(m_BitmapHeader.BitCount) {
+		    Ptr = Buff + sizeof(BmpFileHeader_t) + m_BitmapHeader.HeaderSize;
+		    memcpy(ColorTable, Ptr, sizeof(BGRA_t) * m_BitmapHeader.ClrUsed);
+		}
 
 		m_BitmapSize = GetWidth() * GetHeight();
 		m_BitmapData = new RGBA_t[m_BitmapSize];
 
-		unsigned int LineWidth = ((GetWidth() * GetBitCount() / 8) + 3) & ~3;
-		uint8_t *Line = new uint8_t[LineWidth];
+		uint32_t LineWidth = ((GetWidth() * GetBitCount() / 8) + 3) & ~3;
 
 		Ptr = Buff + m_BitmapFileHeader.BitsOffset;
 
@@ -236,47 +228,48 @@ public:
 				}
 			}
 		} else if (m_BitmapHeader.Compression == 1) { // RLE 8
-			uint8_t Count = 0;
-			uint8_t ColorIndex = 0;
-			int x = 0, y = 0;
+			uint32_t Count = 0;
+			uint32_t ColorIndex = 0;
+			uint32_t x = 0, y = 0;
 
-			while ((Ptr - Buff) < Sz) {
+			while((Ptr - Buff) < Sz) {
 			    Count = *Ptr++;
 			    ColorIndex = *Ptr++;
 
-				if (Count > 0) {
+				if(Count > 0) {
 					Index = x + y * GetWidth();
-					for (int k = 0; k < Count; k++) {
-						m_BitmapData[Index + k].Red = ColorTable[ColorIndex].Red;
-						m_BitmapData[Index + k].Green = ColorTable[ColorIndex].Green;
-						m_BitmapData[Index + k].Blue = ColorTable[ColorIndex].Blue;
-						m_BitmapData[Index + k].Alpha = ColorTable[ColorIndex].Alpha;
+					uint32_t kTop = Index + Count;
+					for(uint32_t k = Index; k < kTop; k++) {
+						m_BitmapData[k].Red = ColorTable[ColorIndex].Red;
+						m_BitmapData[k].Green = ColorTable[ColorIndex].Green;
+						m_BitmapData[k].Blue = ColorTable[ColorIndex].Blue;
+						m_BitmapData[k].Alpha = 255;
 					}
 					x += Count;
-				} else if (Count == 0) {
-					int Flag = ColorIndex;
-					if (Flag == 0) {
+				}
+				else { // Count == 0
+				    uint32_t Flag = ColorIndex;
+					if(Flag == 0) {
 						x = 0;
 						y++;
-					} else if (Flag == 1) {
-						break;
-					} else if (Flag == 2) {
-						char rx = *Ptr++;
-						char ry = *Ptr++;
-						x += rx;
-						y += ry;
-					} else {
+					}
+					else if(Flag == 1) break;
+					else if(Flag == 2) {
+						x += *Ptr++; // rx
+						y += *Ptr++; // ry
+					}
+					else {
 						Count = Flag;
 						Index = x + y * GetWidth();
-						for (int k = 0; k < Count; k++) {
+						uint32_t kTop = Index + Count;
+						for(uint32_t k = Index; k < kTop; k++) {
 						    ColorIndex = *Ptr++;
-							m_BitmapData[Index + k].Red = ColorTable[ColorIndex].Red;
-							m_BitmapData[Index + k].Green = ColorTable[ColorIndex].Green;
-							m_BitmapData[Index + k].Blue = ColorTable[ColorIndex].Blue;
-							m_BitmapData[Index + k].Alpha = ColorTable[ColorIndex].Alpha;
+							m_BitmapData[k].Red = ColorTable[ColorIndex].Red;
+							m_BitmapData[k].Green = ColorTable[ColorIndex].Green;
+							m_BitmapData[k].Blue = ColorTable[ColorIndex].Blue;
+							m_BitmapData[k].Alpha = 255;
 						}
 						x += Count;
-						// Attention: Current Microsoft STL implementation seems to be buggy, tellg() always returns 0.
 						uint32_t pos = Ptr - Buff;
 						if(pos & 1) Ptr++;
 					}
@@ -286,9 +279,7 @@ public:
 			/* RLE 4 is not supported */
 			Result = false;
 		} else if (m_BitmapHeader.Compression == 3) { // BITFIELDS
-
 			/* We assumes that mask of each color component can be in any order */
-
 			uint32_t BitCountRed = CColor::BitCountByMask(m_BitmapHeader.RedMask);
 			uint32_t BitCountGreen = CColor::BitCountByMask(m_BitmapHeader.GreenMask);
 			uint32_t BitCountBlue = CColor::BitCountByMask(m_BitmapHeader.BlueMask);
@@ -297,13 +288,9 @@ public:
 			for (unsigned int i = 0; i < GetHeight(); i++) {
 			    memcpy(Line, Ptr, LineWidth);
                 Ptr += LineWidth;
-
 				uint8_t *LinePtr = Line;
-
 				for (unsigned int j = 0; j < GetWidth(); j++) {
-
 					uint32_t Color = 0;
-
 					if (m_BitmapHeader.BitCount == 16) {
 						Color = *((uint16_t*) LinePtr);
 						LinePtr += 2;
@@ -322,10 +309,6 @@ public:
 				}
 			}
 		}
-
-		delete [] ColorTable;
-		delete [] Line;
-
 		return Result;
 	}
 
