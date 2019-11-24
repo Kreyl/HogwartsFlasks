@@ -31,23 +31,24 @@
 PinOutputPWM_t Backlight{LCD_BCKLT};
 
 // Layer Buffers and other sizes
-#define LBUF_SZ         (sizeof(Color_t) * LCD_WIDTH * LCD_HEIGHT)
+#define LBUF_SZ         (sizeof(ColorARGB_t) * LCD_WIDTH * LCD_HEIGHT)
 #define LBUF_CNT        (LCD_WIDTH * LCD_HEIGHT)
-#define LINE_SZ         (sizeof(Color_t) * LCD_WIDTH)
-ColorARGB_t *FrameBuf1 = (ColorARGB_t*)(SDRAM_ADDR + 0);
-#define ENABLE_LAYER2   TRUE
+#define LINE_SZ         (sizeof(ColorARGB_t) * LCD_WIDTH)
+ColorARGB_t *FrameBuf1;// = (ColorARGB_t*)(SDRAM_ADDR + 0);
+//#define ENABLE_LAYER2   TRUE
 #if ENABLE_LAYER2
-ColorARGB_t *FrameBuf2 = (ColorARGB_t*)(SDRAM_ADDR + LBUF_SZ);
+ColorARGB_t *FrameBuf2;// = (ColorARGB_t*)(SDRAM_ADDR + LBUF_SZ);
 #endif
-
-struct RGB_t {
-    uint8_t R, G, B;
-} __attribute__((packed));
 
 void LcdInit() {
     Backlight.Init();
     Backlight.SetFrequencyHz(10000);
     Backlight.Set(100);
+
+    FrameBuf1 = (ColorARGB_t*)malloc(LBUF_SZ);
+#if ENABLE_LAYER2
+    FrameBuf2 = (ColorARGB_t*)malloc(LBUF_SZ);
+#endif
 
     // Enable clock. Pixel clock set up at main; <=12MHz according to display datasheet
     RCC->APB2ENR |= RCC_APB2ENR_LTDCEN;
@@ -114,12 +115,12 @@ void LcdInit() {
     // === Layer 1 ===
     memset(FrameBuf1, 0, LBUF_SZ); // Fill Layer 1
     // layer window horizontal and vertical position
-    LTDC_Layer1->WHPCR = ((LCD_WIDTH  + HBACK_PORCH) << 16) | HBACK_PORCH; // Stop and Start positions
-    LTDC_Layer1->WVPCR = ((LCD_HEIGHT + VBACK_PORCH) << 16) | VBACK_PORCH; // Stop and Start positions
+    LTDC_Layer1->WHPCR = ((LCD_WIDTH  + HBACK_PORCH - 1UL) << 16) | HBACK_PORCH; // Stop and Start positions
+    LTDC_Layer1->WVPCR = ((LCD_HEIGHT + VBACK_PORCH - 1UL) << 16) | VBACK_PORCH; // Stop and Start positions
 //    LTDC_Layer1->PFCR  = 0b001UL;    // RGB888
     LTDC_Layer1->PFCR  = 0b000UL;    // ARGB8888
     LTDC_Layer1->CFBAR = (uint32_t)FrameBuf1; // Address of layer buffer
-    LTDC_Layer1->CFBLR = (LINE_SZ << 16) | (LINE_SZ + 3UL); // 300 bytes per line
+    LTDC_Layer1->CFBLR = (LINE_SZ << 16) | (LINE_SZ + 3UL);
     LTDC_Layer1->CFBLNR = LCD_HEIGHT; // LCD_HEIGHT lines in a buffer
     LTDC_Layer1->CR = 1;    // Enable layer
 
@@ -141,6 +142,20 @@ void LcdInit() {
     PinSetupOut(LCD_DISP, omPushPull);
     PinSetHi(LCD_DISP);
 }
+
+void LcdDraw(uint32_t Left, uint32_t Top, uint32_t* Img, uint32_t ImgW, uint32_t ImgH) {
+    uint32_t *dst;
+    for(uint32_t y = 0; y<ImgH; y++) {
+        dst = (uint32_t*)(FrameBuf1 + Left + ((Top + y) * LCD_WIDTH));
+        for(uint32_t x=0; x<ImgW; x++) {
+            if((Left + x) < LCD_WIDTH and (Top + y) < LCD_HEIGHT) *dst++ = *Img;
+//                *dst++ = 0xFF00FF00;
+            Img++;
+        }
+    }
+}
+
+
 
 void LcdPaintL1(uint32_t Left, uint32_t Top, uint32_t Right, uint32_t Bottom, uint32_t A, uint32_t R, uint32_t G, uint32_t B) {
 //    Printf("L%u T%u; R%u B%u; %u %u %u %u;   %X\r", Left, Top, Right, Bottom, A, R,G,B, v);

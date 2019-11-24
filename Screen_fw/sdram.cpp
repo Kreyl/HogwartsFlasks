@@ -110,16 +110,16 @@ void SdramCheck() {
     ms = TIME_I2MS(chVTTimeElapsedSinceX(Start));
     Printf("Write: %u; %f MByte/s\r", ms, ((float)Cnt * 4 / 1000) / (float)ms );
 
-    Addr = 0xC0001000;
-    *(volatile uint32_t*)Addr = 0xCA115EA1UL;
+//    Addr = 0xC0001000;
+//    *(volatile uint32_t*)Addr = 0xCA115EA1UL;
 
     // Read
     Addr = 0xC0000000;
     Start = chVTGetSystemTimeX();
     for(uint32_t i=0; i<Cnt; i++) {
-        uint32_t Value = *(volatile uint32_t*)Addr;
+        (void)*(volatile uint32_t*)Addr;
         Addr += 4;
-        if(Value != i) Printf("%X\r", Value);
+//        if(Value != i) Printf("%X\r", Value);
     }
     ms = TIME_I2MS(chVTTimeElapsedSinceX(Start));
     Printf("Read: %u; %f MByte/s\r", ms, ((float)Cnt * 4 / 1000) / (float)ms );
