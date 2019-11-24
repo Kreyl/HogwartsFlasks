@@ -8,8 +8,8 @@
 #include "sdram.h"
 #include "lcdtft.h"
 
-#include "LogoUnc.h"
-#include "bitmap.h"
+#include "LogoOstranna.h"
+#include "lodepng.h"
 
 #if 1 // =============== Defines ================
 // Forever
@@ -26,6 +26,8 @@ LedBlinker_t Led{LED_PIN};
 int main() {
     // ==== Setup clock ====
     Clk.SetCoreClk80MHz();
+//    Clk.Setup48Mhz(2); // SAI R div = 2 => R = 2*96/2 = 96 MHz
+//    Clk.SetSaiDivR(8); // LCD_CLK = 96 / 8 = 12MHz
     Clk.Setup48Mhz(3); // SAI R div = 3 => R = 2*96/3 = 64 MHz
     Clk.SetSaiDivR(8); // LCD_CLK = 64 / 8 = 8MHz
     Clk.UpdateFreqValues();
@@ -41,27 +43,26 @@ int main() {
     Printf("\r%S %S\r\n", APP_NAME, XSTRINGIFY(BUILD_TIME));
     Clk.PrintFreqs();
 
+    SdramCheck();
+
     Led.Init();
     Led.StartOrRestart(lsqIdle);
+
     LcdInit();
 
-    CBitmap bmp;
+
+    uint32_t error;
+    unsigned char* image = 0;
+    unsigned width = 440, height = 234;
     systime_t start = chVTGetSystemTimeX();
-    bmp.Load((char*)LogoUnc, LOGOUNC_SZ);
-    Printf("Time: %u\r", TIME_I2MS(chVTTimeElapsedSinceX(start)));
+    error = lodepng_decode32(&image, &width, &height, (const unsigned char*)LogoOstranna, LOGOOSTRANNA_SZ);
+    Printf("W %u; H %u; Time: %u\r", width, height, TIME_I2MS(chVTTimeElapsedSinceX(start)));
+    if(error) Printf("error %u: %s\n", error, lodepng_error_text(error));
 
 
+    LcdDraw(0, 0, (uint32_t*)image, width, height);
 
-//    unsigned char* image = 0;
-//    unsigned width = 440, height = 234;
-//    systime_t start = chVTGetSystemTimeX();
-//    error = lodepng_decode32(&image, &width, &height, (const unsigned char*)LogoOstranna, LOGOOSTRANNA_SZ);
-//    Printf("W %u; H %u; Time: %u\r", width, height, TIME_I2MS(chVTTimeElapsedSinceX(start)));
-//    if(error) Printf("error %u: %s\n", error, lodepng_error_text(error));
-
-
-    LcdDrawARGB(0, 0, (uint32_t*)bmp.m_BitmapData, bmp.GetWidth(), bmp.GetHeight());
-
+    SdramCheck();
 
     // ==== Main cycle ====
     ITask();
@@ -83,6 +84,30 @@ int main() {
 //    Printf("free %X\r", ptr);
 //    free(ptr);
 //}
+
+extern "C"
+caddr_t _sbrk(int incr) {
+    extern uint8_t __heap_base__;
+    extern uint8_t __heap_end__;
+
+    static uint8_t *current_end = NULL;
+    uint8_t *current_block_address;
+
+    if (!current_end)
+        current_end = &__heap_base__;
+
+    current_block_address = current_end;
+
+    incr = (incr + 3) & (~3);
+    if (current_end + incr > &__heap_end__) {
+        errno = ENOMEM;
+        return (caddr_t) -1;
+    }
+    current_end += incr;
+    return (caddr_t) current_block_address;
+
+}
+
 
 __noreturn
 void ITask() {

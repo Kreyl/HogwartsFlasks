@@ -143,12 +143,13 @@ void LcdInit() {
     PinSetHi(LCD_DISP);
 }
 
-void LcdDrawARGB(uint32_t Left, uint32_t Top, uint32_t* Img, uint32_t ImgW, uint32_t ImgH) {
+void LcdDraw(uint32_t Left, uint32_t Top, uint32_t* Img, uint32_t ImgW, uint32_t ImgH) {
     uint32_t *dst;
     for(uint32_t y = 0; y<ImgH; y++) {
         dst = (uint32_t*)(FrameBuf1 + Left + ((Top + y) * LCD_WIDTH));
         for(uint32_t x=0; x<ImgW; x++) {
             if((Left + x) < LCD_WIDTH and (Top + y) < LCD_HEIGHT) *dst++ = *Img;
+//                *dst++ = 0xFF00FF00;
             Img++;
         }
     }
