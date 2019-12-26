@@ -137,11 +137,8 @@ public:
 		Dispose();
 		uint8_t *Ptr = Buff;
 		memcpy(&m_BitmapFileHeader, Ptr, sizeof(BmpFileHeader_t));
-		if (m_BitmapFileHeader.Signature != BITMAP_SIGNATURE) {
-			return false;
-		}
+		if (m_BitmapFileHeader.Signature != BITMAP_SIGNATURE) return false;
 		Ptr += sizeof(BmpFileHeader_t);
-
 		memcpy(&m_BitmapHeader, Ptr, sizeof(BmpHeader_t));
 
 		// Load Color Table
@@ -232,7 +229,7 @@ public:
 			uint32_t ColorIndex = 0;
 			uint32_t x = 0, y = 0;
 
-			while((Ptr - Buff) < Sz) {
+			while(Ptr < (Buff + Sz)) {
 			    Count = *Ptr++;
 			    ColorIndex = *Ptr++;
 

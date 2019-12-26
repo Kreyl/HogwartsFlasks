@@ -45,9 +45,10 @@ int main() {
     Led.StartOrRestart(lsqIdle);
     LcdInit();
 
-    CBitmap bmp;
+//    CBitmap bmp;
     systime_t start = chVTGetSystemTimeX();
-    bmp.Load((uint8_t*)LogoPal8Cmp, LOGOPAL8CMP_SZ);
+//    bmp.Load((uint8_t*)LogoPal8Cmp, LOGOPAL8CMP_SZ);
+    LcdDrawBmp((uint8_t*)LogoPal8Cmp, LOGOPAL8CMP_SZ);
     Printf("Time: %u\r", TIME_I2MS(chVTTimeElapsedSinceX(start)));
 
 //    unsigned char* image = 0;
@@ -58,7 +59,7 @@ int main() {
 //    if(error) Printf("error %u: %s\n", error, lodepng_error_text(error));
 
 
-    LcdDrawARGB(0, 0, (uint32_t*)bmp.m_BitmapData, bmp.GetWidth(), bmp.GetHeight());
+//    LcdDrawARGB(0, 0, (uint32_t*)bmp.m_BitmapData, bmp.GetWidth(), bmp.GetHeight());
 
 
     // ==== Main cycle ====

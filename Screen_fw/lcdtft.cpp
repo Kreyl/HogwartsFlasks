@@ -141,6 +141,10 @@ void LcdInit() {
     // Enable display
     PinSetupOut(LCD_DISP, omPushPull);
     PinSetHi(LCD_DISP);
+
+    // DMA2D
+    rccEnableDMA2D(FALSE);
+
 }
 
 void LcdDrawARGB(uint32_t Left, uint32_t Top, uint32_t* Img, uint32_t ImgW, uint32_t ImgH) {
@@ -154,8 +158,6 @@ void LcdDrawARGB(uint32_t Left, uint32_t Top, uint32_t* Img, uint32_t ImgW, uint
     }
 }
 
-
-
 void LcdPaintL1(uint32_t Left, uint32_t Top, uint32_t Right, uint32_t Bottom, uint32_t A, uint32_t R, uint32_t G, uint32_t B) {
 //    Printf("L%u T%u; R%u B%u; %u %u %u %u;   %X\r", Left, Top, Right, Bottom, A, R,G,B, v);
 //    ColorARGB_t *ptr = FrameBuf1 +
@@ -166,3 +168,139 @@ void LcdPaintL1(uint32_t Left, uint32_t Top, uint32_t Right, uint32_t Bottom, ui
 //    }
 }
 
+
+#define BITMAP_SIGNATURE 0x4d42
+
+struct BmpFileHeader_t {
+    uint16_t Signature;
+    uint32_t Size;
+    uint32_t Reserved;
+    uint32_t BitsOffset;
+} __attribute__((packed));
+
+struct BmpHeader_t {
+    uint32_t HeaderSize;
+    int32_t Width;
+    int32_t Height;
+    uint16_t Planes;
+    uint16_t BitCount;
+    uint32_t Compression;
+    uint32_t SizeImage;
+    int32_t PelsPerMeterX;
+    int32_t PelsPerMeterY;
+    uint32_t ClrUsed;
+    uint32_t ClrImportant;
+    uint32_t RedMask;
+    uint32_t GreenMask;
+    uint32_t BlueMask;
+    uint32_t AlphaMask;
+    uint32_t CsType;
+    uint32_t Endpoints[9]; // see http://msdn2.microsoft.com/en-us/library/ms536569.aspx
+    uint32_t GammaRed;
+    uint32_t GammaGreen;
+    uint32_t GammaBlue;
+} __attribute__((packed));
+
+
+uint8_t LcdDrawBmp(uint8_t *Buff, uint32_t Sz) {
+    // Stop DMA2D
+    if(DMA2D->CR & DMA2D_CR_START) {
+        DMA2D->CR |= DMA2D_CR_ABORT;
+        while(DMA2D->CR & DMA2D_CR_START);
+    }
+    DMA2D->CR &= ~DMA2D_CR_MODE; // Mem 2 Mem, Foreground only
+
+//    DMA2D->CR |= DMA2D_CR_MODE; // Reg 2 mem
+    DMA2D->OPFCCR = 0; // Output: no RedBluSwap, no Alpha inv, color mode = ARGB8888
+    DMA2D->OMAR = (uint32_t)FrameBuf1; // Output address
+    DMA2D->OOR = 0; // no output offset
+//    DMA2D->OCOLR = 0xFFFFFFFF;
+    DMA2D->NLR = (480UL << 16) | 234UL;
+//    DMA2D->CR |= DMA2D_CR_START;
+//    while(DMA2D->CR & DMA2D_CR_START);
+//    Printf("CR %X; ISR %X; OMAR %X\r", DMA2D->CR, DMA2D->ISR, DMA2D->OMAR);
+//    return retvOk;
+
+    // Setup foreground pixel converter: Alpha=0xFF and replaces original
+    DMA2D->FGPFCCR = (0xFFUL << 24) | (0b01UL << 16);
+    DMA2D->FGOR = 0; // no foreground offset
+    // Read headers
+    uint8_t *Ptr = Buff;
+    BmpFileHeader_t BmpFileHeader;
+    memcpy(&BmpFileHeader, Ptr, sizeof(BmpFileHeader_t));
+    if(BmpFileHeader.Signature != BITMAP_SIGNATURE) return retvFail;
+    Ptr += sizeof(BmpFileHeader_t);
+    BmpHeader_t BmpHdr;
+    memcpy(&BmpHdr, Ptr, sizeof(BmpHeader_t));
+    // Setup Height & Width
+    uint32_t Width  = (BmpHdr.Width < 0) ? -BmpHdr.Width : BmpHdr.Width;;
+    uint32_t Height = (BmpHdr.Height < 0) ? -BmpHdr.Height : BmpHdr.Height;;
+    DMA2D->NLR = (BmpHdr.Width << 16) | BmpHdr.Height;
+
+    // Load Color Table
+    if(BmpHdr.BitCount) {
+//        Ptr = Buff + sizeof(BmpFileHeader_t) + BmpHdr.HeaderSize;
+        if(BmpHdr.BitCount == 8) {
+            DMA2D->FGPFCCR |= (255UL << 8) | (0b0101UL); // CLUT sz = 256, CLU color mode ARGB888, color mode = L8
+            uint32_t Table[256];
+            memcpy(Table, (Buff + sizeof(BmpFileHeader_t) + BmpHdr.HeaderSize), 1024);
+            DMA2D->FGCMAR = (uint32_t)Table; // Address to load CLUT from
+            DMA2D->FGPFCCR |= DMA2D_FGPFCCR_START;
+            while(DMA2D->FGPFCCR & DMA2D_FGPFCCR_START);
+
+            Printf("CLUT CR %X; ISR %X; FGPFCCR %X; FGCMAR %X\r", DMA2D->CR, DMA2D->ISR, DMA2D->FGPFCCR, DMA2D->FGCMAR);
+        }
+    }
+
+    // Read pixels
+    Ptr = Buff + BmpFileHeader.BitsOffset; // Start of pixel data
+    uint32_t Index = 0;
+
+    if(BmpHdr.Compression == 0) {
+
+    }
+    else if(BmpHdr.Compression == 1) { // RLE 8
+        uint32_t Count = 0;
+        uint32_t ColorIndex = 0;
+        uint32_t x = 0, y = 0;
+        uint8_t *Pixels = (uint8_t*)malloc(Width * Height);
+
+        while(Ptr < (Buff + Sz)) {
+            Count = *Ptr++;
+            ColorIndex = *Ptr++;
+
+            if(Count > 0) {
+                Index = x + y * Width;
+                memset(&Pixels[Index], ColorIndex, Count);
+                x += Count;
+            }
+            else { // Count == 0
+                uint32_t Flag = ColorIndex;
+                if(Flag == 0) {
+                    x = 0;
+                    y++;
+                }
+                else if(Flag == 1) break;
+                else if(Flag == 2) {
+                    x += *Ptr++; // rx
+                    y += *Ptr++; // ry
+                }
+                else {
+                    Count = Flag;
+                    Index = x + y * Width;
+                    memset(&Pixels[Index], ColorIndex, Count);
+                    x += Count;
+                    uint32_t pos = Ptr - Buff;
+                    if(pos & 1) Ptr++;
+                }
+            }
+        } // while
+        // Indexed colors bitmap filled
+        DMA2D->FGMAR = (uint32_t)Pixels;
+        DMA2D->CR |= DMA2D_CR_START;
+        while(DMA2D->CR & DMA2D_CR_START);
+        Printf("CR %X; ISR %X; OMAR %X\r", DMA2D->CR, DMA2D->ISR, DMA2D->OMAR);
+    } // if compression
+
+    return retvOk;
+}
