@@ -11,6 +11,7 @@
 #include "kl_time.h"
 #include "Mirilli.h"
 #include "usb_msdcdc.h"
+#include "sdram.h"
 
 #if 1 // =============== Defines ================
 // Forever
@@ -253,28 +254,31 @@ int main() {
     chSysInit();
 
     // ==== Init Hard & Soft ====
+    SdramInit();
     EvtQMain.Init();
     Uart.Init();
     Printf("\r%S %S\r\n", APP_NAME, XSTRINGIFY(BUILD_TIME));
     Clk.PrintFreqs();
 
-    Led.Init();
-    Led.StartOrRestart(lsqIdle);
+//    SdramCheck();
 
-    SD.Init();
-    if(SD.IsReady) {
-    }
+//    Led.Init();
+//    Led.StartOrRestart(lsqIdle);
+
+//    SD.Init();
+//    if(SD.IsReady) {
+//    }
 
     // Time
-    BackupSpc::EnableAccess();
-    ClrH.DWord32 = BackupSpc::ReadRegister(BCKP_REG_CLRH_INDX);
-    ClrM.DWord32 = BackupSpc::ReadRegister(BCKP_REG_CLRM_INDX);
-    InitMirilli();
-    Time.Init();
+//    BackupSpc::EnableAccess();
+//    ClrH.DWord32 = BackupSpc::ReadRegister(BCKP_REG_CLRH_INDX);
+//    ClrM.DWord32 = BackupSpc::ReadRegister(BCKP_REG_CLRM_INDX);
+//    InitMirilli();
+//    Time.Init();
 
     // Points
-    Npx.Init(NPX1_LED_CNT);
-    Points.Init();
+//    Npx.Init(NPX1_LED_CNT);
+//    Points.Init();
 
     // USB
 //    UsbMsdCdc.Init();
