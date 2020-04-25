@@ -24,7 +24,7 @@ typedef std::vector<Color_t> ColorBuf_t;
 
 // SPI8 Buffer (no tuning required)
 #define NPX_SEQ_LEN_BITS        3 // 3 bits of SPI to produce 1 bit of LED data
-#define NPX_RST_BYTE_CNT        100
+#define NPX_RST_BYTE_CNT        128
 #define DATA_BIT_CNT(LedCnt)    (LedCnt * 3 * 8 * NPX_SEQ_LEN_BITS) // Each led has 3 channels 8 bit each
 #define DATA_BYTE_CNT(LedCnt)   ((DATA_BIT_CNT(LedCnt) + 7) / 8)
 #define TOTAL_BYTE_CNT(LedCnt)  (DATA_BYTE_CNT(LedCnt) + NPX_RST_BYTE_CNT)
@@ -58,7 +58,7 @@ struct NeopixelParams_t {
 class Neopixels_t {
 private:
     const NeopixelParams_t *Params;
-    uint8_t *IBitBuf = nullptr;
+    volatile uint8_t *IBitBuf = nullptr;
     uint32_t IBufSz = 0;
     const stm32_dma_stream_t *PDma;
 public:

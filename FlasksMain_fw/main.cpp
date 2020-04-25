@@ -11,7 +11,7 @@
 #include "kl_time.h"
 #include "Mirilli.h"
 #include "usb_msdcdc.h"
-#include "sdram.h"
+//#include "sdram.h"
 #include "Lora.h"
 
 #if 1 // =============== Defines ================
@@ -274,16 +274,16 @@ int main() {
 //    }
 
     // Time
-    BackupSpc::EnableAccess();
-    ClrH.DWord32 = BackupSpc::ReadRegister(BCKP_REG_CLRH_INDX);
-    ClrM.DWord32 = BackupSpc::ReadRegister(BCKP_REG_CLRM_INDX);
-    InitMirilli();
+//    BackupSpc::EnableAccess();
+//    ClrH.DWord32 = BackupSpc::ReadRegister(BCKP_REG_CLRH_INDX);
+//    ClrM.DWord32 = BackupSpc::ReadRegister(BCKP_REG_CLRM_INDX);
+//    InitMirilli();
+//    Time.Init();
 
     // Points
-    Npx.Init(NPX1_LED_CNT);
+//    Npx.Init(NPX1_LED_CNT);
+    Npx.Init(1);
     Points.Init();
-
-    Time.Init();
 
     // USB
 //    UsbMsdCdc.Init();

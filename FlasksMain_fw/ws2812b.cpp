@@ -18,7 +18,7 @@ void Neopixels_t::Init(int32_t ALedCnt) {
     IBitBuf = (uint8_t*)malloc(IBufSz);
     ClrBuf.resize(LedCnt);
     // Zero it all, to zero head and tail
-    memset(IBitBuf, 0, IBufSz);
+    memset((void*)IBitBuf, 0, IBufSz);
 
     // ==== DMA ====
     PDma = dmaStreamAlloc(Params->DmaID, IRQ_PRIO_LOW, NpxDmaDone, this);
@@ -26,7 +26,7 @@ void Neopixels_t::Init(int32_t ALedCnt) {
     dmaStreamSetMode      (PDma, Params->DmaMode);
 }
 
-static uint32_t ITable[256] = {
+static volatile uint32_t ITable[256] = {
         0x244992,0x264992,0x344992,0x364992,0xA44992,0xA64992,0xB44992,0xB64992,0x244D92,0x264D92,0x344D92,0x364D92,0xA44D92,0xA64D92,0xB44D92,0xB64D92,
         0x246992,0x266992,0x346992,0x366992,0xA46992,0xA66992,0xB46992,0xB66992,0x246D92,0x266D92,0x346D92,0x366D92,0xA46D92,0xA66D92,0xB46D92,0xB66D92,
         0x244993,0x264993,0x344993,0x364993,0xA44993,0xA64993,0xB44993,0xB64993,0x244D93,0x264D93,0x344D93,0x364D93,0xA44D93,0xA64D93,0xB44D93,0xB64D93,
@@ -45,24 +45,38 @@ static uint32_t ITable[256] = {
         0x2469DB,0x2669DB,0x3469DB,0x3669DB,0xA469DB,0xA669DB,0xB469DB,0xB669DB,0x246DDB,0x266DDB,0x346DDB,0x366DDB,0xA46DDB,0xA66DDB,0xB46DDB,0xB66DDB,
 };
 
+static volatile uint8_t MyVar[16] = {1};
+
 void Neopixels_t::SetCurrentColors() {
     TransmitDone = false;
-    uint8_t *p = IBitBuf + (NPX_RST_BYTE_CNT / 2); // First and last words are zero to form reset
+//    volatile uint8_t *p = IBitBuf + (NPX_RST_BYTE_CNT / 2); // First and last words are zero to form reset
     // Fill bit buffer
-    for(auto &Color : ClrBuf) {
-        memcpy(p, &ITable[Color.G], 4);
-        p += 3;
-        memcpy(p, &ITable[Color.R], 4);
-        p += 3;
-        memcpy(p, &ITable[Color.B], 4);
-        p += 3;
-    }
+//    for(auto &Color : ClrBuf) {
+//        memcpy((void*)p, (void*)&ITable[0], 4);
+//        p += 3;
+//        memcpy((void*)p, (void*)&ITable[0], 4);
+//        p += 3;
+//        memcpy((void*)p, (void*)&ITable[0], 4);
+//        p += 3;
+////        memcpy(p, &ITable[Color.G], 4);
+////        p += 3;
+////        memcpy(p, &ITable[Color.R], 4);
+////        p += 3;
+////        memcpy(p, &ITable[Color.B], 4);
+////        p += 3;
+//    }
 //    Printf("%A\r", IBitBuf, IBufSz, ' ');
+
+    IBitBuf[0] = 0x00;
+
     // Start transmission
     dmaStreamDisable(PDma);
-    dmaStreamSetMemory0(PDma, IBitBuf);
-    dmaStreamSetTransactionSize(PDma, IBufSz);
+//    dmaStreamSetMemory0(PDma, IBitBuf);
+    dmaStreamSetMemory0(PDma, &MyVar);
+//    dmaStreamSetTransactionSize(PDma, IBufSz);
+    dmaStreamSetTransactionSize(PDma, 16);
     dmaStreamSetMode(PDma, Params->DmaMode);
+//    PDma->stream->CR |= DMA_SxCR_PFCTRL;
     dmaStreamEnable(PDma);
 }
 
