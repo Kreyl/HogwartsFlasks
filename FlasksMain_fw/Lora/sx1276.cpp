@@ -45,7 +45,7 @@ uint8_t SX1276_t::Init() {
     // Init IRQs
     // TODO
 
-    for(int i=0; i < (sizeof(RadioRegsInit) / sizeof(RadioRegisters_t)); i++ ) {
+    for(uint32_t i=0; i < (sizeof(RadioRegsInit) / sizeof(RadioRegisters_t)); i++ ) {
         SetModem(RadioRegsInit[i].Modem);
         WriteReg(RadioRegsInit[i].Addr, RadioRegsInit[i].Value);
     }
@@ -165,7 +165,7 @@ void SX1276_t::SetTxPower(int8_t power) {
     paConfig = ReadReg(REG_PACONFIG);
     paDac = ReadReg(REG_PADAC);
 
-    paConfig = (paConfig & RF_PACONFIG_PASELECT_MASK) | GetPaSelect(Settings.Channel);
+//    paConfig = (paConfig & RF_PACONFIG_PASELECT_MASK) | GetPaSelect(Settings.Channel);
 
     if((paConfig & RF_PACONFIG_PASELECT_PABOOST) == RF_PACONFIG_PASELECT_PABOOST) {
         if(power > 17) paDac = (paDac & RF_PADAC_20DBM_MASK) | RF_PADAC_20DBM_ON;

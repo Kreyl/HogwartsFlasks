@@ -255,7 +255,7 @@ int main() {
     chSysInit();
 
     // ==== Init Hard & Soft ====
-    SdramInit();
+//    SdramInit();
     EvtQMain.Init();
     Uart.Init();
     Printf("\r%S %S\r\n", APP_NAME, XSTRINGIFY(BUILD_TIME));
@@ -263,26 +263,27 @@ int main() {
 
 //    SdramCheck();
 
-    Lora.Init();
+//    Lora.Init();
 
 
-//    Led.Init();
-//    Led.StartOrRestart(lsqIdle);
+    Led.Init();
+    Led.StartOrRestart(lsqIdle);
 
 //    SD.Init();
 //    if(SD.IsReady) {
 //    }
 
     // Time
-//    BackupSpc::EnableAccess();
-//    ClrH.DWord32 = BackupSpc::ReadRegister(BCKP_REG_CLRH_INDX);
-//    ClrM.DWord32 = BackupSpc::ReadRegister(BCKP_REG_CLRM_INDX);
-//    InitMirilli();
-//    Time.Init();
+    BackupSpc::EnableAccess();
+    ClrH.DWord32 = BackupSpc::ReadRegister(BCKP_REG_CLRH_INDX);
+    ClrM.DWord32 = BackupSpc::ReadRegister(BCKP_REG_CLRM_INDX);
+    InitMirilli();
 
     // Points
-//    Npx.Init(NPX1_LED_CNT);
-//    Points.Init();
+    Npx.Init(NPX1_LED_CNT);
+    Points.Init();
+
+    Time.Init();
 
     // USB
 //    UsbMsdCdc.Init();

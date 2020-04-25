@@ -15,8 +15,8 @@
 */
 
  /* KL: Put it here instead of Makefile */
-__main_stack_size__     = 0x1000; 
-__process_stack_size__  = 0x1000;
+__main_stack_size__     = 0x0400; 
+__process_stack_size__  = 0x0400;
 
 /*
  * STM32F76xxI generic setup.
@@ -45,7 +45,6 @@ MEMORY
     ram5    : org = 0x40024000, len = 4k        /* BCKP SRAM */
     ram6    : org = 0x00000000, len = 0
     ram7    : org = 0x00000000, len = 0
-    SDRAM   : org = 0xC0000000, len = 32M
 }
 
 /* For each data/text section two region are defined, a virtual region
@@ -90,7 +89,7 @@ REGION_ALIAS("DATA_RAM_LMA", flash0);
 REGION_ALIAS("BSS_RAM", ram3);
 
 /* RAM region to be used for the default heap.*/
-REGION_ALIAS("HEAP_RAM", SDRAM);
+REGION_ALIAS("HEAP_RAM", ram0);
 
 /* Stack rules inclusion.*/
 INCLUDE ../rules_stacks.ld
