@@ -12,6 +12,7 @@
 #include "Mirilli.h"
 #include "usb_msdcdc.h"
 #include "sdram.h"
+#include "Lora.h"
 
 #if 1 // =============== Defines ================
 // Forever
@@ -261,6 +262,9 @@ int main() {
     Clk.PrintFreqs();
 
 //    SdramCheck();
+
+    Lora.Init();
+
 
 //    Led.Init();
 //    Led.StartOrRestart(lsqIdle);

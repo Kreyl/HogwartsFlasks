@@ -1,7 +1,7 @@
 /*
  * board.h
  *
- *  Created on: 12 сент. 2015 г.
+ *  Created on: 12 пїЅпїЅпїЅпїЅ. 2015 пїЅ.
  *      Author: Kreyl
  */
 
@@ -48,6 +48,14 @@
 #define NPX2_GPIO       GPIOB
 #define NPX2_PIN        5
 #define NPX2_AF         AF5
+
+// ==== Lora ====
+#define LORA_SPI        SPI2
+#define LORA_SCK        GPIOB, 13, omPushPull, pudNone, AF5
+#define LORA_MISO       GPIOC,  2, omPushPull, pudNone, AF5
+#define LORA_MOSI       GPIOC,  3, omPushPull, pudNone, AF5
+#define LORA_NSS        GPIOB, 12
+#define LORA_NRESET     GPIOC, 10
 
 // UART
 #define UART_TX_PIN     GPIOG, 14
