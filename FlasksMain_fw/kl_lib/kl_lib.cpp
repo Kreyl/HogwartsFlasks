@@ -472,15 +472,15 @@ void chDbgPanic(const char *msg1) {
 }
 
 void PrintErrMsg(const char* S) {
-    USART1->CR3 &= ~USART_CR3_DMAT;
+    CMD_UART->CR3 &= ~USART_CR3_DMAT;
     while(*S != 0) {
 //        ITM_SendChar(*S++);
 #if defined STM32L1XX || defined STM32F2XX
-        while(!(USART1->SR & USART_SR_TXE));
-        USART1->DR = *S;
+        while(!(CMD_UART->SR & USART_SR_TXE));
+        CMD_UART->DR = *S;
 #else
-        while(!(USART1->ISR & USART_ISR_TXE));
-        USART1->TDR = *S;
+        while(!(CMD_UART->ISR & USART_ISR_TXE));
+        CMD_UART->TDR = *S;
 #endif
         S++;
     }

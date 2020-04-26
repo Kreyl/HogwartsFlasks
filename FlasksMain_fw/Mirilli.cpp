@@ -1,7 +1,7 @@
 /*
  * Mirilli.cpp
  *
- *  Created on: 30 сент. 2017 г.
+ *  Created on: 30 пїЅпїЅпїЅпїЅ. 2017 пїЅ.
  *      Author: Kreyl
  */
 
@@ -13,7 +13,7 @@
 #include "ws2812b.h"
 #endif
 
-extern Neopixels_t LumeLeds;
+extern Neopixels_t Npx2;
 static thread_reference_t PThd = nullptr;
 
 // Target colors
@@ -21,7 +21,7 @@ static Color_t ITargetClr[MIRILLI_LED_CNT];
 static bool ColorsDone = true;
 
 static uint32_t ICalcDelayN(uint32_t n, uint32_t SmoothValue) {
-    return LumeLeds.ClrBuf[n].DelayToNextAdj(ITargetClr[n], SmoothValue);
+    return Npx2.ClrBuf[n].DelayToNextAdj(ITargetClr[n], SmoothValue);
 }
 
 static THD_WORKING_AREA(waMirilli, 256);
@@ -39,9 +39,9 @@ static void MirilliThread(void *arg) {
             for(int32_t i=0; i<MIRILLI_LED_CNT; i++) {
                 uint32_t tmp = ICalcDelayN(i, SMOOTH_VALUE);  // }
                 if(tmp > Delay) Delay = tmp;                  // } Calculate Delay
-                LumeLeds.ClrBuf[i].Adjust(ITargetClr[i]);    // Adjust current color
+                Npx2.ClrBuf[i].Adjust(ITargetClr[i]);    // Adjust current color
             } // for
-            LumeLeds.SetCurrentColors();
+            Npx2.SetCurrentColors();
             if (Delay == 0) ColorsDone = true;  // Setup completed
             else chThdSleepMilliseconds(Delay);
         }
@@ -49,7 +49,7 @@ static void MirilliThread(void *arg) {
 }
 
 void InitMirilli() {
-    LumeLeds.Init(MIRILLI_LED_CNT);
+    Npx2.Init();
     chThdCreateStatic(waMirilli, sizeof(waMirilli), NORMALPRIO, (tfunc_t)MirilliThread, NULL);
 }
 

@@ -10,8 +10,8 @@
 #include "kl_fs_utils.h"
 #include "kl_time.h"
 #include "Mirilli.h"
-#include "usb_msdcdc.h"
-//#include "sdram.h"
+//#include "usb_msdcdc.h"
+#include "sdram.h"
 #include "Lora.h"
 
 #if 1 // =============== Defines ================
@@ -22,13 +22,7 @@ CmdUart_t Uart{&CmdUartParams};
 static void ITask();
 static void OnCmd(Shell_t *PShell);
 
-#define NPX1_LED_CNT    516
-static const NeopixelParams_t LedParams(NPX1_SPI, NPX1_GPIO, NPX1_PIN, NPX1_AF, NPX1_DMA, NPX_DMA_MODE(NPX1_DMA_CHNL));
-static const NeopixelParams_t LedParams2(NPX2_SPI, NPX2_GPIO, NPX2_PIN, NPX2_AF, NPX2_DMA, NPX_DMA_MODE(NPX2_DMA_CHNL));
-Neopixels_t Npx(&LedParams);
-Neopixels_t LumeLeds(&LedParams2);
-
-static bool UsbPinWasHi = false;
+//static bool UsbPinWasHi = false;
 LedBlinker_t Led{LED_PIN};
 #endif
 
@@ -81,7 +75,9 @@ private:
     int32_t CurrValue = 0;
     void SetColorAt(int32_t x, Color_t AColor) {
         int32_t LedIndx = (StartIndx < EndIndx)? (StartIndx + x) : (StartIndx - x);
-        if(LedIndx >= StartIndx and LedIndx <= EndIndx) Npx.ClrBuf[LedIndx] = AColor;
+        if(LedIndx >= StartIndx and LedIndx <= EndIndx and LedIndx < NPX_LED_CNT) {
+            Npx.ClrBuf[LedIndx] = AColor;
+        }
     }
     // Effect
     class {
@@ -98,7 +94,7 @@ private:
         }
     } Flash;
 public:
-    enum Eff_t {effNone, effAdd, effRemove} Eff;
+    enum Eff_t {effNone, effAdd, effRemove} Eff = effNone;
     Flask_t (int32_t AStarID, int32_t AEndID, Color_t AColor) :
         StartIndx(AStarID), EndIndx(AEndID), Clr(AColor) {}
     // Value must be within [FLASK_MIN_VALUE; FLASK_MAX_VALUE]
@@ -249,40 +245,35 @@ int main() {
     Clk.SetCoreClk80MHz();
     Clk.Setup48Mhz();
     Clk.UpdateFreqValues();
-
     // ==== Init OS ====
     halInit();
     chSysInit();
-
     // ==== Init Hard & Soft ====
-//    SdramInit();
+    SdramInit();
     EvtQMain.Init();
     Uart.Init();
     Printf("\r%S %S\r\n", APP_NAME, XSTRINGIFY(BUILD_TIME));
     Clk.PrintFreqs();
 
-//    SdramCheck();
-
-//    Lora.Init();
-
-
     Led.Init();
     Led.StartOrRestart(lsqIdle);
+
+//    SdramCheck();
+//    Lora.Init();
 
 //    SD.Init();
 //    if(SD.IsReady) {
 //    }
 
     // Time
-//    BackupSpc::EnableAccess();
-//    ClrH.DWord32 = BackupSpc::ReadRegister(BCKP_REG_CLRH_INDX);
-//    ClrM.DWord32 = BackupSpc::ReadRegister(BCKP_REG_CLRM_INDX);
-//    InitMirilli();
-//    Time.Init();
+    BackupSpc::EnableAccess();
+    ClrH.DWord32 = BackupSpc::ReadRegister(BCKP_REG_CLRH_INDX);
+    ClrM.DWord32 = BackupSpc::ReadRegister(BCKP_REG_CLRM_INDX);
+    InitMirilli();
+    Time.Init();
 
     // Points
-//    Npx.Init(NPX1_LED_CNT);
-    Npx.Init(1);
+    Npx.Init();
     Points.Init();
 
     // USB
@@ -309,18 +300,18 @@ void ITask() {
             case evtIdEverySecond:
 //                Printf("Second\r");
                 IndicateNewSecond();
-                // Check if USB connected/disconnected
-                if(PinIsHi(USB_DETECT_PIN) and !UsbPinWasHi) {
-                    UsbPinWasHi = true;
-                    EvtQMain.SendNowOrExit(EvtMsg_t(evtIdUsbConnect));
-                }
-                else if(!PinIsHi(USB_DETECT_PIN) and UsbPinWasHi) {
-                    UsbPinWasHi = false;
-                    EvtQMain.SendNowOrExit(EvtMsg_t(evtIdUsbDisconnect));
-                }
+//                // Check if USB connected/disconnected
+//                if(PinIsHi(USB_DETECT_PIN) and !UsbPinWasHi) {
+//                    UsbPinWasHi = true;
+//                    EvtQMain.SendNowOrExit(EvtMsg_t(evtIdUsbConnect));
+//                }
+//                else if(!PinIsHi(USB_DETECT_PIN) and UsbPinWasHi) {
+//                    UsbPinWasHi = false;
+//                    EvtQMain.SendNowOrExit(EvtMsg_t(evtIdUsbDisconnect));
+//                }
                 break;
 
-#if 1 // ======= USB =======
+#if 0 // ======= USB =======
             case evtIdUsbConnect:
                 Printf("USB connect\r");
                 UsbMsdCdc.Connect();

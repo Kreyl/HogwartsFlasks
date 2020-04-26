@@ -39,11 +39,13 @@
 #define LED_PIN         GPIOF, 7, omPushPull
 
 // Neopixel LEDs
-#define NPX1_SPI        SPI5
-#define NPX1_GPIO       GPIOF
-#define NPX1_PIN        9
-#define NPX1_AF         AF5
+#define NPX_LED_CNT     516
+#define NPX_SPI         SPI5
+#define NPX_GPIO        GPIOF
+#define NPX_PIN         9
+#define NPX_AF          AF5
 
+#define NPX2_LED_CNT    25  // See Mirilli.h
 #define NPX2_SPI        SPI1
 #define NPX2_GPIO       GPIOB
 #define NPX2_PIN        5
@@ -116,8 +118,8 @@
 #define UART_DMA_RX_MODE(Chnl) (STM32_DMA_CR_CHSEL(Chnl) | DMA_PRIORITY_MEDIUM | STM32_DMA_CR_MSIZE_BYTE | STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MINC | STM32_DMA_CR_DIR_P2M | STM32_DMA_CR_CIRC)
 
 // NPX
-#define NPX1_DMA        STM32_DMA_STREAM_ID(2, 4)  // SPI5 TX
-#define NPX1_DMA_CHNL   2
+#define NPX_DMA         STM32_DMA_STREAM_ID(2, 4)  // SPI5 TX
+#define NPX_DMA_CHNL    2
 #define NPX2_DMA        STM32_DMA_STREAM_ID(2, 3)  // SPI1 TX
 #define NPX2_DMA_CHNL   3
 
@@ -149,14 +151,16 @@
 #endif // DMA
 
 #if 1 // ========================== USART ======================================
-#define PRINTF_FLOAT_EN FALSE
+#define PRINTF_FLOAT_EN TRUE
 #define UART_TXBUF_SZ   8192
 #define UART_RXBUF_SZ   99
 
 #define UARTS_CNT       1
 
+#define CMD_UART        USART6
+
 #define CMD_UART_PARAMS \
-    USART6, UART_TX_PIN, UART_RX_PIN, \
+    CMD_UART, UART_TX_PIN, UART_RX_PIN, \
     UART_DMA_TX, UART_DMA_RX, UART_DMA_TX_MODE(UART_DMA_CHNL), UART_DMA_RX_MODE(UART_DMA_CHNL), \
     uartclkHSI
 

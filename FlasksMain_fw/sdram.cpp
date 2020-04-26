@@ -97,6 +97,10 @@ void SdramInit() {
     FMC_SDRAM->SDCMR = 0b100UL | FMC_SDCMR_CTB1 | (((0b011UL << 4) | 0b0000UL) << 9);
     // Program the refresh rate. Refresh Period for 8192 rows is 64ms.
     FMC_SDRAM->SDRTR = 292 << 1; // (64ms / 8192) * 40MHz - 20
+    // ==== Remap SDRAM to 0x60000000 ====
+#ifdef REMAP_TO_0x6ETC
+    SYSCFG->MEMRMP |= SYSCFG_MEMRMP_SWP_FMC_0;
+#endif
 }
 
 void SdramCheck() {
@@ -116,7 +120,7 @@ void SdramCheck() {
 //    *(volatile uint32_t*)Addr = 0xCA115EA1UL;
 
     // Read
-    Addr = 0xC0000000;
+    Addr = SDRAM_ADDR;
     Start = chVTGetSystemTimeX();
     for(uint32_t i=0; i<Cnt; i++) {
         volatile uint32_t Value = *(volatile uint32_t*)Addr;
@@ -132,19 +136,14 @@ caddr_t _sbrk(int incr) {
     extern uint8_t __heap_base__;
     extern uint8_t __heap_end__;
 
-    static uint8_t *current_end = NULL;
-    uint8_t *current_block_address;
-
-    if (!current_end)
-        current_end = &__heap_base__;
-
-    current_block_address = current_end;
+    static uint8_t *current_end = &__heap_base__;
+    uint8_t *current_block_address = current_end;
 
     incr = (incr + 3) & (~3);
-    if (current_end + incr > &__heap_end__) {
+    if(current_end + incr > &__heap_end__) {
         errno = ENOMEM;
         return (caddr_t) -1;
     }
     current_end += incr;
-    return (caddr_t) current_block_address;
+    return (caddr_t)current_block_address;
 }
