@@ -2883,6 +2883,26 @@ void Clk_t::Setup48Mhz() {
     }
 }
 
+void Clk_t::SetDivSai1(uint32_t RDiv, uint32_t LCDDiv) {
+    // R Div
+    uint32_t tmp = RCC->PLLSAICFGR;
+    tmp &= ~RCC_PLLSAICFGR_PLLSAIR;
+    tmp |= (RDiv << RCC_PLLSAICFGR_PLLSAIR_Pos);
+    RCC->PLLSAICFGR = tmp;
+    // LCD div
+    tmp = RCC->DCKCFGR1;
+    tmp &= ~RCC_DCKCFGR1_PLLSAIDIVR;
+    switch(LCDDiv) {
+        case 2: break;
+        case 4:  tmp |= (0b01UL << 16); break;
+        case 8:  tmp |= (0b10UL << 16); break;
+        case 16: tmp |= (0b11UL << 16); break;
+        default: break;
+    } // switch
+    RCC->DCKCFGR1 = tmp;
+
+}
+
 // Scale3: f<=144Mhz; Scale2: 144<f<=169MHz; Scale1: 168<f<=216MHz
 void Clk_t::SetVoltageScale(MCUVoltScale_t VoltScale) {
     uint32_t tmp = PWR->CR1;

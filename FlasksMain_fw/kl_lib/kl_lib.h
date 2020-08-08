@@ -2156,6 +2156,7 @@ public:
     void SetupFlashLatency(uint8_t AHBClk_MHz, uint32_t MCUVoltage_mv);
     void SetVoltageScale(MCUVoltScale_t VoltScale);
     void Setup48Mhz();
+    void SetDivSai1(uint32_t RDiv, uint32_t LCDDiv);
     // LSI
     void EnableLSI() {
         RCC->CSR |= RCC_CSR_LSION;

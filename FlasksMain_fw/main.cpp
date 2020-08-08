@@ -35,6 +35,7 @@ int main() {
     Clk.SetCoreClk216MHz();
 //    Clk.SetCoreClk80MHz();
     Clk.Setup48Mhz();
+    Clk.SetDivSai1(3, 8); // SAI R div = 3 => R = 2*96/3 = 64 MHz; LCD_CLK = 64 / 8 = 8MHz
     Clk.UpdateFreqValues();
     // ==== Init OS ====
     halInit();
@@ -62,7 +63,8 @@ int main() {
 //    }
 
     LcdInit();
-    LcdPaintL1(0, 0, 99, 99, 99, 99, 255, 99);
+
+//    Lcd
 
 //    Npx.Init();
     // USB
@@ -133,6 +135,20 @@ void OnCmd(Shell_t *PShell) {
         if(PCmd->GetNext<uint8_t>(&Clr.B) != retvOk) { PShell->Ack(retvCmdError); return; }
         for(int i=0; i<2; i++) Npx.ClrBuf[i] = Clr;
         Npx.SetCurrentColors();
+    }
+
+    else if(PCmd->NameIs("lcd")) {
+        uint32_t A, R, G, B;
+        if(PCmd->GetNext<uint32_t>(&A) != retvOk) { PShell->Ack(retvCmdError); return; }
+        if(PCmd->GetNext<uint32_t>(&R) != retvOk) { PShell->Ack(retvCmdError); return; }
+        if(PCmd->GetNext<uint32_t>(&G) != retvOk) { PShell->Ack(retvCmdError); return; }
+        if(PCmd->GetNext<uint32_t>(&B) != retvOk) { PShell->Ack(retvCmdError); return; }
+        LcdPaintL1(0, 0, 99, 99, A, R, G, B);
+        PShell->Ack(retvOk);
+    }
+
+    else if(PCmd->NameIs("chk")) {
+        SdramCheck();
     }
 
     else {

@@ -43,11 +43,13 @@ struct ColorARGB_t {
 #define LBUF_SZ         (sizeof(ColorARGB_t) * LCD_WIDTH * LCD_HEIGHT)
 #define LBUF_CNT        (LCD_WIDTH * LCD_HEIGHT)
 #define LINE_SZ         (sizeof(ColorARGB_t) * LCD_WIDTH)
-ColorARGB_t *FrameBuf1;// = (ColorARGB_t*)(SDRAM_ADDR + 0);
+ColorARGB_t *FrameBuf1;
 //#define ENABLE_LAYER2   TRUE
 #if ENABLE_LAYER2
 ColorARGB_t *FrameBuf2;// = (ColorARGB_t*)(SDRAM_ADDR + LBUF_SZ);
 #endif
+
+const stm32_dma_stream_t *PDmaMCpy;
 
 void LcdInit() {
     Backlight.Init();
@@ -102,7 +104,9 @@ void LcdInit() {
     PinSetupAlterFunc(GPIOG, 12, omPushPull, pudNone, AF14); // B1
     PinSetupAlterFunc(GPIOG, 13, omPushPull, pudNone, AF14); // R0
 #endif
-   // HSYNC and VSYNC pulse width
+
+#if 1 // ==== HSYNC / VSYNC etc. ====
+    // HSYNC and VSYNC pulse width
     LTDC->SSCR = ((HSYNC_WIDTH - 1UL) << 16) | (VSYNC_WIDTH - 1UL);
     // HBP and VBP
     LTDC->BPCR = ((HSYNC_WIDTH + HBP - 1UL) << 16) | (VSYNC_WIDTH + VBP - 1UL);
@@ -120,9 +124,10 @@ void LcdInit() {
             (0UL << 0);   // LTDC dis
     // Background color: R<<16 | G<<8 | B<<0
     LTDC->BCCR = 0; // Paint it black
+#endif
 
-    // === Layer 1 ===
-    memset(FrameBuf1, 0, LBUF_SZ); // Fill Layer 1
+#if 1 // === Layer 1 ===
+//    memset(FrameBuf1, 0, LBUF_SZ); // Fill Layer 1
     // layer window horizontal and vertical position
     LTDC_Layer1->WHPCR = ((LCD_WIDTH  + HBACK_PORCH - 1UL) << 16) | HBACK_PORCH; // Stop and Start positions
     LTDC_Layer1->WVPCR = ((LCD_HEIGHT + VBACK_PORCH - 1UL) << 16) | VBACK_PORCH; // Stop and Start positions
@@ -132,6 +137,7 @@ void LcdInit() {
     LTDC_Layer1->CFBLR = (LINE_SZ << 16) | (LINE_SZ + 3UL);
     LTDC_Layer1->CFBLNR = LCD_HEIGHT; // LCD_HEIGHT lines in a buffer
     LTDC_Layer1->CR = 1;    // Enable layer
+#endif
 
 #if ENABLE_LAYER2 // === Layer 2 ===
     LTDC_Layer2->WHPCR = (108UL << 16) | 72UL; // Stop and Start positions
@@ -152,7 +158,12 @@ void LcdInit() {
     PinSetHi(LCD_DISP);
 
     // DMA2D
-    rccEnableDMA2D(FALSE);
+//    rccEnableDMA2D(FALSE);
+
+    PDmaMCpy = dmaStreamAlloc(MEMCPY_DMA, IRQ_PRIO_MEDIUM, nullptr, nullptr);
+//    dmaStreamSetMode      (PDmaMCpy, Params->DmaModeTx);
+
+
 
 }
 
@@ -168,14 +179,35 @@ void LcdDrawARGB(uint32_t Left, uint32_t Top, uint32_t* Img, uint32_t ImgW, uint
 }
 
 void LcdPaintL1(uint32_t Left, uint32_t Top, uint32_t Right, uint32_t Bottom, uint32_t A, uint32_t R, uint32_t G, uint32_t B) {
-//    Printf("L%u T%u; R%u B%u; %u %u %u %u;   %X\r", Left, Top, Right, Bottom, A, R,G,B, v);
-//    ColorARGB_t *ptr = FrameBuf1 +
+    ColorARGB_t argb;
+    argb.A = A;
+    argb.R = R;
+    argb.G = G;
+    argb.B = B;
 
+    volatile uint32_t v = argb.DWord32;
 
-    memset(FrameBuf1, 0x55, LBUF_SZ);
-
+//    Printf("%X\r", v);
 //    for(uint32_t i=0; i<LBUF_CNT; i++) {
 //        FrameBuf1[i].DWord32 = v;
+//    }
+
+    dmaStreamSetPeripheral(PDmaMCpy, &v);
+    dmaStreamSetMemory0(PDmaMCpy, FrameBuf1);
+    dmaStreamSetTransactionSize(PDmaMCpy, 0xFFFF);
+    dmaStreamSetMode(PDmaMCpy, (DMA_PRIORITY_HIGH | STM32_DMA_CR_MSIZE_WORD | STM32_DMA_CR_PSIZE_WORD | STM32_DMA_CR_MINC | STM32_DMA_CR_DIR_M2M));
+    dmaStreamEnable(PDmaMCpy);
+    dmaWaitCompletion(PDmaMCpy);
+
+    dmaStreamSetMemory0(PDmaMCpy, FrameBuf1 + 0xFFFFUL);
+    dmaStreamSetTransactionSize(PDmaMCpy, LBUF_CNT- 0xFFFFUL);
+    dmaStreamEnable(PDmaMCpy);
+    dmaWaitCompletion(PDmaMCpy);
+
+
+//    for(uint32_t i=0; i<LBUF_CNT; i++) {
+//        if(FrameBuf1[i].DWord32 != v) Printf("%d %X\r", i, FrameBuf1[i].DWord32);
+//        (void)FrameBuf1[i];
 //    }
 }
 

@@ -113,6 +113,9 @@
 
 #if 1 // =========================== DMA =======================================
 #define STM32_DMA_REQUIRED  TRUE
+#define MEMCPY_DMA      STM32_DMA_STREAM_ID(2, 2)
+#define MEMCPY_DMA_TX_MODE(Chnl) (STM32_DMA_CR_CHSEL(Chnl) | DMA_PRIORITY_HIGH | STM32_DMA_CR_MSIZE_WORD | STM32_DMA_CR_PSIZE_WORD | STM32_DMA_CR_MINC | STM32_DMA_CR_DIR_M2M)
+
 // ==== Uart ====
 // Remap is made automatically if required
 #define UART_DMA_TX     STM32_DMA_STREAM_ID(2, 6)
