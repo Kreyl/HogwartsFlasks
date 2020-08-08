@@ -9,7 +9,7 @@
 
 // ==== General ====
 #define BOARD_NAME          "HogwartsFlasks01"
-#define APP_NAME            "HogwartsFlasks"
+#define APP_NAME            "MJPG"
 
 // MCU type as defined in the ST header.
 #define STM32F767xx
@@ -72,6 +72,10 @@
 #define SD_DAT3         GPIOB,  4, omPushPull, pudPullUp, AF10
 #define SD_CLK          GPIOD,  6, omPushPull, pudNone,   AF11
 #define SD_CMD          GPIOD,  7, omPushPull, pudPullUp, AF11
+
+// LCD
+#define LCD_BCKLT       GPIOF, 6, TIM10, 1, invNotInverted, omPushPull, 99
+#define LCD_DISP        GPIOD, 4
 
 // USB
 #define USB_DETECT_PIN  GPIOA, 9

@@ -75,17 +75,29 @@ void SdramInit() {
             (0b01UL << 4)  | // Memory data bus width: 16 bits
             (0b10UL << 2)  | // Number of row address bits: 13
             (0b01UL << 0);   // Number of column address bits: 9
-    // Timings: HCLK = 80MHz => SDCLK = 40MHz => 1 cycle = 25ns
-    FMC_SDRAM->SDTR[0] =
-            (0b0010UL << 24) | // RCD (Row to column delay) = 3 cycles (table at 2pg) (but 18ns)
-            (0b0010UL << 20) | // RP (Row precharge delay) = 3 cycles (table at 2pg) (but 18ns)
-            (0b0000UL << 16) | // WR = 1 cycle (WR >= RAS-RCD and WR >= RC-RCD-RP)
-            (0b0010UL << 12) | // RC = 60ns = 3 cycles
-            (0b0001UL << 8)  | // RAS = 42ns = 2 cycles
-            (0b0010UL << 4)  | // XSR = 67ns = 3 cycles
-            (0b0000UL << 0);   // MRD = 1 CK
+    // ==== Timings ====
+    if(Clk.AHBFreqHz == 80000000) { // HCLK = 80MHz => SDCLK = 40MHz => 1 cycle = 25ns
+        FMC_SDRAM->SDTR[0] =
+                (0b0010UL << 24) | // RCD (Row to column delay) = 3 cycles (table at 2pg) (but 18ns)
+                (0b0010UL << 20) | // RP (Row precharge delay) = 3 cycles (table at 2pg) (but 18ns)
+                (0b0000UL << 16) | // WR = 1 cycle (WR >= RAS-RCD and WR >= RC-RCD-RP)
+                (0b0010UL << 12) | // RC = 60ns = 3 cycles
+                (0b0001UL << 8)  | // RAS = 42ns = 2 cycles
+                (0b0010UL << 4)  | // XSR = 67ns = 3 cycles
+                (0b0000UL << 0);   // MRD = 1 CK
+    }
+    else if(Clk.AHBFreqHz == 216000000) { // HCLK = 216MHz => SDCLK = 108MHz => 1 cycle = 9.26ns
+        FMC_SDRAM->SDTR[0] =
+                (0b0010UL << 24) | // RCD (Row to column delay) = 3 cycles (table at 2pg) (but 18ns)
+                (0b0010UL << 20) | // RP (Row precharge delay) = 3 cycles (table at 2pg) (but 18ns)
+                (0b0000UL << 16) | // WR = 1 cycle (WR >= RAS-RCD and WR >= RC-RCD-RP)
+                (0b0110UL << 12) | // RC = 60ns = 7 cycles  (p29)
+                (0b0100UL << 8)  | // RAS = 42ns = 5 cycles (p29)
+                (0b0111UL << 4)  | // XSR = 67ns = 8 cycles (p30)
+                (0b0001UL << 0);   // MRD = 2 CK            (p30)
+    }
 
-    // Set MODE bits to �001� to start delivering the clock to the memory
+    // Set MODE bits to 001 to start delivering the clock to the memory
     FMC_SDRAM->SDCMR = 0b001UL | FMC_SDCMR_CTB1;
     // Wait during the prescribed delay period
     chThdSleepMicroseconds(100);

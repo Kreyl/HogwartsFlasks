@@ -2830,6 +2830,26 @@ void Clk_t::SetCoreClk80MHz() {
     if(EnablePLL() == retvOk) SwitchToPLL();
 }
 
+void Clk_t::SetCoreClk216MHz() {
+    EnablePrefeth();
+    // First, switch to HSI if clock src is not HSI
+    if((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSI) SwitchToHSI();
+    // Disable PLL and SAI, enable HSE
+    DisablePLL();
+    DisablePLLSai();
+    DisablePLLI2S();
+    if(EnableHSE() != retvOk) return;
+    SetupPllSrc(pllsrcHse);
+    SetVoltageScale(mvScale3);
+    // Setup dividers
+    SetupFlashLatency(216, 3300);
+    // APB1 is 54MHz max, APB2 is 108MHz max
+    SetupBusDividers(ahbDiv1, apbDiv4, apbDiv2);
+    // 12MHz / 6 = 2; 2 * 216 / 2 = 216; Q and R are don't care
+    SetupPllMulDiv(6, 216, 2, 8, 2);
+    if(EnablePLL() == retvOk) SwitchToPLL();
+}
+
 // PLL_SAI output P used to produce 48MHz, it is selected as PLL48CLK
 void Clk_t::Setup48Mhz() {
     // Get SAI input freq
