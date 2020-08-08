@@ -417,6 +417,13 @@ void PinOutputPWM_t::Init() const {
     else if(ILPTim == LPTIM2) AF = AF14;
 #endif
     PinSetupAlterFunc(ISetup.PGpio, ISetup.Pin, ISetup.OutputType, pudNone, AF);
+#elif defined STM32F7XX
+    AlterFunc_t AF = AF1;
+    if(ITmr == TIM1 or ITmr == TIM2) AF = AF1;
+    else if(ITmr == TIM3 or ITmr == TIM4 or ITmr == TIM5) AF = AF2;
+    else if(ITmr == TIM8 or ITmr == TIM9 or ITmr == TIM10 or ITmr == TIM11 or ILPTim == LPTIM1) AF = AF3;
+    else if(ITmr == TIM12 or ITmr == TIM13 or ITmr == TIM14) AF = AF9;
+    PinSetupAlterFunc(ISetup.PGpio, ISetup.Pin, ISetup.OutputType, pudNone, AF);
 #endif
 }
 

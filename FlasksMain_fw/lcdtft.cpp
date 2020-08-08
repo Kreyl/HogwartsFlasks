@@ -172,6 +172,8 @@ void LcdPaintL1(uint32_t Left, uint32_t Top, uint32_t Right, uint32_t Bottom, ui
 //    ColorARGB_t *ptr = FrameBuf1 +
 
 
+    memset(FrameBuf1, 0x55, LBUF_SZ);
+
 //    for(uint32_t i=0; i<LBUF_CNT; i++) {
 //        FrameBuf1[i].DWord32 = v;
 //    }

@@ -49,22 +49,20 @@ int main() {
     Led.Init();
     Led.StartOrRestart(lsqIdle);
 
-    SdramCheck();
+//    SdramCheck();
 //    Lora.Init();
 
     SD.Init();
-    if(TryOpenFileRead("65.txt", &ifile) == retvOk) {
-        uint32_t Sz = 99;
-        if(f_read(&ifile, ibuf, Sz, &Sz) == FR_OK) {
-            Printf("%A\r", ibuf, Sz, ' ');
-        }
-        CloseFile(&ifile);
-    }
-
-//    if(SD.IsReady) {
+//    if(TryOpenFileRead("65.txt", &ifile) == retvOk) {
+//        uint32_t Sz = 99;
+//        if(f_read(&ifile, ibuf, Sz, &Sz) == FR_OK) {
+//            Printf("%A\r", ibuf, Sz, ' ');
+//        }
+//        CloseFile(&ifile);
 //    }
 
-//    LcdInit();
+    LcdInit();
+    LcdPaintL1(0, 0, 99, 99, 99, 99, 255, 99);
 
 //    Npx.Init();
     // USB

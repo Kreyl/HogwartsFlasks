@@ -28,7 +28,6 @@
       8,
       9,
       10,
-      11,
       12,
       13,
       14,
@@ -47,13 +46,9 @@
       27,
       28,
       29,
-      30,
-      31,
-      32,
-      33,
-      34
+      30
     ],
-    "visible_layers": "7ffff_ffffffff"
+    "visible_layers": "0f110_00000001"
   },
   "meta": {
     "filename": "HogwartsFlasksMain.kicad_prl",
