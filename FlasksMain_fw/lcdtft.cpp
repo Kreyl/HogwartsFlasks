@@ -30,15 +30,6 @@
 
 PinOutputPWM_t Backlight{LCD_BCKLT};
 
-struct ColorARGB_t {
-    union {
-        uint32_t DWord32;
-        struct {
-            uint8_t B, G, R, A;
-        } __attribute__((packed));
-    } __attribute__((packed));
-} __attribute__((packed));
-
 // Layer Buffers and other sizes
 #define LBUF_SZ         (sizeof(ColorARGB_t) * LCD_WIDTH * LCD_HEIGHT)
 #define LBUF_CNT        (LCD_WIDTH * LCD_HEIGHT)
@@ -187,7 +178,6 @@ void LcdPaintL1(uint32_t Left, uint32_t Top, uint32_t Right, uint32_t Bottom, ui
 
     volatile uint32_t v = argb.DWord32;
 
-//    Printf("%X\r", v);
 //    for(uint32_t i=0; i<LBUF_CNT; i++) {
 //        FrameBuf1[i].DWord32 = v;
 //    }
@@ -203,8 +193,8 @@ void LcdPaintL1(uint32_t Left, uint32_t Top, uint32_t Right, uint32_t Bottom, ui
     dmaStreamSetTransactionSize(PDmaMCpy, LBUF_CNT- 0xFFFFUL);
     dmaStreamEnable(PDmaMCpy);
     dmaWaitCompletion(PDmaMCpy);
-
-
+//
+//
 //    for(uint32_t i=0; i<LBUF_CNT; i++) {
 //        if(FrameBuf1[i].DWord32 != v) Printf("%d %X\r", i, FrameBuf1[i].DWord32);
 //        (void)FrameBuf1[i];

@@ -14,6 +14,7 @@
 #include "sdram.h"
 #include "Lora.h"
 #include "lcdtft.h"
+#include "AviDecode.h"
 
 #if 1 // =============== Defines ================
 // Forever
@@ -26,9 +27,6 @@ static void OnCmd(Shell_t *PShell);
 //static bool UsbPinWasHi = false;
 LedBlinker_t Led{LED_PIN};
 #endif
-
-FIL ifile;
-uint8_t ibuf[256];
 
 int main() {
     // ==== Setup clock ====
@@ -54,17 +52,18 @@ int main() {
 //    Lora.Init();
 
     SD.Init();
-//    if(TryOpenFileRead("65.txt", &ifile) == retvOk) {
-//        uint32_t Sz = 99;
-//        if(f_read(&ifile, ibuf, Sz, &Sz) == FR_OK) {
-//            Printf("%A\r", ibuf, Sz, ' ');
-//        }
-//        CloseFile(&ifile);
-//    }
 
     LcdInit();
-
-//    Lcd
+    Avi::Init();
+    Avi::Start("Plane_480x272.avi");
+//    if(Avi::DecodeStart("SWTrail.avi") == retvOk) {
+//        for(int i=0; i<1; i++) {
+//            if(Avi::GetNextFrame() != retvOk) break;
+//            Avi::ShowFrame();
+//            chThdSleepMilliseconds(450);
+//        }
+//    }
+//    Avi::Stop();
 
 //    Npx.Init();
     // USB

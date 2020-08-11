@@ -10,6 +10,7 @@
 					<extension id="org.eclipse.cdt.core.GmakeErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
 					<extension id="org.eclipse.cdt.core.CWDLocator" point="org.eclipse.cdt.core.ErrorParser"/>
 					<extension id="org.eclipse.cdt.core.GCCErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
+					<extension id="org.eclipse.cdt.core.GLDErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
@@ -64,6 +65,7 @@
 									<listOptionValue builtIn="false" value=".././os/stm32F7xx"/>
 									<listOptionValue builtIn="false" value="../Lora"/>
 									<listOptionValue builtIn="false" value="../sd"/>
+									<listOptionValue builtIn="false" value="../jpeg"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c.929077521" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c"/>
 							</tool>
@@ -84,6 +86,7 @@
 									<listOptionValue builtIn="false" value=".././os/include"/>
 									<listOptionValue builtIn="false" value=".././os/stm32F7xx"/>
 									<listOptionValue builtIn="false" value="../Lora"/>
+									<listOptionValue builtIn="false" value="../jpeg"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.cpp.compiler.input.cpp.1618118143" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.cpp.compiler.input.cpp"/>
 							</tool>
@@ -133,6 +136,7 @@
 					<extension id="org.eclipse.cdt.core.GmakeErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
 					<extension id="org.eclipse.cdt.core.CWDLocator" point="org.eclipse.cdt.core.ErrorParser"/>
 					<extension id="org.eclipse.cdt.core.GCCErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
+					<extension id="org.eclipse.cdt.core.GLDErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
@@ -190,6 +194,7 @@
 									<listOptionValue builtIn="false" value=".././os/stm32F7xx"/>
 									<listOptionValue builtIn="false" value="../Lora"/>
 									<listOptionValue builtIn="false" value="../sd"/>
+									<listOptionValue builtIn="false" value="../jpeg"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c.1034072135" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c"/>
 							</tool>
@@ -213,6 +218,7 @@
 									<listOptionValue builtIn="false" value=".././os/stm32F7xx"/>
 									<listOptionValue builtIn="false" value="../Lora"/>
 									<listOptionValue builtIn="false" value="../sd"/>
+									<listOptionValue builtIn="false" value="../jpeg"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.cpp.compiler.input.cpp.1186900274" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.cpp.compiler.input.cpp"/>
 							</tool>
