@@ -10,10 +10,7 @@
 #include "shell.h"
 #include "sdram.h"
 #include "color.h"
-
-// Display size
-#define LCD_WIDTH       480UL
-#define LCD_HEIGHT      272UL
+#include "lcdtft.h"
 
 // Sync params
 #define HSYNC_WIDTH     4UL  // See display datasheet

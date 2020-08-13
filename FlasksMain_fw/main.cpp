@@ -54,9 +54,11 @@ int main() {
     SD.Init();
 
     LcdInit();
+    LcdPaintL1(0, 0, 100, 100, 255, 0, 255, 0);
+    chThdSleepMilliseconds(360);
     Avi::Init();
-    Avi::Start("Plane_480x272.avi");
-//    if(Avi::DecodeStart("SWTrail.avi") == retvOk) {
+//    Avi::Start("Plane_480x272.avi");
+    Avi::Start("SWTrail.avi");
 //        for(int i=0; i<1; i++) {
 //            if(Avi::GetNextFrame() != retvOk) break;
 //            Avi::ShowFrame();

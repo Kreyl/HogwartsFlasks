@@ -1,11 +1,17 @@
 /*
  * lcdtft.h
  *
- *  Created on: 4 нояб. 2019 г.
+ *  Created on: 4 пїЅпїЅпїЅпїЅ. 2019 пїЅ.
  *      Author: Kreyl
  */
 
 #pragma once
+
+#include "color.h"
+
+// Display size
+#define LCD_WIDTH       480UL
+#define LCD_HEIGHT      272UL
 
 void LcdInit();
 
@@ -16,3 +22,5 @@ void LcdPaintL1(uint32_t Left, uint32_t Top, uint32_t Right, uint32_t Bottom, ui
 
 
 uint8_t LcdDrawBmp(uint8_t *Buff, uint32_t Sz);
+
+extern ColorARGB_t *FrameBuf1;

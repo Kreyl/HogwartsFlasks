@@ -605,8 +605,7 @@ void InitJPEG() {
     Printf("Jpg Init ok\r");
 }
 
-__unused
-static uint32_t JPEG_GetQuality() {
+uint32_t JPEG_GetQuality() {
     uint32_t quality = 0;
     uint32_t quantRow, quantVal, scale, i, j;
     __IO uint32_t *tableAddress = JPEG->QMEM0;

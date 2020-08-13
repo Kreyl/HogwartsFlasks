@@ -10,7 +10,7 @@
 #include "jpeg_utils.h"
 #include "kl_jpeg.h"
 #include "MsgQ.h"
-#include "color.h"
+#include "lcdtft.h"
 
 FIL ifile;
 
@@ -128,7 +128,7 @@ static struct {
 #endif
 
 #if 1 // ============================ Video queue ==============================
-enum VideoCmd_t { vcmdNone, vcmdStart, vcmdStop, vcmdNewBufReady };
+enum VideoCmd_t { vcmdNone, vcmdStart, vcmdStop, vcmdNewBufReady, vcmdEndDecode };
 
 union VideoMsg_t {
     uint32_t DWord[2];
@@ -148,24 +148,66 @@ union VideoMsg_t {
 static EvtMsgQ_t<VideoMsg_t, 9> MsgQVideo;
 #endif
 
+#if 1 // =============================== DMA2D =================================
+static void DMA2D_CopyBuffer(uint32_t *pSrc, uint32_t *pDst, uint32_t x, uint32_t y, uint32_t xsize, uint32_t ysize, uint32_t width_offset) {
+    DMA2D->CR = (0b01UL << 16); // PFC
+    // Input data
+    // When the DMA2D operates in memory-to-memory operation with pixel format conversion (no blending operation), the BG FIFO is not activated
+    DMA2D->FGMAR = (uint32_t) pSrc;
+    DMA2D->FGOR = 0; // No offset
+    // Alpha = 0xFF, no RedBlueSwap, no Alpha Inversion, replace Alpha, ARGB8888
+    DMA2D->FGPFCCR = (0xFFUL << 24) | (0b01UL << 16);
+    // Output
+    DMA2D->OPFCCR = 0; // No Red Blue swap, no alpha inversion, ARGB8888
+     DMA2D->OMAR = (uint32_t) pDst + (y * LCD_WIDTH + x) * 4;
+    DMA2D->OOR = LCD_WIDTH - xsize; // Output offset
+    DMA2D->NLR = (xsize << 16) | ysize; // Output PixelPerLine and Number of Lines
+    // Start
+    DMA2D->IFCR = 0x3FUL; // Clear all flags
+    DMA2D->CR |= DMA2D_CR_START;
+    // Wait for end
+    while(true) {
+        if(DMA2D->ISR & DMA2D_ISR_TCIF) break;
+    }
+}
+#endif
+
 #if 1 // ============================= Decoding ================================
 static const stm32_dma_stream_t *PDmaJIn;
 static const stm32_dma_stream_t *PDmaJOut;
 
-#define JPEG_DMA_IN_MODE  (STM32_DMA_CR_CHSEL(JPEG_DMA_CHNL) | DMA_PRIORITY_MEDIUM | STM32_DMA_CR_MSIZE_WORD | STM32_DMA_CR_PSIZE_WORD | STM32_DMA_CR_MINC | STM32_DMA_CR_DIR_M2P | STM32_DMA_CR_TCIE)
-#define JPEG_DMA_OUT_MODE (STM32_DMA_CR_CHSEL(JPEG_DMA_CHNL) | DMA_PRIORITY_MEDIUM | STM32_DMA_CR_MSIZE_WORD | STM32_DMA_CR_PSIZE_WORD | STM32_DMA_CR_MINC | STM32_DMA_CR_DIR_P2M | STM32_DMA_CR_TCIE)
+#define JPEG_DMA_IN_MODE  (STM32_DMA_CR_CHSEL(JPEG_DMA_CHNL) \
+        | STM32_DMA_CR_MBURST_INCR4 \
+        | STM32_DMA_CR_PBURST_INCR4 \
+        | DMA_PRIORITY_HIGH \
+        | STM32_DMA_CR_MSIZE_WORD \
+        | STM32_DMA_CR_PSIZE_WORD \
+        | STM32_DMA_CR_MINC \
+        | STM32_DMA_CR_DIR_M2P \
+        | STM32_DMA_CR_TCIE)
+
+#define JPEG_DMA_OUT_MODE (STM32_DMA_CR_CHSEL(JPEG_DMA_CHNL) \
+        | STM32_DMA_CR_MBURST_INCR4 \
+        | STM32_DMA_CR_PBURST_INCR4 \
+        | DMA_PRIORITY_VERYHIGH \
+        | STM32_DMA_CR_MSIZE_WORD \
+        | STM32_DMA_CR_PSIZE_WORD \
+        | STM32_DMA_CR_MINC \
+        | STM32_DMA_CR_DIR_P2M \
+        | STM32_DMA_CR_TCIE)
 
 #define OUTBUF_SZ   768000UL
-#define MCU_BUF_CNT (768UL / 4)
-#define MCU_BUF_SZ  (MCU_BUF_CNT * sizeof(uint32_t))
+#define MCU_BUF_CNT ((384UL * 8UL) / sizeof(uint32_t)) // Multiple of 384
 
 uint32_t MCU_TotalNb = 0;
 uint32_t MCU_BlockIndex = 0;
 JPEG_YCbCrToRGB_Convert_Function pConvert_Function;
+uint32_t icnt;
 
 uint8_t *OutBuf = nullptr;
 
-//extern ColorARGB_t *FrameBuf1;
+void HAL_JPEG_GetInfo();
+uint32_t JPEG_GetQuality();
 
 class {
 private:
@@ -193,7 +235,6 @@ public:
             BufToFill = Buf1;
             BufToProcess = Buf2;
         }
-        PrepareToFill();
     }
 } JMcuBuf;
 
@@ -229,23 +270,18 @@ void StartFrameDecoding() {
     JPEG->CONFR0 |=  JPEG_CONFR0_START; // Start everything
 }
 
-void ProcessMcuBuf() {
+uint8_t ProcessMcuBuf() {
     uint32_t ConvertedDataCount;
     // From, To, BlockIndex, FromSz, *ToSz
     MCU_BlockIndex += pConvert_Function((uint8_t*)JMcuBuf.BufToProcess, OutBuf, MCU_BlockIndex, JMcuBuf.DataSzToProcess, &ConvertedDataCount);
-    Printf(" bi: %u\r", MCU_BlockIndex);
-    if(MCU_BlockIndex == MCU_TotalNb) Printf("Aga!\r");
+    icnt += JMcuBuf.DataSzToProcess;
+    if(MCU_BlockIndex == MCU_TotalNb) return retvOk;
+    else return retvInProgress;
 }
-
 #endif
 
-
-void DmaJpegInCB(void *p, uint32_t flags) {
-    PrintfI("InIRQ\r");
-}
-
 void DmaJpegOutCB(void *p, uint32_t flags) {
-    PrintfI("OutIRQ\r");
+//    PrintfI("OutIRQ\r");
     chSysLockFromISR();
     MsgQVideo.SendNowOrExitI(VideoMsg_t(vcmdNewBufReady));
     chSysUnlockFromISR();
@@ -259,6 +295,7 @@ static void VideoThd(void *arg) {
         VideoMsg_t Msg = MsgQVideo.Fetch(TIME_INFINITE);
         switch(Msg.Cmd) {
             case vcmdStart:
+                icnt = 0;
                 // Try to get next frame
                 if(ckFrame.ReadNext() == retvOk) StartFrameDecoding();
                 else MsgQVideo.SendNowOrExit(VideoMsg_t(vcmdStop));
@@ -271,7 +308,38 @@ static void VideoThd(void *arg) {
 
             case vcmdNewBufReady:
                 JMcuBuf.Switch(); // Switch buf and continue reception
+                JMcuBuf.PrepareToFill();
                 ProcessMcuBuf();  // Process what received
+                break;
+
+            case vcmdEndDecode:
+                JMcuBuf.Switch();
+                if(ProcessMcuBuf() == retvOk) {
+                    HAL_JPEG_GetInfo();
+                    hjpeg.Conf.ImageQuality = JPEG_GetQuality();
+                    // Copy RGB decoded Data to the display FrameBuffer
+                    uint32_t width_offset = 0;
+                    uint32_t xPos = (LCD_WIDTH - hjpeg.Conf.ImageWidth) / 2;
+                    uint32_t yPos = (LCD_HEIGHT - hjpeg.Conf.ImageHeight) / 2;
+
+                    if(hjpeg.Conf.ChromaSubsampling == JPEG_420_SUBSAMPLING) {
+                        if((hjpeg.Conf.ImageWidth % 16) != 0)
+                            width_offset = 16 - (hjpeg.Conf.ImageWidth % 16);
+                    }
+
+                    if(hjpeg.Conf.ChromaSubsampling == JPEG_422_SUBSAMPLING) {
+                        if((hjpeg.Conf.ImageWidth % 16) != 0)
+                            width_offset = 16 - (hjpeg.Conf.ImageWidth % 16);
+                    }
+
+                    if(hjpeg.Conf.ChromaSubsampling == JPEG_444_SUBSAMPLING) {
+                        if((hjpeg.Conf.ImageWidth % 8) != 0)
+                            width_offset = (hjpeg.Conf.ImageWidth % 8);
+                    }
+                    DMA2D_CopyBuffer((uint32_t *)OutBuf, (uint32_t *)FrameBuf1, xPos , yPos, hjpeg.Conf.ImageWidth, hjpeg.Conf.ImageHeight, width_offset);
+                    chThdSleepMilliseconds(42);
+                    MsgQVideo.SendNowOrExit(VideoMsg_t(vcmdStart));
+                }
                 break;
 
             default: break;
@@ -279,7 +347,7 @@ static void VideoThd(void *arg) {
     } // while true
 }
 
-static void HAL_JPEG_GetInfo() {
+void HAL_JPEG_GetInfo() {
     JPEG_ConfTypeDef *pInfo = &hjpeg.Conf;
     // Colorspace
     if     ((JPEG->CONFR1 & JPEG_CONFR1_NF) == JPEG_CONFR1_NF_1) pInfo->ColorSpace = JPEG_YCBCR_COLORSPACE;
@@ -358,10 +426,16 @@ void Init() {
     JPEG->CONFR1 |= JPEG_CONFR1_DE | JPEG_CONFR1_HDR; // En Decode and Hdr processing
 
     // DMA
-    PDmaJIn = dmaStreamAlloc(JPEG_DMA_IN, IRQ_PRIO_MEDIUM, DmaJpegInCB, nullptr);
+    PDmaJIn = dmaStreamAlloc(JPEG_DMA_IN, IRQ_PRIO_MEDIUM, nullptr, nullptr);
     dmaStreamSetPeripheral(PDmaJIn, &JPEG->DIR);
+    dmaStreamSetFIFO(PDmaJIn, (DMA_SxFCR_DMDIS | DMA_SxFCR_FTH)); // Enable FIFO, FIFO Thr Full
     PDmaJOut = dmaStreamAlloc(JPEG_DMA_OUT, IRQ_PRIO_MEDIUM, DmaJpegOutCB, nullptr);
     dmaStreamSetPeripheral(PDmaJOut, &JPEG->DOR);
+    dmaStreamSetFIFO(PDmaJOut, (DMA_SxFCR_DMDIS | DMA_SxFCR_FTH)); // Enable FIFO, FIFO Thr Full
+
+    // DMA2D
+    rccEnableDMA2D(FALSE);
+
     // Create and start thread
     MsgQVideo.Init();
     chThdCreateStatic(waVideoThd, sizeof(waVideoThd), NORMALPRIO, (tfunc_t)VideoThd, NULL);
@@ -432,7 +506,7 @@ extern "C"
 void Vector1F0() {
     CH_IRQ_PROLOGUE();
     chSysLockFromISR();
-    PrintfI("JIRQ: %X\r", JPEG->SR);
+//    PrintfI("JIRQ: %X\r", JPEG->SR);
     // If header parsed
     if(JPEG->SR & JPEG_SR_HPDF) {
         HAL_JPEG_GetInfo();
@@ -442,10 +516,11 @@ void Vector1F0() {
     }
 
     if(JPEG->SR & JPEG_SR_EOCF) {
-        JpegStop(); // Stop decoding, disable DMA
+//        PrintfI("idma: %u\r", dmaStreamGetTransactionSize(PDmaJOut));
+        JPEG->CONFR0 = 0; // Stop decoding
         JPEG->CR &= ~(0x7EUL); // Disable all IRQs
         JPEG->CFR = JPEG_CFR_CEOCF | JPEG_CFR_CHPDF; // Clear all flags
-        MsgQVideo.SendNowOrExitI(VideoMsg_t(vcmdNewBufReady));
+        MsgQVideo.SendNowOrExitI(VideoMsg_t(vcmdEndDecode));
     }
     chSysUnlockFromISR();
     CH_IRQ_EPILOGUE();
