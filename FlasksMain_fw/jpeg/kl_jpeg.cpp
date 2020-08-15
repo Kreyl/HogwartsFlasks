@@ -616,6 +616,8 @@ void Init() {
         return;
     }
 
+    JPEG->CONFR1 |= JPEG_CONFR1_DE | JPEG_CONFR1_HDR; // En Decode and Hdr processing
+
     nvicEnableVector(JPEG_IRQn, IRQ_PRIO_MEDIUM);
     Printf("Jpg Init ok\r");
 }
