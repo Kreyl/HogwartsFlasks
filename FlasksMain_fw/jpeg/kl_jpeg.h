@@ -10,6 +10,7 @@
 #include <inttypes.h>
 #include "ch.h"
 #include "stm32_dma.h"
+#include "kl_lib.h"
 
 /** @defgroup JPEG_Configuration_Structure_definition JPEG Configuration for encoding Structure definition
   * @brief  JPEG encoding configuration Structure definition
@@ -22,6 +23,8 @@ typedef struct {
   uint32_t ImageHeight;              /*!< Image height : number of lines */
   uint32_t ImageWidth;               /*!< Image width : number of pixels per line */
   uint32_t ImageQuality;             /*!< Quality of the JPEG encoding : from 1 to 100 */
+
+  uint32_t ImageMCUsCnt;
 } JPEG_ConfTypeDef;
 
 /** @defgroup JPEG_ColorSpace JPEG ColorSpace
@@ -40,16 +43,17 @@ typedef struct {
 // JPEG Quantization Table Size
 #define JPEG_QUANT_TABLE_SIZE  ((uint32_t)64U) /*!< JPEG Quantization Table Size in bytes  */
 
-typedef   uint32_t (* JPEG_YCbCrToRGB_Convert_Function)(uint8_t *pInBuffer,
+typedef uint32_t (* JPEG_YCbCrToRGB_Convert_Function)(uint8_t *pInBuffer,
                                       uint8_t *pOutBuffer,
                                       uint32_t BlockIndex,
                                       uint32_t DataCount);
 
 namespace Jpeg {
+extern JPEG_ConfTypeDef Conf;
+extern JPEG_YCbCrToRGB_Convert_Function pConvert_Function;
 
-void Init(stm32_dmaisr_t DmaOutCallback);
-void GetInfo(JPEG_ConfTypeDef *pInfo);
-void InfoReadyCallback(JPEG_ConfTypeDef *pInfo, JPEG_YCbCrToRGB_Convert_Function *pFunction, uint32_t *ImageNbMCUs);
+void Init(stm32_dmaisr_t DmaOutCallback, ftVoidVoid ConversionEndCallback);
+void GetInfo();
 
 void PrepareToStart(void *ptr, uint32_t Cnt);
 void DisableOutDma();

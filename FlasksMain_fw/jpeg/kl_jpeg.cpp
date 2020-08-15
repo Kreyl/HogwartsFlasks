@@ -7,7 +7,6 @@
 
 #include "kl_jpeg.h"
 #include "board.h"
-#include "kl_lib.h"
 #include "shell.h"
 #include "jpeg_utils.h"
 
@@ -16,6 +15,8 @@ static uint8_t *QuantTable1;     /*!< Basic Quantization Table for component 1 *
 
 static const stm32_dma_stream_t *PDmaJIn;
 static const stm32_dma_stream_t *PDmaJOut;
+
+static ftVoidVoid IConversionEndCallback = nullptr;
 
 #define JPEG_DMA_IN_MODE  (STM32_DMA_CR_CHSEL(JPEG_DMA_CHNL) \
         | STM32_DMA_CR_MBURST_INCR4 \
@@ -617,8 +618,10 @@ uint32_t JPEG_GetQuality() {
 #endif
 
 namespace Jpeg {
+JPEG_ConfTypeDef Conf;
+JPEG_YCbCrToRGB_Convert_Function pConvert_Function;
 
-void Init(stm32_dmaisr_t DmaOutCallback) {
+void Init(stm32_dmaisr_t DmaOutCallback, ftVoidVoid ConversionEndCallback) {
     rccEnableAHB2(RCC_AHB2ENR_JPEGEN, FALSE);
 
     JPEG->CR = JPEG_CR_JCEN; // En and clear all the other
@@ -649,64 +652,65 @@ void Init(stm32_dmaisr_t DmaOutCallback) {
     dmaStreamSetPeripheral(PDmaJOut, &JPEG->DOR);
     dmaStreamSetFIFO(PDmaJOut, (DMA_SxFCR_DMDIS | DMA_SxFCR_FTH)); // Enable FIFO, FIFO Thr Full
 
+    IConversionEndCallback = ConversionEndCallback;
     nvicEnableVector(JPEG_IRQn, IRQ_PRIO_MEDIUM);
     Printf("Jpg Init ok\r");
 }
 
-void GetInfo(JPEG_ConfTypeDef *pInfo) {
+void GetInfo() {
     // Colorspace
-    if     ((JPEG->CONFR1 & JPEG_CONFR1_NF) == JPEG_CONFR1_NF_1) pInfo->ColorSpace = JPEG_YCBCR_COLORSPACE;
-    else if((JPEG->CONFR1 & JPEG_CONFR1_NF) == 0UL)              pInfo->ColorSpace = JPEG_GRAYSCALE_COLORSPACE;
-    else if((JPEG->CONFR1 & JPEG_CONFR1_NF) == JPEG_CONFR1_NF)   pInfo->ColorSpace = JPEG_CMYK_COLORSPACE;
+    if     ((JPEG->CONFR1 & JPEG_CONFR1_NF) == JPEG_CONFR1_NF_1) Conf.ColorSpace = JPEG_YCBCR_COLORSPACE;
+    else if((JPEG->CONFR1 & JPEG_CONFR1_NF) == 0UL)              Conf.ColorSpace = JPEG_GRAYSCALE_COLORSPACE;
+    else if((JPEG->CONFR1 & JPEG_CONFR1_NF) == JPEG_CONFR1_NF)   Conf.ColorSpace = JPEG_CMYK_COLORSPACE;
     // x y
-    pInfo->ImageHeight = (JPEG->CONFR1 & 0xFFFF0000UL) >> 16;
-    pInfo->ImageWidth  = (JPEG->CONFR3 & 0xFFFF0000UL) >> 16;
+    Conf.ImageHeight = (JPEG->CONFR1 & 0xFFFF0000UL) >> 16;
+    Conf.ImageWidth  = (JPEG->CONFR3 & 0xFFFF0000UL) >> 16;
 
     uint32_t yblockNb, cBblockNb, cRblockNb;
-    if((pInfo->ColorSpace == JPEG_YCBCR_COLORSPACE) or (pInfo->ColorSpace == JPEG_CMYK_COLORSPACE)) {
+    if((Conf.ColorSpace == JPEG_YCBCR_COLORSPACE) or (Conf.ColorSpace == JPEG_CMYK_COLORSPACE)) {
         yblockNb  = (JPEG->CONFR4 & JPEG_CONFR4_NB) >> 4;
         cBblockNb = (JPEG->CONFR5 & JPEG_CONFR5_NB) >> 4;
         cRblockNb = (JPEG->CONFR6 & JPEG_CONFR6_NB) >> 4;
 
         if((yblockNb == 1UL) && (cBblockNb == 0UL) && (cRblockNb == 0UL)) {
-            pInfo->ChromaSubsampling = JPEG_422_SUBSAMPLING; /*16x8 block*/
+            Conf.ChromaSubsampling = JPEG_422_SUBSAMPLING; /*16x8 block*/
         }
         else if((yblockNb == 0UL) && (cBblockNb == 0UL) && (cRblockNb == 0UL)) {
-            pInfo->ChromaSubsampling = JPEG_444_SUBSAMPLING;
+            Conf.ChromaSubsampling = JPEG_444_SUBSAMPLING;
         }
         else if((yblockNb == 3UL) && (cBblockNb == 0UL) && (cRblockNb == 0UL)) {
-            pInfo->ChromaSubsampling = JPEG_420_SUBSAMPLING;
+            Conf.ChromaSubsampling = JPEG_420_SUBSAMPLING;
         }
         else /*Default is 4:4:4*/
         {
-            pInfo->ChromaSubsampling = JPEG_444_SUBSAMPLING;
+            Conf.ChromaSubsampling = JPEG_444_SUBSAMPLING;
         }
     }
     else {
-        pInfo->ChromaSubsampling = JPEG_444_SUBSAMPLING;
+        Conf.ChromaSubsampling = JPEG_444_SUBSAMPLING;
     }
     /* Note : the image quality is only available at the end of the decoding operation */
      /* at the current stage the calculated image quality is not correct so reset it */
-    pInfo->ImageQuality = 0;
+    Conf.ImageQuality = 0;
 }
 
-void InfoReadyCallback(JPEG_ConfTypeDef *pInfo, JPEG_YCbCrToRGB_Convert_Function *pFunction, uint32_t *ImageNbMCUs) {
-    if(pInfo->ChromaSubsampling == JPEG_420_SUBSAMPLING) {
-        if((pInfo->ImageWidth  % 16) != 0) pInfo->ImageWidth  += (16 - (pInfo->ImageWidth % 16));
-        if((pInfo->ImageHeight % 16) != 0) pInfo->ImageHeight += (16 - (pInfo->ImageHeight % 16));
+void InfoReadyCallback() {
+    if(Conf.ChromaSubsampling == JPEG_420_SUBSAMPLING) {
+        if((Conf.ImageWidth  % 16) != 0) Conf.ImageWidth  += (16 - (Conf.ImageWidth % 16));
+        if((Conf.ImageHeight % 16) != 0) Conf.ImageHeight += (16 - (Conf.ImageHeight % 16));
     }
 
-    if(pInfo->ChromaSubsampling == JPEG_422_SUBSAMPLING) {
-        if((pInfo->ImageWidth % 16) != 0) pInfo->ImageWidth  += (16 - (pInfo->ImageWidth % 16));
-        if((pInfo->ImageHeight % 8) != 0) pInfo->ImageHeight += (8 - (pInfo->ImageHeight % 8));
+    if(Conf.ChromaSubsampling == JPEG_422_SUBSAMPLING) {
+        if((Conf.ImageWidth % 16) != 0) Conf.ImageWidth  += (16 - (Conf.ImageWidth % 16));
+        if((Conf.ImageHeight % 8) != 0) Conf.ImageHeight += (8 - (Conf.ImageHeight % 8));
     }
 
-    if(pInfo->ChromaSubsampling == JPEG_444_SUBSAMPLING) {
-        if((pInfo->ImageWidth % 8)  != 0) pInfo->ImageWidth  += (8 - (pInfo->ImageWidth % 8));
-        if((pInfo->ImageHeight % 8) != 0) pInfo->ImageHeight += (8 - (pInfo->ImageHeight % 8));
+    if(Conf.ChromaSubsampling == JPEG_444_SUBSAMPLING) {
+        if((Conf.ImageWidth % 8)  != 0) Conf.ImageWidth  += (8 - (Conf.ImageWidth % 8));
+        if((Conf.ImageHeight % 8) != 0) Conf.ImageHeight += (8 - (Conf.ImageHeight % 8));
     }
 
-    if(JPEG_GetDecodeColorConvertFunc(pInfo, pFunction, ImageNbMCUs) != retvOk) {
+    if(JPEG_GetDecodeColorConvertFunc(&Conf, &pConvert_Function, &Conf.ImageMCUsCnt) != retvOk) {
         Printf("JErr\r");
     }
 }
@@ -746,6 +750,38 @@ void Stop() {
     JPEG->CR &= ~(JPEG_CR_IDMAEN | JPEG_CR_ODMAEN);
     dmaStreamDisable(PDmaJIn);
     dmaStreamDisable(PDmaJOut);
+    Conf.ImageMCUsCnt = 0;
+}
+
+void OnIrqI() {
+//    PrintfI("JIRQ: %X\r", JPEG->SR);
+    uint32_t Flags = JPEG->SR;
+    // If header parsed
+    if(Flags & JPEG_SR_HPDF) {
+        GetInfo();
+        InfoReadyCallback();
+        JPEG->CR &= ~JPEG_CR_HPDIE; // Disable hdr IRQ
+        JPEG->CFR = JPEG_CFR_CHPDF; // Clear flag
+    }
+
+    if(Flags & JPEG_SR_EOCF) {
+//        PrintfI("idma: %u\r", dmaStreamGetTransactionSize(PDmaJOut));
+        JPEG->CONFR0 = 0; // Stop decoding
+        JPEG->CR &= ~(0x7EUL); // Disable all IRQs
+        JPEG->CFR = JPEG_CFR_CEOCF | JPEG_CFR_CHPDF; // Clear all flags
+        if(IConversionEndCallback) IConversionEndCallback();
+    }
 }
 
 }; // Namespace
+
+#if 1 // ============================== IRQ ====================================
+extern "C"
+void Vector1F0() {
+    CH_IRQ_PROLOGUE();
+    chSysLockFromISR();
+    Jpeg::OnIrqI();
+    chSysUnlockFromISR();
+    CH_IRQ_EPILOGUE();
+}
+#endif

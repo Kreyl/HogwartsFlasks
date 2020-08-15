@@ -183,11 +183,8 @@ void Resume()  { DMA2D->CR &= ~DMA2D_CR_SUSP; }
 #define OUTBUF_SZ   (LCD_HEIGHT * LCD_WIDTH * 4UL) // 4 bytes per pixel
 #define MCU_BUF_CNT ((384UL * 8UL) / sizeof(uint32_t)) // Multiple of 384
 
-uint32_t MCU_TotalNb = 0;
 uint32_t MCU_BlockIndex = 0;
 sysinterval_t FrameRate = 0;
-JPEG_ConfTypeDef JConf;
-JPEG_YCbCrToRGB_Convert_Function pConvert_Function;
 
 class {
 private:
@@ -230,7 +227,6 @@ public:
 
 void StartFrameDecoding() {
     Jpeg::Stop();
-    MCU_TotalNb = 0;
     MCU_BlockIndex = 0;
     Jpeg::PrepareToStart(ckFrame.Buf, (ckFrame.Sz + 3) / 4);
     JMcuBuf.PrepareToFill();
@@ -240,9 +236,9 @@ void StartFrameDecoding() {
 uint8_t ProcessMcuBuf() {
     Dma2d::Suspend();
     // From, To, BlockIndex, FromSz
-    MCU_BlockIndex += pConvert_Function((uint8_t*)JMcuBuf.BufToProcess, *Outbuff.CurrBuf, MCU_BlockIndex, JMcuBuf.DataSzToProcess);
+    MCU_BlockIndex += Jpeg::pConvert_Function((uint8_t*)JMcuBuf.BufToProcess, *Outbuff.CurrBuf, MCU_BlockIndex, JMcuBuf.DataSzToProcess);
     Dma2d::Resume();
-    if(MCU_BlockIndex == MCU_TotalNb) return retvOk;
+    if(MCU_BlockIndex == Jpeg::Conf.ImageMCUsCnt) return retvOk;
     else return retvInProgress;
 }
 #endif
@@ -284,20 +280,20 @@ static void VideoThd(void *arg) {
             case vcmdEndDecode:
                 JMcuBuf.Switch();
                 if(ProcessMcuBuf() == retvOk) {
-                    Jpeg::GetInfo(&JConf);
+                    Jpeg::GetInfo();
                     // Copy RGB decoded Data to the display FrameBuffer
                     uint32_t width_offset = 0;
-                    uint32_t xPos = (LCD_WIDTH - JConf.ImageWidth) / 2;
-                    uint32_t yPos = (LCD_HEIGHT - JConf.ImageHeight) / 2;
+                    uint32_t xPos = (LCD_WIDTH - Jpeg::Conf.ImageWidth) / 2;
+                    uint32_t yPos = (LCD_HEIGHT - Jpeg::Conf.ImageHeight) / 2;
 
-                    if(JConf.ChromaSubsampling == JPEG_420_SUBSAMPLING) {
-                        if((JConf.ImageWidth % 16) != 0) width_offset = 16 - (JConf.ImageWidth % 16);
+                    if(Jpeg::Conf.ChromaSubsampling == JPEG_420_SUBSAMPLING) {
+                        if((Jpeg::Conf.ImageWidth % 16) != 0) width_offset = 16 - (Jpeg::Conf.ImageWidth % 16);
                     }
-                    if(JConf.ChromaSubsampling == JPEG_422_SUBSAMPLING) {
-                        if((JConf.ImageWidth % 16) != 0) width_offset = 16 - (JConf.ImageWidth % 16);
+                    if(Jpeg::Conf.ChromaSubsampling == JPEG_422_SUBSAMPLING) {
+                        if((Jpeg::Conf.ImageWidth % 16) != 0) width_offset = 16 - (Jpeg::Conf.ImageWidth % 16);
                     }
-                    if(JConf.ChromaSubsampling == JPEG_444_SUBSAMPLING) {
-                        if((JConf.ImageWidth % 8) != 0) width_offset = (JConf.ImageWidth % 8);
+                    if(Jpeg::Conf.ChromaSubsampling == JPEG_444_SUBSAMPLING) {
+                        if((Jpeg::Conf.ImageWidth % 8) != 0) width_offset = (Jpeg::Conf.ImageWidth % 8);
                     }
 
                     // Delay before frame show
@@ -307,7 +303,7 @@ static void VideoThd(void *arg) {
                         chThdSleep(FrameRate - Elapsed);
                     }
                     FrameStart = chVTGetSystemTimeX();
-                    Dma2d::CopyBuffer((uint32_t *)(*Outbuff.CurrBuf), (uint32_t *)FrameBuf1, xPos , yPos, JConf.ImageWidth, JConf.ImageHeight, width_offset);
+                    Dma2d::CopyBuffer((uint32_t *)(*Outbuff.CurrBuf), (uint32_t *)FrameBuf1, xPos , yPos, Jpeg::Conf.ImageWidth, Jpeg::Conf.ImageHeight, width_offset);
                     Outbuff.Switch();
                     MsgQVideo.SendNowOrExit(VideoMsg_t(vcmdStart));
                 }
@@ -318,13 +314,15 @@ static void VideoThd(void *arg) {
     } // while true
 }
 
+void OnJpegConvEndI() { MsgQVideo.SendNowOrExitI(VideoMsg_t(vcmdEndDecode)); }
+
 #if 1 // ============================= Top Level ===============================
 namespace Avi {
 
 void Init() {
     Outbuff.Init();
     JPEG_InitColorTables(); // Init The JPEG Color Look Up Tables used for YCbCr to RGB conversion
-    Jpeg::Init(DmaJpegOutCB);
+    Jpeg::Init(DmaJpegOutCB, OnJpegConvEndI);
 
     Dma2d::Init();
 
@@ -395,29 +393,4 @@ void Stop() {
 } // namespace
 #endif
 
-#if 1 // ============================== IRQ ====================================
-extern "C"
-void Vector1F0() {
-    CH_IRQ_PROLOGUE();
-    chSysLockFromISR();
-//    PrintfI("JIRQ: %X\r", JPEG->SR);
-    uint32_t Flags = JPEG->SR;
-    // If header parsed
-    if(Flags & JPEG_SR_HPDF) {
-        Jpeg::GetInfo(&JConf);
-        Jpeg::InfoReadyCallback(&JConf, &pConvert_Function, &MCU_TotalNb);
-        JPEG->CR &= ~JPEG_CR_HPDIE; // Disable hdr IRQ
-        JPEG->CFR = JPEG_CFR_CHPDF; // Clear flag
-    }
 
-    if(Flags & JPEG_SR_EOCF) {
-//        PrintfI("idma: %u\r", dmaStreamGetTransactionSize(PDmaJOut));
-        JPEG->CONFR0 = 0; // Stop decoding
-        JPEG->CR &= ~(0x7EUL); // Disable all IRQs
-        JPEG->CFR = JPEG_CFR_CEOCF | JPEG_CFR_CHPDF; // Clear all flags
-        MsgQVideo.SendNowOrExitI(VideoMsg_t(vcmdEndDecode));
-    }
-    chSysUnlockFromISR();
-    CH_IRQ_EPILOGUE();
-}
-#endif

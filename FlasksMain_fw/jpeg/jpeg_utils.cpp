@@ -114,6 +114,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "jpeg_utils.h"
+#include "kl_lib.h"
 
 /** @addtogroup Utilities
   * @{
