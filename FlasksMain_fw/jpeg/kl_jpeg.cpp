@@ -11,7 +11,8 @@
 #include "shell.h"
 #include "jpeg_utils.h"
 
-Jpeg_t hjpeg;
+static uint8_t *QuantTable0;     /*!< Basic Quantization Table for component 0 */
+static uint8_t *QuantTable1;     /*!< Basic Quantization Table for component 1 */
 
 /* These are the sample quantization tables given in JPEG spec ISO/IEC 10918-1 standard , section K.1. */
 static const uint8_t JPEG_LUM_QuantTable[JPEG_QUANT_TABLE_SIZE] =
@@ -560,51 +561,6 @@ static uint8_t JPEG_Set_HuffEnc_Mem() {
     return retvOk;
 }
 
-
-void InitJPEG() {
-    rccEnableAHB2(RCC_AHB2ENR_JPEGEN, FALSE);
-
-    /* Change the JPEG state */
-//    hjpeg.State = HAL_JPEG_STATE_BUSY;
-    JPEG->CR = JPEG_CR_JCEN; // En and clear all the other
-    JPEG->CONFR0 = 0; /* Stop the JPEG encoding/decoding process*/
-    JPEG->CR = JPEG_CR_JCEN; // En and clear all the other
-
-    /* Flush input and output FIFOs*/
-    JPEG->CR |= JPEG_CR_IFF;
-    JPEG->CR |= JPEG_CR_OFF;
-
-    JPEG->CFR = JPEG_CFR_CEOCF | JPEG_CFR_CHPDF; /* Clear all flags */
-
-    /* init default quantization tables*/
-    hjpeg.QuantTable0 = (uint8_t *)((uint32_t)JPEG_LUM_QuantTable);
-    hjpeg.QuantTable1 = (uint8_t *)((uint32_t)JPEG_CHROM_QuantTable);
-    hjpeg.QuantTable2 = NULL;
-    hjpeg.QuantTable3 = NULL;
-
-    /* init the default Huffman tables*/
-    if(JPEG_Set_HuffEnc_Mem() != retvOk) {
-        Printf("Jpg Init Fail\r");
-        return;
-    }
-
-    /* Enable header processing*/
-    JPEG->CONFR1 |= JPEG_CONFR1_HDR;
-
-    /* Reset JpegInCount and JpegOutCount */
-    hjpeg.JpegInCount = 0;
-    hjpeg.JpegOutCount = 0;
-
-    /* Change the JPEG state */
-//    hjpeg.State = HAL_JPEG_STATE_READY;
-
-    /* Reset the JPEG ErrorCode */
-//    hjpeg->ErrorCode = HAL_JPEG_ERROR_NONE;
-
-    hjpeg.Context = 0; /*Clear the context filelds*/
-    Printf("Jpg Init ok\r");
-}
-
 uint32_t JPEG_GetQuality() {
     uint32_t quality = 0;
     uint32_t quantRow, quantVal, scale, i, j;
@@ -620,7 +576,7 @@ uint32_t JPEG_GetQuality() {
             }
             else {
                 /* Note that the quantization coefficients must be specified in the table in zigzag order */
-                scale = (quantVal * 100UL) / ((uint32_t) hjpeg.QuantTable0[JPEG_ZIGZAG_ORDER[i + j]]);
+                scale = (quantVal * 100UL) / ((uint32_t)QuantTable0[JPEG_ZIGZAG_ORDER[i + j]]);
                 if(scale <= 100UL) {
                     quality += (200UL - scale) / 2UL;
                 }
@@ -635,3 +591,70 @@ uint32_t JPEG_GetQuality() {
     }
     return (quality / 64UL);
 }
+
+
+namespace Jpeg {
+
+void Init() {
+    rccEnableAHB2(RCC_AHB2ENR_JPEGEN, FALSE);
+
+    JPEG->CR = JPEG_CR_JCEN; // En and clear all the other
+    JPEG->CONFR0 = 0; /* Stop the JPEG encoding/decoding process*/
+    /* Flush input and output FIFOs*/
+    JPEG->CR |= JPEG_CR_IFF;
+    JPEG->CR |= JPEG_CR_OFF;
+
+    JPEG->CFR = JPEG_CFR_CEOCF | JPEG_CFR_CHPDF; /* Clear all flags */
+
+    /* init default quantization tables*/
+    QuantTable0 = (uint8_t *)((uint32_t)JPEG_LUM_QuantTable);
+    QuantTable1 = (uint8_t *)((uint32_t)JPEG_CHROM_QuantTable);
+
+    /* init the default Huffman tables*/
+    if(JPEG_Set_HuffEnc_Mem() != retvOk) {
+        Printf("Jpg Init Fail\r");
+        return;
+    }
+
+    nvicEnableVector(JPEG_IRQn, IRQ_PRIO_MEDIUM);
+    Printf("Jpg Init ok\r");
+}
+
+void GetInfo(JPEG_ConfTypeDef *pInfo) {
+    // Colorspace
+    if     ((JPEG->CONFR1 & JPEG_CONFR1_NF) == JPEG_CONFR1_NF_1) pInfo->ColorSpace = JPEG_YCBCR_COLORSPACE;
+    else if((JPEG->CONFR1 & JPEG_CONFR1_NF) == 0UL)              pInfo->ColorSpace = JPEG_GRAYSCALE_COLORSPACE;
+    else if((JPEG->CONFR1 & JPEG_CONFR1_NF) == JPEG_CONFR1_NF)   pInfo->ColorSpace = JPEG_CMYK_COLORSPACE;
+    // x y
+    pInfo->ImageHeight = (JPEG->CONFR1 & 0xFFFF0000UL) >> 16;
+    pInfo->ImageWidth  = (JPEG->CONFR3 & 0xFFFF0000UL) >> 16;
+
+    uint32_t yblockNb, cBblockNb, cRblockNb;
+    if((pInfo->ColorSpace == JPEG_YCBCR_COLORSPACE) or (pInfo->ColorSpace == JPEG_CMYK_COLORSPACE)) {
+        yblockNb  = (JPEG->CONFR4 & JPEG_CONFR4_NB) >> 4;
+        cBblockNb = (JPEG->CONFR5 & JPEG_CONFR5_NB) >> 4;
+        cRblockNb = (JPEG->CONFR6 & JPEG_CONFR6_NB) >> 4;
+
+        if((yblockNb == 1UL) && (cBblockNb == 0UL) && (cRblockNb == 0UL)) {
+            pInfo->ChromaSubsampling = JPEG_422_SUBSAMPLING; /*16x8 block*/
+        }
+        else if((yblockNb == 0UL) && (cBblockNb == 0UL) && (cRblockNb == 0UL)) {
+            pInfo->ChromaSubsampling = JPEG_444_SUBSAMPLING;
+        }
+        else if((yblockNb == 3UL) && (cBblockNb == 0UL) && (cRblockNb == 0UL)) {
+            pInfo->ChromaSubsampling = JPEG_420_SUBSAMPLING;
+        }
+        else /*Default is 4:4:4*/
+        {
+            pInfo->ChromaSubsampling = JPEG_444_SUBSAMPLING;
+        }
+    }
+    else {
+        pInfo->ChromaSubsampling = JPEG_444_SUBSAMPLING;
+    }
+    /* Note : the image quality is only available at the end of the decoding operation */
+     /* at the current stage the calculated image quality is not correct so reset it */
+    pInfo->ImageQuality = 0;
+}
+
+}; // Namespace

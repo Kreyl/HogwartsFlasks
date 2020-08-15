@@ -14,8 +14,7 @@
   * @{
   */
 typedef struct {
-  uint32_t ColorSpace;               /*!< Image Color space : gray-scale, YCBCR, RGB or CMYK
-                                           This parameter can be a value of @ref JPEG_ColorSpace */
+  uint32_t ColorSpace;               /*!< Image Color space : gray-scale, YCBCR, RGB or CMYK. This parameter can be a value of @ref JPEG_ColorSpace */
   uint32_t ChromaSubsampling;        /*!< Chroma Subsampling in case of YCBCR or CMYK color space, 0-> 4:4:4 , 1-> 4:2:2, 2 -> 4:1:1, 3 -> 4:2:0
                                            This parameter can be a value of @ref JPEG_ChromaSubsampling */
   uint32_t ImageHeight;              /*!< Image height : number of lines */
@@ -45,33 +44,9 @@ typedef struct {
   */
 #define JPEG_QUANT_TABLE_SIZE  ((uint32_t)64U) /*!< JPEG Quantization Table Size in bytes  */
 
-class Jpeg_t {
-public:
-    JPEG_ConfTypeDef         Conf;             /*!< Current JPEG encoding/decoding parameters */
-    uint8_t                  *pJpegInBuffPtr;  /*!< Pointer to JPEG processing (encoding, decoding,...) input buffer */
-    uint8_t                  *pJpegOutBuffPtr; /*!< Pointer to JPEG processing (encoding, decoding,...) output buffer */
-    volatile uint32_t        JpegInCount;      /*!< Internal Counter of input data */
-    volatile uint32_t        JpegOutCount;     /*!< Internal Counter of output data */
-    uint32_t                 InDataLength;     /*!< Input Buffer Length in Bytes */
-    uint32_t                 OutDataLength;    /*!< Output Buffer Length in Bytes */
-//    DMA_HandleTypeDef        *hdmain;          /*!< JPEG In DMA handle parameters */
-//    DMA_HandleTypeDef        *hdmaout;         /*!< JPEG Out DMA handle parameters */
-    uint8_t                  CustomQuanTable;  /*!< If set to 1 specify that user customized quantization tables are used */
-    uint8_t                  *QuantTable0;     /*!< Basic Quantization Table for component 0 */
-    uint8_t                  *QuantTable1;     /*!< Basic Quantization Table for component 1 */
-    uint8_t                  *QuantTable2;     /*!< Basic Quantization Table for component 2 */
-    uint8_t                  *QuantTable3;     /*!< Basic Quantization Table for component 3 */
+namespace Jpeg {
 
-    bool IsLocked = false;             /*!< JPEG locking object */
-
-//    volatile HAL_JPEG_STATETypeDef State = HAL_JPEG_STATE_RESET;         /*!< JPEG peripheral state */
-//    volatile uint32_t           ErrorCode;        /*!< JPEG Error code */
-    volatile uint32_t Context;                     /*!< JPEG Internal context */
+void Init();
+void GetInfo(JPEG_ConfTypeDef *pInfo);
 
 };
-
-extern Jpeg_t hjpeg;
-
-void InitJPEG();
-
-
