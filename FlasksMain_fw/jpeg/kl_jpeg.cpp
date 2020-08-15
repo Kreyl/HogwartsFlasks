@@ -14,6 +14,29 @@
 static uint8_t *QuantTable0;     /*!< Basic Quantization Table for component 0 */
 static uint8_t *QuantTable1;     /*!< Basic Quantization Table for component 1 */
 
+static const stm32_dma_stream_t *PDmaJIn;
+static const stm32_dma_stream_t *PDmaJOut;
+
+#define JPEG_DMA_IN_MODE  (STM32_DMA_CR_CHSEL(JPEG_DMA_CHNL) \
+        | STM32_DMA_CR_MBURST_INCR4 \
+        | STM32_DMA_CR_PBURST_INCR4 \
+        | DMA_PRIORITY_HIGH \
+        | STM32_DMA_CR_MSIZE_WORD \
+        | STM32_DMA_CR_PSIZE_WORD \
+        | STM32_DMA_CR_MINC \
+        | STM32_DMA_CR_DIR_M2P)
+
+#define JPEG_DMA_OUT_MODE (STM32_DMA_CR_CHSEL(JPEG_DMA_CHNL) \
+        | STM32_DMA_CR_MBURST_INCR4 \
+        | STM32_DMA_CR_PBURST_INCR4 \
+        | DMA_PRIORITY_VERYHIGH \
+        | STM32_DMA_CR_MSIZE_WORD \
+        | STM32_DMA_CR_PSIZE_WORD \
+        | STM32_DMA_CR_MINC \
+        | STM32_DMA_CR_DIR_P2M \
+        | STM32_DMA_CR_TCIE)
+
+#if 1 // ================================ Tables ===============================
 /* These are the sample quantization tables given in JPEG spec ISO/IEC 10918-1 standard , section K.1. */
 static const uint8_t JPEG_LUM_QuantTable[JPEG_QUANT_TABLE_SIZE] =
 {
@@ -38,7 +61,6 @@ static const uint8_t JPEG_CHROM_QuantTable[JPEG_QUANT_TABLE_SIZE] =
   99,  99,  99,  99,  99,  99,  99,  99
 };
 
-#if 1 // ================================ Tables ===============================
 #define JPEG_AC_HUFF_TABLE_SIZE  ((uint32_t)162) /* Huffman AC table size : 162 codes*/
 #define JPEG_DC_HUFF_TABLE_SIZE  ((uint32_t)12)  /* Huffman AC table size : 12 codes*/
 
@@ -152,6 +174,7 @@ static const uint8_t JPEG_ZIGZAG_ORDER[JPEG_QUANT_TABLE_SIZE] =
 };
 #endif
 
+#if 1 // ========================== Table fill functions =======================
 /**
   * @brief  Configure the JPEG register huffman tables to be included in the JPEG
   *         file header (used for encoding only)
@@ -591,11 +614,11 @@ uint32_t JPEG_GetQuality() {
     }
     return (quality / 64UL);
 }
-
+#endif
 
 namespace Jpeg {
 
-void Init() {
+void Init(stm32_dmaisr_t DmaOutCallback) {
     rccEnableAHB2(RCC_AHB2ENR_JPEGEN, FALSE);
 
     JPEG->CR = JPEG_CR_JCEN; // En and clear all the other
@@ -617,6 +640,14 @@ void Init() {
     }
 
     JPEG->CONFR1 |= JPEG_CONFR1_DE | JPEG_CONFR1_HDR; // En Decode and Hdr processing
+
+    // DMA
+    PDmaJIn = dmaStreamAlloc(JPEG_DMA_IN, IRQ_PRIO_MEDIUM, nullptr, nullptr);
+    dmaStreamSetPeripheral(PDmaJIn, &JPEG->DIR);
+    dmaStreamSetFIFO(PDmaJIn, (DMA_SxFCR_DMDIS | DMA_SxFCR_FTH)); // Enable FIFO, FIFO Thr Full
+    PDmaJOut = dmaStreamAlloc(JPEG_DMA_OUT, IRQ_PRIO_MEDIUM, DmaOutCallback, nullptr);
+    dmaStreamSetPeripheral(PDmaJOut, &JPEG->DOR);
+    dmaStreamSetFIFO(PDmaJOut, (DMA_SxFCR_DMDIS | DMA_SxFCR_FTH)); // Enable FIFO, FIFO Thr Full
 
     nvicEnableVector(JPEG_IRQn, IRQ_PRIO_MEDIUM);
     Printf("Jpg Init ok\r");
@@ -657,6 +688,42 @@ void GetInfo(JPEG_ConfTypeDef *pInfo) {
     /* Note : the image quality is only available at the end of the decoding operation */
      /* at the current stage the calculated image quality is not correct so reset it */
     pInfo->ImageQuality = 0;
+}
+
+void PrepareToStart(void *ptr, uint32_t Cnt) {
+    // Flush input and output FIFOs
+    JPEG->CR |= JPEG_CR_IFF;
+    JPEG->CR |= JPEG_CR_OFF;
+    // Prepare JPEG
+    JPEG->CFR = JPEG_CFR_CEOCF | JPEG_CFR_CHPDF; // Clear all flags
+    JPEG->CR |= JPEG_CR_EOCIE | JPEG_CR_HPDIE; // IRQ on EndOfConversion and EndOfHdrParsing
+    JPEG->CR |= (JPEG_CR_IDMAEN | JPEG_CR_ODMAEN); // Enable DMAs
+    // Prepare DMA In
+    dmaStreamSetMemory0(PDmaJIn, ptr);
+    dmaStreamSetTransactionSize(PDmaJIn, Cnt);
+    dmaStreamSetMode(PDmaJIn, JPEG_DMA_IN_MODE);
+    dmaStreamEnable(PDmaJIn);
+}
+
+void DisableOutDma() { dmaStreamDisable(PDmaJOut); }
+
+uint32_t GetOutDmaTransCnt() { return dmaStreamGetTransactionSize(PDmaJOut); }
+
+void EnableOutDma(void *ptr, uint32_t Cnt) {
+    dmaStreamSetMemory0(PDmaJOut, ptr);
+    dmaStreamSetTransactionSize(PDmaJOut, Cnt);
+    dmaStreamSetMode(PDmaJOut, JPEG_DMA_OUT_MODE);
+    dmaStreamEnable(PDmaJOut);
+}
+
+
+void Start() { JPEG->CONFR0 |=  JPEG_CONFR0_START; }
+
+void Stop() {
+    JPEG->CONFR0 = 0; // Stop decoding
+    JPEG->CR &= ~(JPEG_CR_IDMAEN | JPEG_CR_ODMAEN);
+    dmaStreamDisable(PDmaJIn);
+    dmaStreamDisable(PDmaJOut);
 }
 
 }; // Namespace

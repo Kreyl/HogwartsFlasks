@@ -15,7 +15,7 @@
 FIL ifile;
 
 #if 1 // ============================ AVI headers ==============================
-#define FBUF_SZ     32768
+#define FBUF_SZ     32768 // Packed frame must fit here
 #define FOURCC(c1, c2, c3, c4)  ((c4 << 24) | (c3 << 16) | (c2 << 8) | c1)
 
 class ChunkHdr_t {
@@ -180,30 +180,7 @@ void Resume()  { DMA2D->CR &= ~DMA2D_CR_SUSP; }
 #endif
 
 #if 1 // ============================= Decoding ================================
-static const stm32_dma_stream_t *PDmaJIn;
-static const stm32_dma_stream_t *PDmaJOut;
-
-#define JPEG_DMA_IN_MODE  (STM32_DMA_CR_CHSEL(JPEG_DMA_CHNL) \
-        | STM32_DMA_CR_MBURST_INCR4 \
-        | STM32_DMA_CR_PBURST_INCR4 \
-        | DMA_PRIORITY_HIGH \
-        | STM32_DMA_CR_MSIZE_WORD \
-        | STM32_DMA_CR_PSIZE_WORD \
-        | STM32_DMA_CR_MINC \
-        | STM32_DMA_CR_DIR_M2P \
-        | STM32_DMA_CR_TCIE)
-
-#define JPEG_DMA_OUT_MODE (STM32_DMA_CR_CHSEL(JPEG_DMA_CHNL) \
-        | STM32_DMA_CR_MBURST_INCR4 \
-        | STM32_DMA_CR_PBURST_INCR4 \
-        | DMA_PRIORITY_VERYHIGH \
-        | STM32_DMA_CR_MSIZE_WORD \
-        | STM32_DMA_CR_PSIZE_WORD \
-        | STM32_DMA_CR_MINC \
-        | STM32_DMA_CR_DIR_P2M \
-        | STM32_DMA_CR_TCIE)
-
-#define OUTBUF_SZ   768000UL // XXX 0x7F800 522240
+#define OUTBUF_SZ   (LCD_HEIGHT * LCD_WIDTH * 4UL) // 4 bytes per pixel
 #define MCU_BUF_CNT ((384UL * 8UL) / sizeof(uint32_t)) // Multiple of 384
 
 uint32_t MCU_TotalNb = 0;
@@ -220,16 +197,11 @@ private:
 public:
     uint32_t *BufToProcess = Buf2, DataSzToProcess = 0;
 
-    void PrepareToFill() {
-        dmaStreamSetMemory0(PDmaJOut, BufToFill);
-        dmaStreamSetTransactionSize(PDmaJOut, MCU_BUF_CNT);
-        dmaStreamSetMode(PDmaJOut, JPEG_DMA_OUT_MODE);
-        dmaStreamEnable(PDmaJOut);
-    }
+    void PrepareToFill() { Jpeg::EnableOutDma(BufToFill, MCU_BUF_CNT); }
 
     void Switch() {
-        dmaStreamDisable(PDmaJOut);
-        DataSzToProcess = (MCU_BUF_CNT - dmaStreamGetTransactionSize(PDmaJOut)) * sizeof(uint32_t);
+        Jpeg::DisableOutDma();
+        DataSzToProcess = (MCU_BUF_CNT - Jpeg::GetOutDmaTransCnt()) * sizeof(uint32_t);
         if(BufToFill == Buf1) {
             BufToFill = Buf2;
             BufToProcess = Buf1;
@@ -241,7 +213,6 @@ public:
     }
 } JMcuBuf;
 
-
 class OutBuf_t {
 private:
     uint8_t *pBuf1, *pBuf2;
@@ -252,50 +223,23 @@ public:
     }
     uint8_t **CurrBuf = &pBuf1;
     void Switch() {
-        if(CurrBuf == &pBuf1) {
-            CurrBuf = &pBuf2;
-        }
-        else {
-            CurrBuf = &pBuf1;
-        }
+        if(CurrBuf == &pBuf1) CurrBuf = &pBuf2;
+        else CurrBuf = &pBuf1;
     }
-
 } Outbuff;
 
-void JpegStop() {
-    JPEG->CONFR0 = 0; // Stop decoding
-    JPEG->CR &= ~(JPEG_CR_IDMAEN | JPEG_CR_ODMAEN);
-    dmaStreamDisable(PDmaJIn);
-    dmaStreamDisable(PDmaJOut);
-}
-
 void StartFrameDecoding() {
-    JpegStop();
+    Jpeg::Stop();
     MCU_TotalNb = 0;
     MCU_BlockIndex = 0;
-    // Flush input and output FIFOs
-    JPEG->CR |= JPEG_CR_IFF;
-    JPEG->CR |= JPEG_CR_OFF;
-    // Prepare JPEG
-    JPEG->CFR = JPEG_CFR_CEOCF | JPEG_CFR_CHPDF; // Clear all flags
-    JPEG->CR |= JPEG_CR_EOCIE | JPEG_CR_HPDIE; // IRQ on EndOfConversion and EndOfHdrParsing
-    JPEG->CR |= (JPEG_CR_IDMAEN | JPEG_CR_ODMAEN); // Enable DMAs
-
-    // Prepare DMA
-    dmaStreamSetMemory0(PDmaJIn, ckFrame.Buf);
-    dmaStreamSetTransactionSize(PDmaJIn, (ckFrame.Sz + 3) / 4);
-    dmaStreamSetMode(PDmaJIn, JPEG_DMA_IN_MODE);
-    dmaStreamEnable(PDmaJIn);
-
+    Jpeg::PrepareToStart(ckFrame.Buf, (ckFrame.Sz + 3) / 4);
     JMcuBuf.PrepareToFill();
-
-    JPEG->CONFR0 |=  JPEG_CONFR0_START; // Start everything
+    Jpeg::Start();
 }
 
 uint8_t ProcessMcuBuf() {
     if(!pConvert_Function) return retvInProgress;
     uint32_t ConvertedDataCount;
-//    Printf("  M %X; O %X  d %X\r", JMcuBuf.BufToProcess, *Outbuff.CurrBuf, DMA2D->FGMAR);
     Dma2d::Suspend();
     // From, To, BlockIndex, FromSz, *ToSz
     MCU_BlockIndex += pConvert_Function((uint8_t*)JMcuBuf.BufToProcess, *Outbuff.CurrBuf, MCU_BlockIndex, JMcuBuf.DataSzToProcess, &ConvertedDataCount);
@@ -329,7 +273,7 @@ static void VideoThd(void *arg) {
                 break;
 
             case vcmdStop:
-                JpegStop();
+                Jpeg::Stop();
                 CloseFile(&ifile);
                 break;
 
@@ -403,15 +347,7 @@ namespace Avi {
 void Init() {
     Outbuff.Init();
     JPEG_InitColorTables(); // Init The JPEG Color Look Up Tables used for YCbCr to RGB conversion
-    Jpeg::Init();
-
-    // DMA
-    PDmaJIn = dmaStreamAlloc(JPEG_DMA_IN, IRQ_PRIO_MEDIUM, nullptr, nullptr);
-    dmaStreamSetPeripheral(PDmaJIn, &JPEG->DIR);
-    dmaStreamSetFIFO(PDmaJIn, (DMA_SxFCR_DMDIS | DMA_SxFCR_FTH)); // Enable FIFO, FIFO Thr Full
-    PDmaJOut = dmaStreamAlloc(JPEG_DMA_OUT, IRQ_PRIO_MEDIUM, DmaJpegOutCB, nullptr);
-    dmaStreamSetPeripheral(PDmaJOut, &JPEG->DOR);
-    dmaStreamSetFIFO(PDmaJOut, (DMA_SxFCR_DMDIS | DMA_SxFCR_FTH)); // Enable FIFO, FIFO Thr Full
+    Jpeg::Init(DmaJpegOutCB);
 
     Dma2d::Init();
 

@@ -8,6 +8,8 @@
 #pragma once
 
 #include <inttypes.h>
+#include "ch.h"
+#include "stm32_dma.h"
 
 /** @defgroup JPEG_Configuration_Structure_definition JPEG Configuration for encoding Structure definition
   * @brief  JPEG encoding configuration Structure definition
@@ -46,7 +48,15 @@ typedef struct {
 
 namespace Jpeg {
 
-void Init();
+void Init(stm32_dmaisr_t DmaOutCallback);
 void GetInfo(JPEG_ConfTypeDef *pInfo);
+
+void PrepareToStart(void *ptr, uint32_t Cnt);
+void DisableOutDma();
+uint32_t GetOutDmaTransCnt();
+void EnableOutDma(void *ptr, uint32_t Cnt);
+
+void Start();
+void Stop();
 
 };
