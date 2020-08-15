@@ -385,33 +385,28 @@ static uint8_t *JPEG_Set_K_Blocks(uint8_t *pMCUBuffer, uint8_t pKBlocks[16][16],
 static uint32_t JPEG_MCU_YCbCr420_ARGB_ConvertBlocks(uint8_t *pInBuffer,
                                       uint8_t *pOutBuffer,
                                       uint32_t BlockIndex,
-                                      uint32_t DataCount,
-                                      uint32_t *ConvertedDataCount);
+                                      uint32_t DataCount);
 
 static uint32_t JPEG_MCU_YCbCr422_ARGB_ConvertBlocks(uint8_t *pInBuffer,
                                       uint8_t *pOutBuffer,
                                       uint32_t BlockIndex,
-                                      uint32_t DataCount,
-                                      uint32_t *ConvertedDataCount);
+                                      uint32_t DataCount);
 
 static uint32_t JPEG_MCU_YCbCr444_ARGB_ConvertBlocks(uint8_t *pInBuffer,
                                       uint8_t *pOutBuffer,
                                       uint32_t BlockIndex,
-                                      uint32_t DataCount,
-                                      uint32_t *ConvertedDataCount);
+                                      uint32_t DataCount);
 
 
 static uint32_t JPEG_MCU_Gray_ARGB_ConvertBlocks(uint8_t *pInBuffer,
                                       uint8_t *pOutBuffer,
                                       uint32_t BlockIndex,
-                                      uint32_t DataCount,
-                                      uint32_t *ConvertedDataCount);
+                                      uint32_t DataCount);
 
 static uint32_t JPEG_MCU_YCCK_ARGB_ConvertBlocks(uint8_t *pInBuffer,
                                       uint8_t *pOutBuffer,
                                       uint32_t BlockIndex,
-                                      uint32_t DataCount,
-                                      uint32_t *ConvertedDataCount);
+                                      uint32_t DataCount);
 static void JPEG_InitPostProcColorTables(void);
 #endif /* USE_JPEG_DECODER == 1 */
 
@@ -1118,8 +1113,7 @@ HAL_StatusTypeDef JPEG_GetEncodeColorConvertFunc(JPEG_ConfTypeDef *pJpegInfo, JP
 static uint32_t JPEG_MCU_YCbCr420_ARGB_ConvertBlocks(uint8_t *pInBuffer,
                                       uint8_t *pOutBuffer,
                                       uint32_t BlockIndex,
-                                      uint32_t DataCount,
-                                      uint32_t *ConvertedDataCount)
+                                      uint32_t DataCount)
 {
   uint32_t numberMCU;
   uint32_t i,j,k, currentMCU, xRef,yRef;
@@ -1302,8 +1296,7 @@ static uint32_t JPEG_MCU_YCbCr420_ARGB_ConvertBlocks(uint8_t *pInBuffer,
 static uint32_t JPEG_MCU_YCbCr422_ARGB_ConvertBlocks(uint8_t *pInBuffer,
                                       uint8_t *pOutBuffer,
                                       uint32_t BlockIndex,
-                                      uint32_t DataCount,
-                                      uint32_t *ConvertedDataCount)
+                                      uint32_t DataCount)
 {
   uint32_t numberMCU;
   uint32_t i,j,k, currentMCU, xRef,yRef;
@@ -1433,8 +1426,7 @@ static uint32_t JPEG_MCU_YCbCr422_ARGB_ConvertBlocks(uint8_t *pInBuffer,
 static uint32_t JPEG_MCU_YCbCr444_ARGB_ConvertBlocks(uint8_t *pInBuffer,
                                       uint8_t *pOutBuffer,
                                       uint32_t BlockIndex,
-                                      uint32_t DataCount,
-                                      uint32_t *ConvertedDataCount)
+                                      uint32_t DataCount)
 {
   uint32_t numberMCU;
   uint32_t i,j, currentMCU, xRef,yRef;
@@ -1538,8 +1530,7 @@ static uint32_t JPEG_MCU_YCbCr444_ARGB_ConvertBlocks(uint8_t *pInBuffer,
 static uint32_t JPEG_MCU_Gray_ARGB_ConvertBlocks(uint8_t *pInBuffer,
                                       uint8_t *pOutBuffer,
                                       uint32_t BlockIndex,
-                                      uint32_t DataCount,
-                                      uint32_t *ConvertedDataCount)
+                                      uint32_t DataCount)
 {
   uint32_t numberMCU;
   uint32_t  currentMCU, xRef,yRef;
@@ -1615,8 +1606,7 @@ static uint32_t JPEG_MCU_Gray_ARGB_ConvertBlocks(uint8_t *pInBuffer,
 static uint32_t JPEG_MCU_YCCK_ARGB_ConvertBlocks(uint8_t *pInBuffer,
                                       uint8_t *pOutBuffer,
                                       uint32_t BlockIndex,
-                                      uint32_t DataCount,
-                                      uint32_t *ConvertedDataCount)
+                                      uint32_t DataCount)
 {
   uint32_t numberMCU;
   uint32_t i,j, currentMCU, xRef,yRef;

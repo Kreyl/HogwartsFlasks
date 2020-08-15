@@ -238,11 +238,9 @@ void StartFrameDecoding() {
 }
 
 uint8_t ProcessMcuBuf() {
-    if(!pConvert_Function) return retvInProgress;
-    uint32_t ConvertedDataCount;
     Dma2d::Suspend();
-    // From, To, BlockIndex, FromSz, *ToSz
-    MCU_BlockIndex += pConvert_Function((uint8_t*)JMcuBuf.BufToProcess, *Outbuff.CurrBuf, MCU_BlockIndex, JMcuBuf.DataSzToProcess, &ConvertedDataCount);
+    // From, To, BlockIndex, FromSz
+    MCU_BlockIndex += pConvert_Function((uint8_t*)JMcuBuf.BufToProcess, *Outbuff.CurrBuf, MCU_BlockIndex, JMcuBuf.DataSzToProcess);
     Dma2d::Resume();
     if(MCU_BlockIndex == MCU_TotalNb) return retvOk;
     else return retvInProgress;
@@ -318,27 +316,6 @@ static void VideoThd(void *arg) {
             default: break;
         } // switch
     } // while true
-}
-
-void HAL_JPEG_InfoReadyCallback(JPEG_ConfTypeDef *pInfo) {
-    if(pInfo->ChromaSubsampling == JPEG_420_SUBSAMPLING) {
-        if((pInfo->ImageWidth  % 16) != 0) pInfo->ImageWidth  += (16 - (pInfo->ImageWidth % 16));
-        if((pInfo->ImageHeight % 16) != 0) pInfo->ImageHeight += (16 - (pInfo->ImageHeight % 16));
-    }
-
-    if(pInfo->ChromaSubsampling == JPEG_422_SUBSAMPLING) {
-        if((pInfo->ImageWidth % 16) != 0) pInfo->ImageWidth  += (16 - (pInfo->ImageWidth % 16));
-        if((pInfo->ImageHeight % 8) != 0) pInfo->ImageHeight += (8 - (pInfo->ImageHeight % 8));
-    }
-
-    if(pInfo->ChromaSubsampling == JPEG_444_SUBSAMPLING) {
-        if((pInfo->ImageWidth % 8)  != 0) pInfo->ImageWidth  += (8 - (pInfo->ImageWidth % 8));
-        if((pInfo->ImageHeight % 8) != 0) pInfo->ImageHeight += (8 - (pInfo->ImageHeight % 8));
-    }
-
-    if(JPEG_GetDecodeColorConvertFunc(pInfo, &pConvert_Function, &MCU_TotalNb) != retvOk) {
-        Printf("JErr\r");
-    }
 }
 
 #if 1 // ============================= Top Level ===============================
@@ -428,7 +405,7 @@ void Vector1F0() {
     // If header parsed
     if(Flags & JPEG_SR_HPDF) {
         Jpeg::GetInfo(&JConf);
-        HAL_JPEG_InfoReadyCallback(&JConf);
+        Jpeg::InfoReadyCallback(&JConf, &pConvert_Function, &MCU_TotalNb);
         JPEG->CR &= ~JPEG_CR_HPDIE; // Disable hdr IRQ
         JPEG->CFR = JPEG_CFR_CHPDF; // Clear flag
     }

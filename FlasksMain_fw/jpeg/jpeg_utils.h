@@ -42,32 +42,6 @@
 /* Includes ------------------------------------------------------------------*/
 #include "jpeg_utils_conf.h"
 
-/** @addtogroup Utilities
-  * @{
-  */
-
-/** @addtogroup JPEG
-  * @{
-  */
-
-/** @defgroup JPEG_Exported_Defines JPEG Exported Defines
-  * @{
-  */
-/**
-* @}
-*/
-
-/** @defgroup JPEG_Exported_Types JPEG Exported Types
-  * @{
-  */
-#if (USE_JPEG_DECODER == 1)
-typedef   uint32_t (* JPEG_YCbCrToRGB_Convert_Function)(uint8_t *pInBuffer,
-                                      uint8_t *pOutBuffer,
-                                      uint32_t BlockIndex,
-                                      uint32_t DataCount,
-                                      uint32_t *ConvertedDataCount );
-#endif
-
 #if (USE_JPEG_ENCODER == 1)
 typedef   uint32_t (* JPEG_RGBToYCbCr_Convert_Function)(uint8_t *pInBuffer,
                                       uint8_t *pOutBuffer,
@@ -75,23 +49,6 @@ typedef   uint32_t (* JPEG_RGBToYCbCr_Convert_Function)(uint8_t *pInBuffer,
                                       uint32_t DataCount,
                                       uint32_t *ConvertedDataCount );
 #endif
-/**
-* @}
-*/
-
-/** @defgroup JPEG_Exported_Macros JPEG Exported Macros
-  * @{
-  */
-/**
-* @}
-*/
-
-/** @defgroup JPEG_Exported_Variables JPEG Exported Variables
-  * @{
-  */
-/**
-* @}
-*/
 
 /** @defgroup JPEG_Exported_FunctionsPrototype JPEG Exported FunctionsPrototype
   * @{

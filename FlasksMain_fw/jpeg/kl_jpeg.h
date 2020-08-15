@@ -32,24 +32,24 @@ typedef struct {
 #define JPEG_YCBCR_COLORSPACE         JPEG_CONFR1_COLORSPACE_0
 #define JPEG_CMYK_COLORSPACE          JPEG_CONFR1_COLORSPACE
 
-/** @defgroup JPEG_ChromaSubsampling JPEG Chrominance Sampling
-  * @brief  JPEG Chrominance Sampling
-  * @{
-  */
+// JPEG Chrominance Sampling
 #define JPEG_444_SUBSAMPLING     ((uint32_t)0x00000000U)   /*!< Chroma Subsampling 4:4:4 */
 #define JPEG_420_SUBSAMPLING     ((uint32_t)0x00000001U)   /*!< Chroma Subsampling 4:2:0 */
 #define JPEG_422_SUBSAMPLING     ((uint32_t)0x00000002U)   /*!< Chroma Subsampling 4:2:2 */
 
-/** @defgroup JPEG_Quantization_Table_Size JPEG Quantization Table Size
-  * @brief  JPEG Quantization Table Size
-  * @{
-  */
+// JPEG Quantization Table Size
 #define JPEG_QUANT_TABLE_SIZE  ((uint32_t)64U) /*!< JPEG Quantization Table Size in bytes  */
+
+typedef   uint32_t (* JPEG_YCbCrToRGB_Convert_Function)(uint8_t *pInBuffer,
+                                      uint8_t *pOutBuffer,
+                                      uint32_t BlockIndex,
+                                      uint32_t DataCount);
 
 namespace Jpeg {
 
 void Init(stm32_dmaisr_t DmaOutCallback);
 void GetInfo(JPEG_ConfTypeDef *pInfo);
+void InfoReadyCallback(JPEG_ConfTypeDef *pInfo, JPEG_YCbCrToRGB_Convert_Function *pFunction, uint32_t *ImageNbMCUs);
 
 void PrepareToStart(void *ptr, uint32_t Cnt);
 void DisableOutDma();

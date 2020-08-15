@@ -690,6 +690,28 @@ void GetInfo(JPEG_ConfTypeDef *pInfo) {
     pInfo->ImageQuality = 0;
 }
 
+void InfoReadyCallback(JPEG_ConfTypeDef *pInfo, JPEG_YCbCrToRGB_Convert_Function *pFunction, uint32_t *ImageNbMCUs) {
+    if(pInfo->ChromaSubsampling == JPEG_420_SUBSAMPLING) {
+        if((pInfo->ImageWidth  % 16) != 0) pInfo->ImageWidth  += (16 - (pInfo->ImageWidth % 16));
+        if((pInfo->ImageHeight % 16) != 0) pInfo->ImageHeight += (16 - (pInfo->ImageHeight % 16));
+    }
+
+    if(pInfo->ChromaSubsampling == JPEG_422_SUBSAMPLING) {
+        if((pInfo->ImageWidth % 16) != 0) pInfo->ImageWidth  += (16 - (pInfo->ImageWidth % 16));
+        if((pInfo->ImageHeight % 8) != 0) pInfo->ImageHeight += (8 - (pInfo->ImageHeight % 8));
+    }
+
+    if(pInfo->ChromaSubsampling == JPEG_444_SUBSAMPLING) {
+        if((pInfo->ImageWidth % 8)  != 0) pInfo->ImageWidth  += (8 - (pInfo->ImageWidth % 8));
+        if((pInfo->ImageHeight % 8) != 0) pInfo->ImageHeight += (8 - (pInfo->ImageHeight % 8));
+    }
+
+    if(JPEG_GetDecodeColorConvertFunc(pInfo, pFunction, ImageNbMCUs) != retvOk) {
+        Printf("JErr\r");
+    }
+}
+
+
 void PrepareToStart(void *ptr, uint32_t Cnt) {
     // Flush input and output FIFOs
     JPEG->CR |= JPEG_CR_IFF;
