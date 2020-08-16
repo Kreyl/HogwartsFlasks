@@ -12,29 +12,45 @@
 #include "MsgQ.h"
 #include "lcdtft.h"
 
+//__attribute__ ((section ("DATA_RAM")))
+
 FIL ifile;
 
 #if 1 // ============================ AVI headers ==============================
-#define FBUF_SZ     32768 // Packed frame must fit here
-#define FOURCC(c1, c2, c3, c4)  ((c4 << 24) | (c3 << 16) | (c2 << 8) | c1)
+#define IN_VBUF_SZ      0xA000UL // Packed frame must fit here
+#define IN_VBUF_SZ32    (IN_VBUF_SZ / 4)
+
+#define IN_AUBUF_SZ     0x2000UL // Packed frame must fit here
+#define IN_AUBUF_SZ32   (IN_VBUF_SZ / 4)
+
+#define FOURCC(c1, c2, c3, c4)  ((uint32_t)((c4 << 24) | (c3 << 16) | (c2 << 8) | c1))
 
 class ChunkHdr_t {
 public:
     uint32_t ckID;
     uint32_t ckSize = 0; //  includes the size of listType plus the size of listData
     uint32_t Type;
-    uint8_t ReadNext() {
-        if(ckSize & 1) ckSize++; // The data is always padded to nearest WORD boundary. ckSize gives the size of the valid data in the chunk; it does not include the padding
-        f_lseek(&ifile, f_tell(&ifile) + ckSize);
+    uint8_t Read() {
         if(f_eof(&ifile)) return retvEndOfFile;
         uint32_t BytesRead = 0;
         if(f_read(&ifile, this, 8, &BytesRead) != FR_OK or BytesRead != 8) return retvFail;
+        DataStart = f_tell(&ifile);
         return retvOk;
+    }
+
+    uint8_t ReadNext() {
+        if(DataStart != 0) {
+            if(ckSize & 1) ckSize++; // The data is always padded to nearest WORD boundary. ckSize gives the size of the valid data in the chunk; it does not include the padding
+            f_lseek(&ifile, DataStart + ckSize);
+            if(f_eof(&ifile)) return retvEndOfFile;
+        }
+        return Read();
     }
     uint8_t ReadType() {
         uint32_t BytesRead = 0;
         if(f_read(&ifile, &Type, 4, &BytesRead) != FR_OK or BytesRead != 4) return retvFail;
         ckSize -= BytesRead;
+        DataStart += BytesRead;
         return retvOk;
     }
 
@@ -42,11 +58,14 @@ public:
     void PrintWType() { Printf("%4S; Sz=%u; %4S\r", &ckID, ckSize, &Type); }
     bool IsRiff() { return ckID == FOURCC('R', 'I', 'F', 'F'); }
     bool IsList() { return ckID == FOURCC('L', 'I', 'S', 'T'); }
+    bool IsJUNK() { return ckID == FOURCC('J', 'U', 'N', 'K'); }
     bool TypeIsHDRL() { return Type == FOURCC('h', 'd', 'r', 'l'); }
     bool TypeIsMOVI() { return Type == FOURCC('m', 'o', 'v', 'i'); }
     bool TypeIsAVI()  { return Type == FOURCC('A', 'V', 'I', ' '); }
     bool TypeIsidx1() { return Type == FOURCC('i', 'd', 'x', '1'); }
-} ckHdr;
+private:
+    uint32_t DataStart = 0;
+};
 
 struct avimainheader_t {
     uint32_t fcc;
@@ -71,41 +90,84 @@ struct avimainheader_t {
     }
     void Print() { Printf(" sz: %u\r usPerF: %u\r MaxBPS: %u\r Padding: %u\r ToalFrames: %u\r Streams: %u\r BufSz: %u\r Width: %u\r Height: %u\r",
             cb, dwMicroSecPerFrame, dwMaxBytesPerSec, dwPaddingGranularity, dwTotalFrames, dwStreams, dwSuggestedBufferSize, dwWidth, dwHeight); }
-} AviMainHdr;
+};
 
-void AnalyzeMovi(uint32_t moviLoc, uint32_t moviSz) {
-    ChunkHdr_t Hdr;
-    f_lseek(&ifile, moviLoc);
-    while(true) {
-        if(Hdr.ReadNext() != retvOk) break;
-        Hdr.Print();
-        if(moviSz <=  Hdr.ckSize) break;
-        else moviSz -= Hdr.ckSize;
+struct avistreamheader_t {
+    uint32_t fcc;
+    DWORD cb;
+    uint32_t fccType;
+    uint32_t fccHandler;
+    DWORD dwFlags;
+    WORD wPriority;
+    WORD wLanguage;
+    DWORD dwInitialFrames;
+    DWORD dwScale;
+    DWORD dwRate;
+    DWORD dwStart;
+    DWORD dwLength;
+    DWORD dwSuggestedBufferSize;
+    DWORD dwQuality;
+    DWORD dwSampleSize;
+    struct {
+        short int left;
+        short int top;
+        short int right;
+        short int bottom;
+    } rcFrame;
+    uint8_t Read() {
+        if(f_eof(&ifile)) return retvEndOfFile;
+        uint32_t BytesRead = 0;
+        if(f_read(&ifile, this, sizeof(avistreamheader_t), &BytesRead) != FR_OK or BytesRead != sizeof(avistreamheader_t)) return retvFail;
+        if(fcc != FOURCC('s', 't', 'r', 'h')) { Printf("BadStreamHdr %4S\r", &fcc); return retvFail; }
+        return retvOk;
     }
-}
+    void Print() {
+        Printf(" sz: %u\r Type: %4S\r Handler: %4S\r dwInitialFrames: %u\r ScaleRate: %u %u\r",
+            cb, &fccType, &fccHandler, dwInitialFrames, dwScale, dwRate);
+    }
+};
 
-class ckFrame_t {
-private:
-    uint32_t ckID;
+struct WAVEFORMATEX {
+  WORD  wFormatTag;
+  WORD  nChannels;
+  DWORD nSamplesPerSec;
+  DWORD nAvgBytesPerSec;
+  WORD  nBlockAlign;
+  WORD  wBitsPerSample;
+  WORD  cbSize;
+  uint8_t Read() {
+      if(f_eof(&ifile)) return retvEndOfFile;
+      uint32_t BytesRead = 0;
+      if(f_read(&ifile, this, sizeof(WAVEFORMATEX), &BytesRead) != FR_OK or BytesRead != sizeof(WAVEFORMATEX)) return retvFail;
+      return retvOk;
+  }
+  void Print() {
+      Printf("  Tag: %u\r  nCh: %u\r  nSmpPS: %u\r  Align: %u\r  nBPS: %u\r  Sz: %u\r", wFormatTag, nChannels, nSamplesPerSec, nBlockAlign, wBitsPerSample, cbSize);
+  }
+};
+
+class VideoChunk_t {
 public:
-    uint8_t Buf[FBUF_SZ];
+    uint32_t ckID = 0; // }
+    uint32_t Sz = 0;   // } Will be read together
+    uint32_t Buf[IN_VBUF_SZ32];
     uint32_t NextLoc = 0;
-    uint32_t Sz = 0;
+
     uint8_t ReadNext() {
         f_lseek(&ifile, NextLoc); // Goto next chunk
         while(true) {
             uint32_t BytesRead = 0;
             // Read next header
-            if(f_read(&ifile, &ckID, 4, &BytesRead) != FR_OK or BytesRead != 4) return retvFail;
-            if(f_read(&ifile, &Sz,   4, &BytesRead) != FR_OK or BytesRead != 4) return retvFail;
+            if(f_read(&ifile, this, 8, &BytesRead) != FR_OK or BytesRead != 8) return retvFail;
 //            Printf("%4S; Sz=%u\r", &ckID, Sz);
             if(ckID == FOURCC('0','0','d','c')) { // found
-                if(Sz > FBUF_SZ) {
+                if(Sz > IN_VBUF_SZ) {
                     Printf("Too large data\r");
                     return retvFail;
                 }
                 // Read data
                 if(f_read(&ifile, Buf, Sz, &BytesRead) == FR_OK and BytesRead == Sz) {
+//                    cacheBufferFlush(Buf, Sz);
                     // Prepare next loc
                     NextLoc = f_tell(&ifile);
                     if(NextLoc & 1) NextLoc++;
@@ -119,12 +181,46 @@ public:
         }
         return retvFail;
     }
-} ckFrame;
+} VideoChunk;
 
+//__attribute__ ((section ("DATA_RAM")))
+class AudioChunk_t {
+public:
+    uint32_t ckID = 0; // }
+    uint32_t Sz = 0;   // } Will be read together
+    uint32_t Buf[IN_AUBUF_SZ32];
+    uint32_t NextLoc = 0;
 
-static struct {
-    uint32_t moviLoc = 0;
-} idata;
+    uint8_t ReadNext() {
+        f_lseek(&ifile, NextLoc); // Goto next chunk
+        while(true) {
+            uint32_t BytesRead = 0;
+            // Read next header
+            if(f_read(&ifile, this, 8, &BytesRead) != FR_OK or BytesRead != 8) return retvFail;
+//            Printf("%4S; Sz=%u\r", &ckID, Sz);
+            if(ckID == FOURCC('0','1','w','b')) { // found
+                if(Sz > IN_AUBUF_SZ) {
+                    Printf("Too large data\r");
+                    return retvFail;
+                }
+                // Read data
+//                if(f_read(&ifile, Buf, Sz, &BytesRead) == FR_OK and BytesRead == Sz) {
+////                    cacheBufferFlush(Buf, Sz);
+//                    // Prepare next loc
+//                    NextLoc = f_tell(&ifile);
+//                    if(NextLoc & 1) NextLoc++;
+                    return retvOk;
+//                }
+            }
+            else {
+                if(Sz & 1) Sz++;
+                f_lseek(&ifile, f_tell(&ifile) + Sz);
+            }
+        }
+        return retvFail;
+    }
+} AudioChunk;
+
 #endif
 
 #if 1 // ============================ Video queue ==============================
@@ -228,7 +324,7 @@ public:
 void StartFrameDecoding() {
     Jpeg::Stop();
     MCU_BlockIndex = 0;
-    Jpeg::PrepareToStart(ckFrame.Buf, (ckFrame.Sz + 3) / 4);
+    Jpeg::PrepareToStart(VideoChunk.Buf, (VideoChunk.Sz + 3) / 4);
     JMcuBuf.PrepareToFill();
     Jpeg::Start();
 }
@@ -240,6 +336,20 @@ uint8_t ProcessMcuBuf() {
     Dma2d::Resume();
     if(MCU_BlockIndex == Jpeg::Conf.ImageMCUsCnt) return retvOk;
     else return retvInProgress;
+}
+#endif
+
+#if 1 // ========================== Audio playback =============================
+void StartAudio() {
+
+}
+
+void StopAudio() {
+
+}
+
+void ProcessAudioBuf() {
+
 }
 #endif
 
@@ -255,12 +365,14 @@ __noreturn
 static void VideoThd(void *arg) {
     chRegSetThreadName("Video");
     systime_t FrameStart = 0;
+//    uint32_t fcnt = 0;
+//    uint32_t sum = 0;
     while(true) {
         VideoMsg_t Msg = MsgQVideo.Fetch(TIME_INFINITE);
         switch(Msg.Cmd) {
             case vcmdStart:
                 // Try to get next frame
-                if(ckFrame.ReadNext() == retvOk) {
+                if(VideoChunk.ReadNext() == retvOk and AudioChunk.ReadNext() == retvOk) {
                     StartFrameDecoding();
                 }
                 else MsgQVideo.SendNowOrExit(VideoMsg_t(vcmdStop));
@@ -268,6 +380,7 @@ static void VideoThd(void *arg) {
 
             case vcmdStop:
                 Jpeg::Stop();
+                StopAudio();
                 CloseFile(&ifile);
                 break;
 
@@ -299,11 +412,14 @@ static void VideoThd(void *arg) {
                     // Delay before frame show
                     sysinterval_t Elapsed = chVTTimeElapsedSinceX(FrameStart);
                     Printf("e %u\r", Elapsed);
+//                    sum += Elapsed;
+//                    fcnt++;
+//                    Printf("ea %u\r", sum / fcnt);
                     if(Elapsed < FrameRate) {
                         chThdSleep(FrameRate - Elapsed);
                     }
                     FrameStart = chVTGetSystemTimeX();
-                    Dma2d::CopyBuffer((uint32_t *)(*Outbuff.CurrBuf), (uint32_t *)FrameBuf1, xPos , yPos, Jpeg::Conf.ImageWidth, Jpeg::Conf.ImageHeight, width_offset);
+                    Dma2d::CopyBuffer((uint32_t *)(*Outbuff.CurrBuf), (uint32_t *)FrameBuf1, xPos, yPos, Jpeg::Conf.ImageWidth, Jpeg::Conf.ImageHeight, width_offset);
                     Outbuff.Switch();
                     MsgQVideo.SendNowOrExit(VideoMsg_t(vcmdStart));
                 }
@@ -331,11 +447,65 @@ void Init() {
     chThdCreateStatic(waVideoThd, sizeof(waVideoThd), HIGHPRIO, (tfunc_t)VideoThd, NULL);
 }
 
+uint8_t ProcessHDRL(int32_t HdrlSz) {
+    avimainheader_t AviMainHdr;
+    if(AviMainHdr.Read() != retvOk) return retvFail;
+    HdrlSz -= AviMainHdr.cb + 8;
+    FrameRate = TIME_US2I(AviMainHdr.dwMicroSecPerFrame);
+    Printf("FrameRate_st: %u\r", FrameRate);
+    AviMainHdr.Print();
+    // Read streams headers
+    ChunkHdr_t ListHdr;
+    while(HdrlSz > 0) {
+        // Read LIST strl
+        if(ListHdr.ReadNext() != retvOk) return retvFail;
+        HdrlSz -= ListHdr.ckSize + 8;
+        if(ListHdr.IsList()) {
+            ListHdr.ReadType();
+            ListHdr.PrintWType();
+            if(ListHdr.Type == FOURCC('s','t','r','l')) {
+                // Read chunks inside the list
+                int32_t ListSz = ListHdr.ckSize;
+                ChunkHdr_t Hdr;
+                avistreamheader_t StreamHdr;
+                while(ListSz > 0) {
+                    if(Hdr.ReadNext() != retvOk) break;
+                    ListSz -= Hdr.ckSize + 8;
+                    Hdr.Print();
+                    if(Hdr.ckID == FOURCC('s','t','r','h')) {
+                        f_lseek(&ifile, f_tell(&ifile) - 8);
+                        if(StreamHdr.Read() != retvOk) return retvFail;
+                        StreamHdr.Print();
+                        if(StreamHdr.fccType == FOURCC('v','i','d','s') and StreamHdr.fccHandler != FOURCC('M','J','P','G') ) {
+                            Printf("Unsupported video format\r");
+                            return retvFail;
+                        }
+                    }
+                    else if(Hdr.ckID == FOURCC('s','t','r','f')) { // Format
+                        if(StreamHdr.fccType == FOURCC('a','u','d','s')) {
+                            WAVEFORMATEX WFormat;
+                            if(WFormat.Read() != retvOk) return retvFail;
+                            WFormat.Print();
+                            if(WFormat.wFormatTag != 1) { // WAVE_FORMAT_PCM = 0x0001
+                                Printf("Unsupported audio format\r");
+                                return retvFail;
+                            }
+                        }
+                    }
+                } // while(ListSz > 0)
+            } // if strl
+        } // IsList
+        else ListHdr.Print();
+    } // while(HdrlSz > 0)
+    return retvOk;
+}
+
 uint8_t Start(const char* FName) {
     uint8_t Rslt = TryOpenFileRead(FName, &ifile);
     if(Rslt != retvOk) return Rslt;
     Rslt = retvFail;
     // Check header
+    ChunkHdr_t ckHdr;
     if(ckHdr.ReadNext() != retvOk) goto End;
     ckHdr.Print();
     if(!ckHdr.IsRiff()) { Printf("BadHdr\r"); goto End; }
@@ -343,7 +513,6 @@ uint8_t Start(const char* FName) {
     if(!ckHdr.TypeIsAVI()) { Printf("BadContent\r"); goto End; }
     ckHdr.ckSize = 0; // To read next chunk, not jumping to end of file
     // Analyze: read all chunks and lists
-    idata.moviLoc = 0;
     while(true) {
         if(ckHdr.ReadNext() != retvOk) break;
         if(ckHdr.IsList()) {
@@ -351,32 +520,20 @@ uint8_t Start(const char* FName) {
             ckHdr.PrintWType();
             // Process hdrl
             if(ckHdr.TypeIsHDRL()) {
-                if(AviMainHdr.Read() == retvOk) {
-                    FrameRate = TIME_US2I(AviMainHdr.dwMicroSecPerFrame);
-                    Printf("FrameRate_st: %u\r", FrameRate);
-                    AviMainHdr.Print();
-                    ckHdr.ckSize -= sizeof(AviMainHdr);
-                    // Read LIST strl
-                    ChunkHdr_t Hdr;
-                    if(Hdr.ReadNext() == retvOk) {
-                        if(Hdr.IsList()) {
-                            Hdr.ReadType();
-                            Hdr.PrintWType();
-                        }
-                        else Hdr.Print();
-                    }
-                }
+                uint32_t N = f_tell(&ifile);
+                if(ProcessHDRL(ckHdr.ckSize) != retvOk) return retvFail;
+                f_lseek(&ifile, N);
             }
             // Process movi
             if(ckHdr.TypeIsMOVI()) {
-                idata.moviLoc = f_tell(&ifile);
-                ckFrame.NextLoc = idata.moviLoc;
-                ckFrame.Sz = 0;
+                VideoChunk.NextLoc = f_tell(&ifile);
+                VideoChunk.Sz = 0;
+                AudioChunk.NextLoc = f_tell(&ifile);
+                AudioChunk.Sz = 0;
                 // Everything is prepared to start
+                StartAudio();
                 MsgQVideo.SendNowOrExit(VideoMsg_t(vcmdStart));
                 return retvOk; // movi chunk found
-//                AnalyzeMovi(moviLoc, ckHdr.ckSize);
-//                f_lseek(&ifile, moviLoc);
             }
         }
         else ckHdr.Print();

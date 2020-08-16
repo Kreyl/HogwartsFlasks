@@ -59,6 +59,7 @@ int main() {
     Avi::Init();
 //    Avi::Start("Plane_480x272.avi");
 //    Avi::Start("SWTrail.avi");
+//    Avi::Start("yogSS.avi");
     Avi::Start("sw8_m.avi");
 //        for(int i=0; i<1; i++) {
 //            if(Avi::GetNextFrame() != retvOk) break;
