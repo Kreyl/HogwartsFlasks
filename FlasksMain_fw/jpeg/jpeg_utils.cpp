@@ -1175,14 +1175,14 @@ static uint32_t JPEG_MCU_YCbCr420_ARGB_ConvertBlocks(uint8_t *pInBuffer,
 
             ycomp = (int32_t)(*(pLum +j));
 
-            *(__IO uint32_t *)pOutAddr =
+            *(__IO uint32_t *)pOutAddr = 0xFFUL << 24 | \
               (CLAMP(ycomp + c_red) << JPEG_RED_OFFSET)     | \
               (CLAMP( ycomp + c_green) << JPEG_GREEN_OFFSET) | \
               (CLAMP(ycomp + c_blue) << JPEG_BLUE_OFFSET);
             /**********/
             ycomp = (int32_t)(*(pLum +j +1));
 
-            *((__IO uint32_t *)(pOutAddr + 4)) =
+            *((__IO uint32_t *)(pOutAddr + 4)) = 0xFFUL << 24 | \
               (CLAMP(ycomp + c_red) << JPEG_RED_OFFSET)     | \
               (CLAMP( ycomp + c_green) << JPEG_GREEN_OFFSET) | \
               (CLAMP(ycomp + c_blue) << JPEG_BLUE_OFFSET);
@@ -1190,7 +1190,7 @@ static uint32_t JPEG_MCU_YCbCr420_ARGB_ConvertBlocks(uint8_t *pInBuffer,
             /**********/
             ycomp = (int32_t)(*(pLum +j +8));
 
-            *(__IO uint32_t *)pOutAddr2 =
+            *(__IO uint32_t *)pOutAddr2 = 0xFFUL << 24 | \
               (CLAMP(ycomp + c_red) << JPEG_RED_OFFSET)     | \
               (CLAMP( ycomp + c_green) << JPEG_GREEN_OFFSET) | \
               (CLAMP(ycomp + c_blue) << JPEG_BLUE_OFFSET);
@@ -1198,7 +1198,7 @@ static uint32_t JPEG_MCU_YCbCr420_ARGB_ConvertBlocks(uint8_t *pInBuffer,
             /**********/
             ycomp = (int32_t)(*(pLum +j +8 +1));
 
-            *((__IO uint32_t *)(pOutAddr2 +4)) =
+            *((__IO uint32_t *)(pOutAddr2 +4)) = 0xFFUL << 24 | \
               (CLAMP(ycomp + c_red) << JPEG_RED_OFFSET)     | \
               (CLAMP( ycomp + c_green) << JPEG_GREEN_OFFSET) | \
               (CLAMP(ycomp + c_blue) << JPEG_BLUE_OFFSET);
