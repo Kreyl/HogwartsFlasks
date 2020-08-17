@@ -405,6 +405,10 @@ struct ColorARGB_t {
     } __attribute__((packed));
 } __attribute__((packed));
 
+struct ColorRGB_t {
+    uint8_t B, G, R;
+} __attribute__((packed));
+
 #if 1 // ============================= Colors ==================================
 #define clBlack     ((Color_t){0,   0,   0})
 #define clRed       ((Color_t){255, 0,   0})

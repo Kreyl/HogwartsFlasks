@@ -319,7 +319,7 @@ public:
 #endif
 
 #if 1 // ============================ Video queue ==============================
-enum VideoCmd_t { vcmdNone, vcmdStart, vcmdStop, vcmdNewMCUBufReady, vcmdEndDecode, vcmdLastFrame };
+enum VideoCmd_t { vcmdNone, vcmdStart, vcmdStop, vcmdNewMCUBufReady, vcmdEndDecode };
 
 union VideoMsg_t {
     uint32_t DWord[2];
@@ -401,21 +401,6 @@ public:
     }
 } JMcuBuf;
 
-//class OutBuf_t {
-//private:
-//    uint8_t *pBuf1, *pBuf2;
-//public:
-//    void Init() {
-//        pBuf1 = (uint8_t*)malloc(OUTBUF_SZ);
-//        pBuf2 = (uint8_t*)malloc(OUTBUF_SZ);
-//    }
-//    uint8_t **CurrBuf = &pBuf1;
-//    void Switch() {
-//        if(CurrBuf == &pBuf1) CurrBuf = &pBuf2;
-//        else CurrBuf = &pBuf1;
-//    }
-//} Outbuff;
-
 void StartFrameDecoding() {
     Jpeg::Stop();
     MCU_BlockIndex = 0;
@@ -427,9 +412,8 @@ void StartFrameDecoding() {
 uint8_t ProcessMcuBuf() {
     Dma2d::Suspend();
     // From, To, BlockIndex, FromSz
-//    MCU_BlockIndex += Jpeg::pConvert_Function((uint8_t*)JMcuBuf.BufToProcess, *Outbuff.CurrBuf, MCU_BlockIndex, JMcuBuf.DataSzToProcess);
     MCU_BlockIndex += Jpeg::pConvert_Function((uint8_t*)JMcuBuf.BufToProcess, (uint8_t*)FrameBuf1, MCU_BlockIndex, JMcuBuf.DataSzToProcess);
-    Dma2d::Resume();
+
     if(MCU_BlockIndex == Jpeg::Conf.ImageMCUsCnt) return retvOk;
     else return retvInProgress;
 }
@@ -530,6 +514,7 @@ union FileMsg_t {
 } __packed;
 
 static EvtMsgQ_t<FileMsg_t, 9> MsgQFile;
+bool IsLastFrame = false;
 
 static THD_WORKING_AREA(waFileThd, 1024);
 __noreturn
@@ -539,7 +524,7 @@ static void FileThd(void *arg) {
         FileMsg_t Msg = MsgQFile.Fetch(TIME_INFINITE);
         switch(Msg.Cmd) {
             case fcmdReadNext:
-                if(VideoChunk.ReadNext() != retvOk) MsgQVideo.SendNowOrExit(VideoMsg_t(vcmdLastFrame));
+                IsLastFrame = (VideoChunk.ReadNext() != retvOk);
                 break;
 
             default: break;
@@ -553,17 +538,16 @@ __noreturn
 static void VideoThd(void *arg) {
     chRegSetThreadName("Video");
     systime_t FrameStart = 0;
-    bool IsLastFrame = false;
     while(true) {
         VideoMsg_t Msg = MsgQVideo.Fetch(TIME_INFINITE);
         switch(Msg.Cmd) {
             case vcmdStart:
-                while(!VideoChunk.Buf) chThdSleepMilliseconds(7);
-                StartFrameDecoding();
-                // Try to get next frame
-                IsLastFrame = false;
-                MsgQFile.SendNowOrExit(FileMsg_t(fcmdReadNext));
-//                IsLastFrame = (VideoChunk.ReadNext() != retvOk);
+                while(!VideoChunk.Buf and !IsLastFrame) chThdSleepMilliseconds(7);
+                if(IsLastFrame) MsgQVideo.SendNowOrExit(VideoMsg_t(vcmdStop));
+                else {
+                    StartFrameDecoding();
+                    MsgQFile.SendNowOrExit(FileMsg_t(fcmdReadNext)); // Try to get next frame
+                }
                 break;
 
             case vcmdStop:
@@ -579,40 +563,15 @@ static void VideoThd(void *arg) {
                 ProcessMcuBuf();  // Process what received
                 break;
 
-            case vcmdLastFrame: IsLastFrame = true; break;
-
             case vcmdEndDecode: {
                 JMcuBuf.Switch();
                 ProcessMcuBuf();
-                Jpeg::GetInfo();
-                // Copy RGB decoded Data to the display FrameBuffer
-                uint32_t width_offset = 0;
-                uint32_t xPos = (LCD_WIDTH - Jpeg::Conf.ImageWidth) / 2;
-                uint32_t yPos = (LCD_HEIGHT - Jpeg::Conf.ImageHeight) / 2;
-
-                if(Jpeg::Conf.ChromaSubsampling == JPEG_420_SUBSAMPLING) {
-                    if((Jpeg::Conf.ImageWidth % 16) != 0) width_offset = 16 - (Jpeg::Conf.ImageWidth % 16);
-                }
-                if(Jpeg::Conf.ChromaSubsampling == JPEG_422_SUBSAMPLING) {
-                    if((Jpeg::Conf.ImageWidth % 16) != 0) width_offset = 16 - (Jpeg::Conf.ImageWidth % 16);
-                }
-                if(Jpeg::Conf.ChromaSubsampling == JPEG_444_SUBSAMPLING) {
-                    if((Jpeg::Conf.ImageWidth % 8) != 0) width_offset = (Jpeg::Conf.ImageWidth % 8);
-                }
-
                 // Delay before frame show
                 sysinterval_t Elapsed = chVTTimeElapsedSinceX(FrameStart);
-                Printf("e %u\r", Elapsed);
-                if(Elapsed < FrameRate) {
-                    chThdSleep(FrameRate - Elapsed);
-                }
+//                Printf("e %u\r", Elapsed);
+                if(Elapsed < FrameRate) chThdSleep(FrameRate - Elapsed);
                 FrameStart = chVTGetSystemTimeX();
-//                Dma2d::CopyBuffer((uint32_t *)(*Outbuff.CurrBuf), (uint32_t *)FrameBuf1, xPos, yPos, Jpeg::Conf.ImageWidth, Jpeg::Conf.ImageHeight, width_offset);
-                if(IsLastFrame) MsgQVideo.SendNowOrExit(VideoMsg_t(vcmdStop));
-                else {
-//                    Outbuff.Switch();
-                    MsgQVideo.SendNowOrExit(VideoMsg_t(vcmdStart));
-                }
+                MsgQVideo.SendNowOrExit(VideoMsg_t(vcmdStart));
             } break;
 
             default: break;
@@ -626,11 +585,8 @@ namespace Avi {
 void Init() {
 //    VFileBuf.Init();
 //    BigBuf = (uint32_t*)malloc(BIGBUF_SZ);
-//    Outbuff.Init();
     JPEG_InitColorTables(); // Init The JPEG Color Look Up Tables used for YCbCr to RGB conversion
     Jpeg::Init(DmaJpegOutCB, OnJpegConvEndI);
-
-    Dma2d::Init();
 
     // Create and start threads
     MsgQVideo.Init();

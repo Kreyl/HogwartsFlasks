@@ -23,4 +23,4 @@ void LcdPaintL1(uint32_t Left, uint32_t Top, uint32_t Right, uint32_t Bottom, ui
 
 uint8_t LcdDrawBmp(uint8_t *Buff, uint32_t Sz);
 
-extern ColorARGB_t *FrameBuf1;
+extern ColorRGB_t *FrameBuf1;

@@ -56,7 +56,7 @@ int main() {
     SD.Init();
 
     LcdInit();
-    LcdPaintL1(0, 0, 100, 100, 255, 0, 255, 0);
+//    LcdPaintL1(0, 0, 100, 100, 255, 0, 255, 0);
     chThdSleepMilliseconds(360);
     Avi::Init();
 //    Avi::Start("Plane_480x272.avi");

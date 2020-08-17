@@ -75,7 +75,7 @@
 #define USE_JPEG_DECODER     1  /* Enable Decoding Post-Processing functions (YCbCr to RGB conversion) */
 #define USE_JPEG_ENCODER     0  /* Enable Encoding Pre-Processing functions (RGB to YCbCr conversion)*/
 
-#define JPEG_RGB_FORMAT      JPEG_ARGB8888  /* Select RGB format: ARGB8888, RGB888, RBG_565 */
+#define JPEG_RGB_FORMAT      JPEG_RGB888  /* Select RGB format: ARGB8888, RGB888, RBG_565 */
 #define JPEG_SWAP_RB         0  /* Change color order to BGR */
 
 /**
