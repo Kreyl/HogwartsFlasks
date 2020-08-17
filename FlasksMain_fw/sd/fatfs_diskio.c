@@ -10,22 +10,10 @@
 #include "ffconf.h"
 #include "diskio.h"
 
-#if HAL_USE_MMC_SPI && HAL_USE_SDC
-#error "cannot specify both MMC_SPI and SDC drivers"
-#endif
-
-#if HAL_USE_MMC_SPI
-extern MMCDriver MMCD1;
-#elif HAL_USE_SDC
-extern SDCDriver SDCD1;
-#else
-#error "MMC_SPI or SDC driver must be specified"
-#endif
-
 // KL
 #undef HAL_USE_RTC
 
-extern void PrintfC(const char *format, ...);
+//extern void PrintfC(const char *format, ...);
 
 #if HAL_USE_RTC
 #include "chrtclib.h"

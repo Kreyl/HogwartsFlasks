@@ -35,6 +35,7 @@ int main() {
     Clk.Setup48Mhz();
     Clk.SetDivSai1(3, 8); // SAI R div = 3 => R = 2*96/3 = 64 MHz; LCD_CLK = 64 / 8 = 8MHz
     Clk.UpdateFreqValues();
+    FLASH->ACR |= FLASH_ACR_ARTEN; // Enable ART accelerator
     // ==== Init OS ====
     halInit();
     chSysInit();
@@ -44,6 +45,7 @@ int main() {
     Uart.Init();
     Printf("\r%S %S\r\n", APP_NAME, XSTRINGIFY(BUILD_TIME));
     Clk.PrintFreqs();
+//    Printf("FLASH->ACR: %X\r", FLASH->ACR);
 
     Led.Init();
     Led.StartOrRestart(lsqIdle);
