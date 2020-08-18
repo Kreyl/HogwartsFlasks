@@ -164,8 +164,7 @@ void CS42L52_t::Init() {
     // Init i2c
     AU_i2c.Init();
     AU_i2c.CheckAddress(0x4A); // Otherwise it does not work.
-    AU_i2c.ScanBus();
-    return;
+//    AU_i2c.ScanBus();
     // Check if connected
     uint8_t b;
     uint8_t r = ReadReg(0x01, &b);

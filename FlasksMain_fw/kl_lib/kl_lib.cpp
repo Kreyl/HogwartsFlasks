@@ -2883,7 +2883,8 @@ void Clk_t::Setup48Mhz() {
     }
 }
 
-void Clk_t::SetSai1RDiv(uint32_t RDiv, uint32_t LCDDiv) {
+// RDiv = [2; 7]; LCDDiv = {2, 4, 8, 16}
+void Clk_t::SetPllSai1RDiv(uint32_t RDiv, uint32_t LCDDiv) {
     // R Div
     uint32_t tmp = RCC->PLLSAICFGR;
     tmp &= ~RCC_PLLSAICFGR_PLLSAIR;
@@ -2899,6 +2900,20 @@ void Clk_t::SetSai1RDiv(uint32_t RDiv, uint32_t LCDDiv) {
         case 16: tmp |= (0b11UL << 16); break;
         default: break;
     } // switch
+    RCC->DCKCFGR1 = tmp;
+}
+
+// QDiv = [2; 15]; QOutDiv = [1; 32]
+void Clk_t::SetPllSai1QDiv(uint32_t QDiv, uint32_t QOutDiv) {
+    // Q Div
+    uint32_t tmp = RCC->PLLSAICFGR;
+    tmp &= ~RCC_PLLSAICFGR_PLLSAIQ;
+    tmp |= (QDiv << RCC_PLLSAICFGR_PLLSAIQ_Pos);
+    RCC->PLLSAICFGR = tmp;
+    // QOut div
+    tmp = RCC->DCKCFGR1;
+    tmp &= ~RCC_DCKCFGR1_PLLSAIDIVQ;
+    tmp |= (QOutDiv-1) << RCC_DCKCFGR1_PLLSAIDIVQ_Pos;
     RCC->DCKCFGR1 = tmp;
 }
 

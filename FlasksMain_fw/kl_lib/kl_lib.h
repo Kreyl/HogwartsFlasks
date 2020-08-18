@@ -2108,6 +2108,7 @@ enum McoDiv_t {mcoDiv1=0b000, mcoDiv2=0b100, mcoDiv3=0b101, mcoDiv4=0b110, mcoDi
 
 enum i2cClk_t { i2cclkPCLK1 = 0, i2cclkSYSCLK = 1, i2cclkHSI = 2 };
 enum uartClk_t { uartclkPCLK = 0b00, uartclkSYSCLK = 0b01, uartclkHSI = 0b10, uartclkLSE = 0b11 };
+enum SaiClk_t { saiclkPllSaiQ=0b00, saiclkPllI2SQ=0b01, saiclkI2SCkIn=0b10, saiclkPllSrc=0b11 };
 
 enum LseLvl_t {lselvlLow=0b00, lselvlMedLow=0b01, lselvlMedHi=0b11, lselvlHigh=0b11};
 
@@ -2156,7 +2157,8 @@ public:
     void SetupFlashLatency(uint8_t AHBClk_MHz, uint32_t MCUVoltage_mv);
     void SetVoltageScale(MCUVoltScale_t VoltScale);
     void Setup48Mhz();
-    void SetSai1RDiv(uint32_t RDiv, uint32_t LCDDiv);
+    void SetPllSai1RDiv(uint32_t RDiv, uint32_t LCDDiv);
+    void SetPllSai1QDiv(uint32_t QDiv, uint32_t QOutDiv);
     // LSI
     void EnableLSI() {
         RCC->CSR |= RCC_CSR_LSION;
@@ -2203,6 +2205,11 @@ public:
         RCC->DCKCFGR2 = tmp;
     }
 
+    void SetSai2ClkSrc(SaiClk_t ClkSrc) {
+        uint32_t tmp = RCC->DCKCFGR1 & ~RCC_DCKCFGR1_SAI2SEL;
+        tmp |= ((uint32_t)ClkSrc) << RCC_DCKCFGR1_SAI2SEL_Pos;
+        RCC->DCKCFGR1 = tmp;
+    }
 
     void PrintFreqs();
 };

@@ -37,11 +37,10 @@ int main() {
     Clk.SetCoreClk216MHz();
 //    Clk.SetCoreClk80MHz();
     Clk.Setup48Mhz();
-    Clk.SetSai1RDiv(3, 8); // SAI R div = 3 => R = 2*96/3 = 64 MHz; LCD_CLK = 64 / 8 = 8MHz
+    Clk.SetPllSai1RDiv(3, 8); // SAI R div = 3 => R = 2*96/3 = 64 MHz; LCD_CLK = 64 / 8 = 8MHz
     // SAI clock: PLLSAI1 Q
-
-//    Clk.EnableSai1POut();
-//    MODIFY_REG(RCC->CCIPR, RCC_CCIPR_SAI1SEL, 0);
+    Clk.SetPllSai1QDiv(8, 1); // Q = 2 * 96 / 8 = 24; 24/1 = 24
+    Clk.SetSai2ClkSrc(saiclkPllSaiQ);
 
     Clk.UpdateFreqValues();
     FLASH->ACR |= FLASH_ACR_ARTEN; // Enable ART accelerator
@@ -65,12 +64,13 @@ int main() {
     SD.Init();
 
     // Audio codec
-//    Codec.Init();   // i2c initialized inside, as pull-ups powered by VAA's LDO
-//    Codec.SetSpeakerVolume(-96);    // To remove speaker pop at power on
-//    Codec.DisableHeadphones();
-//    Codec.EnableSpeakerMono();
+    Codec.Init();   // i2c initialized inside, as pull-ups powered by VAA's LDO
+    Codec.SetSpeakerVolume(-96);    // To remove speaker pop at power on
+    Codec.DisableHeadphones();
+    Codec.EnableSpeakerMono();
 //    Codec.SetupMonoStereo(Stereo);  // Always
-//    Codec.SetupSampleRate(22050); // Just default, will be replaced when changed
+    Codec.SetupMonoStereo(Mono);  // Always
+    Codec.SetupSampleRate(22050); // Just default, will be replaced when changed
 
 
     LcdInit();
