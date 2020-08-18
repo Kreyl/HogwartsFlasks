@@ -2103,8 +2103,8 @@ enum MCUVoltScale_t {mvScale1=0b11, mvScale2=0b10, mvScale3=0b01};
 enum Src48MHz_t { src48None = 0b00, src48PllSai1Q = 0b01, src48PllQ = 0b10, src48Msi = 0b11 };
 enum PllSrc_t { pllsrcHsi = 0, pllsrcHse = (1UL << 22) };
 
-enum McoSrc_t {mcoNone=0b0000, mcoSYSCLK=0b0001, mcoMSI=0b0010, mcoHSI16=0b0011, mcoHSE=0b0100, mcoMainPLL=0b0101, mcoLSI=0b0110, mcoLSE=0b0111 };
-enum McoDiv_t {mcoDiv1=0b000, mcoDiv2=0b001, mcoDiv4=0b010, mcoDiv8=0b011, mcoDiv16 = 0b100};
+enum McoSrc_t {mcoHSI=0b00, mcoLSE=0b01, mcoHSE=0b10, mcoPLL=0b11};
+enum McoDiv_t {mcoDiv1=0b000, mcoDiv2=0b100, mcoDiv3=0b101, mcoDiv4=0b110, mcoDiv5 = 0b111};
 
 enum i2cClk_t { i2cclkPCLK1 = 0, i2cclkSYSCLK = 1, i2cclkHSI = 2 };
 enum uartClk_t { uartclkPCLK = 0b00, uartclkSYSCLK = 0b01, uartclkHSI = 0b10, uartclkLSE = 0b11 };
@@ -2156,7 +2156,7 @@ public:
     void SetupFlashLatency(uint8_t AHBClk_MHz, uint32_t MCUVoltage_mv);
     void SetVoltageScale(MCUVoltScale_t VoltScale);
     void Setup48Mhz();
-    void SetDivSai1(uint32_t RDiv, uint32_t LCDDiv);
+    void SetSai1RDiv(uint32_t RDiv, uint32_t LCDDiv);
     // LSI
     void EnableLSI() {
         RCC->CSR |= RCC_CSR_LSION;
@@ -2174,15 +2174,35 @@ public:
     uint32_t GetSaiClkHz();
 
     // Clock output
-//    void EnableMCO(McoSrc_t Src, McoDiv_t Div) {
-//        PinSetupAlterFunc(GPIOA, 8, omPushPull, pudNone, AF0, psHigh);
-//        RCC->CFGR &= ~(RCC_CFGR_MCOSEL | RCC_CFGR_MCOPRE);   // First, disable output and clear settings
-//        RCC->CFGR |= (((uint32_t)Src) << 24) | ((uint32_t)Div << 28);
-//    }
-//    void DisableMCO() {
-//        PinSetupAnalog(GPIOA, 8);
-//        RCC->CFGR &= ~(RCC_CFGR_MCOSEL | RCC_CFGR_MCOPRE);
-//    }
+    void EnableMCO(McoSrc_t Src, McoDiv_t Div) {
+        PinSetupAlterFunc(GPIOA, 8, omPushPull, pudNone, AF0, psHigh);
+        RCC->CFGR &= ~(RCC_CFGR_MCO1 | RCC_CFGR_MCO1PRE);   // First, disable output and clear settings
+        RCC->CFGR |= (((uint32_t)Src) << RCC_CFGR_MCO1_Pos) | ((uint32_t)Div << RCC_CFGR_MCO1PRE_Pos);
+    }
+    void DisableMCO() { PinSetupAnalog(GPIOA, 8); }
+
+    // Setup independent clock
+    void SetI2CClkSrc(I2C_TypeDef *i2c, i2cClk_t ClkSrc) {
+        uint32_t tmp = RCC->DCKCFGR2;
+        if(i2c == I2C1) {
+            tmp &= ~RCC_DCKCFGR2_I2C1SEL;
+            tmp |= ((uint32_t)ClkSrc) << RCC_DCKCFGR2_I2C1SEL_Pos;
+        }
+        else if(i2c == I2C2) {
+            tmp &= ~RCC_DCKCFGR2_I2C2SEL;
+            tmp |= ((uint32_t)ClkSrc) << RCC_DCKCFGR2_I2C2SEL_Pos;
+        }
+        else if(i2c == I2C3) {
+            tmp &= ~RCC_DCKCFGR2_I2C3SEL;
+            tmp |= ((uint32_t)ClkSrc) << RCC_DCKCFGR2_I2C3SEL_Pos;
+        }
+        else if(i2c == I2C4) {
+            tmp &= ~RCC_DCKCFGR2_I2C4SEL;
+            tmp |= ((uint32_t)ClkSrc) << RCC_DCKCFGR2_I2C4SEL_Pos;
+        }
+        RCC->DCKCFGR2 = tmp;
+    }
+
 
     void PrintFreqs();
 };

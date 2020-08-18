@@ -2883,7 +2883,7 @@ void Clk_t::Setup48Mhz() {
     }
 }
 
-void Clk_t::SetDivSai1(uint32_t RDiv, uint32_t LCDDiv) {
+void Clk_t::SetSai1RDiv(uint32_t RDiv, uint32_t LCDDiv) {
     // R Div
     uint32_t tmp = RCC->PLLSAICFGR;
     tmp &= ~RCC_PLLSAICFGR_PLLSAIR;
@@ -2900,7 +2900,6 @@ void Clk_t::SetDivSai1(uint32_t RDiv, uint32_t LCDDiv) {
         default: break;
     } // switch
     RCC->DCKCFGR1 = tmp;
-
 }
 
 // Scale3: f<=144Mhz; Scale2: 144<f<=169MHz; Scale1: 168<f<=216MHz

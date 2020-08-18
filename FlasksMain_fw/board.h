@@ -23,7 +23,7 @@
 #define SYS_TIM_CLK             (Clk.GetTimInputFreq(TIM5))
 
 //  Periphery
-#define I2C1_ENABLED            FALSE
+#define I2C1_ENABLED            TRUE
 #define I2C2_ENABLED            FALSE
 #define I2C3_ENABLED            FALSE
 #define SIMPLESENSORS_ENABLED   FALSE
@@ -77,6 +77,27 @@
 #define LCD_BCKLT       GPIOF, 6, TIM10, 1, invNotInverted, omPushPull, 99
 #define LCD_DISP        GPIOD, 4
 
+// CS42L52
+#define AU_RESET        GPIOC, 11, omPushPull
+#define AU_MCLK         GPIOA, 8, omPushPull, pudNone, AF0  // MCO
+#define AU_SCLK         GPIOD, 13, omPushPull, pudNone, AF10 // SCK;  SAI2_SCK_A
+#define AU_SDIN         GPIOD, 11, omPushPull, pudNone, AF10 // MOSI; SAI2_SD_A
+#define AU_LRCK         GPIOD, 12, omPushPull, pudNone, AF10 // LRCK; SAI2_FS_A
+#define AU_i2c          i2c1
+#define AU_SAI          SAI2
+#define AU_SAI_A        SAI2_Block_A
+#define AU_SAI_B        SAI2_Block_B
+#define AU_SAI_RccEn()  RCC->APB2ENR |= RCC_APB2ENR_SAI2EN
+
+// I2C
+#define I2C1_GPIO       GPIOB
+#define I2C1_SCL        6
+#define I2C1_SDA        7
+#define I2C_AF          AF4
+#define I2C_BAUDRATE_HZ 400000
+// i2cclkPCLK1, i2cclkSYSCLK, i2cclkHSI
+#define I2C_CLK_SRC     i2cclkHSI
+
 // USB
 #define USB_DETECT_PIN  GPIOA, 9
 #define USB_DM          GPIOA, 11
@@ -87,10 +108,6 @@
 #endif // GPIO
 
 #if 1 // =========================== SPI =======================================
-#endif
-#if I2C2_ENABLED // ====================== I2C ================================
-#define I2C2_BAUDRATE   400000
-#define I2C_PILL        i2c2
 #endif
 
 #if ADC_REQUIRED // ======================= Inner ADC ==========================
@@ -113,37 +130,44 @@
 
 #if 1 // =========================== DMA =======================================
 #define STM32_DMA_REQUIRED  TRUE
+#define I2C_USE_DMA         TRUE
+
+// === DMA1 ===
+#define RS485_DMA_RX    STM32_DMA_STREAM_ID(1, 0)
+#define SPI2_DMA_RX     STM32_DMA_STREAM_ID(1, 1)
+#define MEMCPY_DMA      STM32_DMA_STREAM_ID(1, 2)
+#define SPI2_DMA_TX     STM32_DMA_STREAM_ID(1, 4)
+#define I2C1_DMA_RX     STM32_DMA_STREAM_ID(1, 5)
+#define I2C1_DMA_TX     STM32_DMA_STREAM_ID(1, 6)
+
+// Channels DMA1
+#define SPI2TX_DMA_CHNL 0
+#define I2C1_DMA_CHNL   1
+#define RS485_DMA_CHNL  4
+#define SPI2RX_DMA_CHNL 9
 
 // === DMA2 ===
-#define JPEG_DMA_IN     STM32_DMA_STREAM_ID(2, 0)
-#define JPEG_DMA_OUT    STM32_DMA_STREAM_ID(2, 1)
-#define UART_DMA_RX     STM32_DMA_STREAM_ID(2, 2)
-#define NPX2_DMA        STM32_DMA_STREAM_ID(2, 3)  // SPI1 TX
-#define NPX_DMA         STM32_DMA_STREAM_ID(2, 4)  // SPI5 TX
-#define STM32_SDC_SDMMC2_DMA_STREAM STM32_DMA_STREAM_ID(2, 5)
-#define UART_DMA_TX     STM32_DMA_STREAM_ID(2, 6)
-#define MEMCPY_DMA      STM32_DMA_STREAM_ID(2, 7)
+#define STM32_SDC_SDMMC2_DMA_STREAM STM32_DMA_STREAM_ID(2, 0)
+#define UART_DMA_RX     STM32_DMA_STREAM_ID(2, 1)
+#define SAI_DMA_A       STM32_DMA_STREAM_ID(2, 2)
+#define JPEG_DMA_IN     STM32_DMA_STREAM_ID(2, 3)
+#define JPEG_DMA_OUT    STM32_DMA_STREAM_ID(2, 4)
+#define NPX2_DMA        STM32_DMA_STREAM_ID(2, 5)  // SPI1 TX
+#define NPX_DMA         STM32_DMA_STREAM_ID(2, 6)  // SPI5 TX
+#define UART_DMA_TX     STM32_DMA_STREAM_ID(2, 7)
 
-// Channels
-#define JPEG_DMA_CHNL   9
-#define UART_DMA_CHNL   5
+// Channels DMA2
 #define NPX2_DMA_CHNL   3
-#define NPX_DMA_CHNL    2
+#define UART_DMA_CHNL   5
+#define NPX_DMA_CHNL    7
+#define JPEG_DMA_CHNL   9
+#define SAI_DMA_CHNL    10
 #define SDMMC_DMA_CHNL  11
 
 // Modes
 #define MEMCPY_DMA_TX_MODE(Chnl) (STM32_DMA_CR_CHSEL(Chnl) | DMA_PRIORITY_HIGH | STM32_DMA_CR_MSIZE_WORD | STM32_DMA_CR_PSIZE_WORD | STM32_DMA_CR_MINC | STM32_DMA_CR_DIR_M2M)
 #define UART_DMA_TX_MODE(Chnl) (STM32_DMA_CR_CHSEL(Chnl) | DMA_PRIORITY_LOW | STM32_DMA_CR_MSIZE_BYTE | STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MINC | STM32_DMA_CR_DIR_M2P | STM32_DMA_CR_TCIE)
 #define UART_DMA_RX_MODE(Chnl) (STM32_DMA_CR_CHSEL(Chnl) | DMA_PRIORITY_MEDIUM | STM32_DMA_CR_MSIZE_BYTE | STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MINC | STM32_DMA_CR_DIR_P2M | STM32_DMA_CR_CIRC)
-
-#if I2C1_ENABLED // ==== I2C1 ====
-#define I2C1_DMA_TX     STM32_DMA1_STREAM6
-#define I2C1_DMA_RX     STM32_DMA1_STREAM5
-#endif
-#if I2C2_ENABLED // ==== I2C2 ====
-#define I2C2_DMA_TX     STM32_DMA1_STREAM7
-#define I2C2_DMA_RX     STM32_DMA1_STREAM3
-#endif
 
 #if ADC_REQUIRED
 #define ADC_DMA         STM32_DMA_STREAM_ID(2, 0)

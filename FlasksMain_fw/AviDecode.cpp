@@ -11,10 +11,12 @@
 #include "kl_jpeg.h"
 #include "MsgQ.h"
 #include "lcdtft.h"
+#include "CS42L52.h"
 
 //__attribute__ ((section ("DATA_RAM")))
 
-FIL ifile;
+static FIL ifile;
+extern CS42L52_t Codec;
 
 #if 1 // ============================ AVI headers ==============================
 #define IN_VBUF_SZ      0xA000UL // Packed frame must fit here
@@ -170,7 +172,7 @@ public:
         uint32_t BytesRead = 0;
         uint32_t *NextBuf = Buf;
         Buf = nullptr;
-//        systime_t start = chVTGetSystemTimeX();
+        systime_t start = chVTGetSystemTimeX();
         while(true) {
             if(f_read(&ifile, this, 8, &BytesRead) != FR_OK or BytesRead != 8) return retvFail;
 //            uint32_t *p = (uint32_t*)fptr;
@@ -190,24 +192,26 @@ public:
 //                fptr += ckSize;
                 if(f_read(&ifile, NextBuf, ckSize, &Sz) == FR_OK) {
 //                    cacheBufferFlush(Buf, Sz);
-//                    Printf("rne %u\r", chVTTimeElapsedSinceX(start));
+                    sysinterval_t ela = chVTTimeElapsedSinceX(start);
+                    if(ela > 418) Printf("rne %u *********\r", ela);
+//                    else Printf("rne %u\r", ela);
                     Buf = NextBuf;
 //                    Sz = ckSize;
                     return retvOk;
                 }
             }
-//            else if(ckID == FOURCC('0','1','w','b')) { // audio found
-//                if(ckSize > AUBUF_SZ) {
-//                    Printf("Too large audata\r");
-//                    return retvFail;
-//                }
-//                // Read data
-//                if(f_read(&ifile, AuBuf, ckSize, &Sz) == FR_OK) {
-////                    Printf("Au\r");
-////                    Printf("rne %u\r", chVTTimeElapsedSinceX(start));
-////                    return retvOk;
-//                }
-//            }
+            else if(ckID == FOURCC('0','1','w','b')) { // audio found
+                if(ckSize > AUBUF_SZ) {
+                    Printf("Too large audata\r");
+                    return retvFail;
+                }
+                // Read data
+                if(f_read(&ifile, AuBuf, ckSize, &Sz) == FR_OK) {
+//                    Printf("Au\r");
+//                    Printf("rne %u\r", chVTTimeElapsedSinceX(start));
+//                    return retvOk;
+                }
+            }
             else {
                 f_lseek(&ifile, f_tell(&ifile) + ckSize);
 //                fptr += ckSize;

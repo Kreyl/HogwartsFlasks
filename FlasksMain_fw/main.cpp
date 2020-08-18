@@ -9,12 +9,14 @@
 #include "kl_sd.h"
 #include "kl_fs_utils.h"
 #include "kl_time.h"
+#include "kl_i2c.h"
 #include "Mirilli.h"
 //#include "usb_msdcdc.h"
 #include "sdram.h"
 #include "Lora.h"
 #include "lcdtft.h"
 #include "AviDecode.h"
+#include "CS42L52.h"
 
 #if 1 // =============== Defines ================
 // Forever
@@ -23,6 +25,8 @@ static const UartParams_t CmdUartParams(115200, CMD_UART_PARAMS);
 CmdUart_t Uart{&CmdUartParams};
 static void ITask();
 static void OnCmd(Shell_t *PShell);
+
+CS42L52_t Codec;
 
 //static bool UsbPinWasHi = false;
 LedBlinker_t Led{LED_PIN};
@@ -33,7 +37,12 @@ int main() {
     Clk.SetCoreClk216MHz();
 //    Clk.SetCoreClk80MHz();
     Clk.Setup48Mhz();
-    Clk.SetDivSai1(3, 8); // SAI R div = 3 => R = 2*96/3 = 64 MHz; LCD_CLK = 64 / 8 = 8MHz
+    Clk.SetSai1RDiv(3, 8); // SAI R div = 3 => R = 2*96/3 = 64 MHz; LCD_CLK = 64 / 8 = 8MHz
+    // SAI clock: PLLSAI1 Q
+
+//    Clk.EnableSai1POut();
+//    MODIFY_REG(RCC->CCIPR, RCC_CCIPR_SAI1SEL, 0);
+
     Clk.UpdateFreqValues();
     FLASH->ACR |= FLASH_ACR_ARTEN; // Enable ART accelerator
     // ==== Init OS ====
@@ -55,9 +64,18 @@ int main() {
 
     SD.Init();
 
+    // Audio codec
+//    Codec.Init();   // i2c initialized inside, as pull-ups powered by VAA's LDO
+//    Codec.SetSpeakerVolume(-96);    // To remove speaker pop at power on
+//    Codec.DisableHeadphones();
+//    Codec.EnableSpeakerMono();
+//    Codec.SetupMonoStereo(Stereo);  // Always
+//    Codec.SetupSampleRate(22050); // Just default, will be replaced when changed
+
+
     LcdInit();
 //    LcdPaintL1(0, 0, 100, 100, 255, 0, 255, 0);
-    chThdSleepMilliseconds(360);
+
     Avi::Init();
 //    Avi::Start("Plane_480x272.avi");
 //    Avi::Start("SWTrail.avi");
