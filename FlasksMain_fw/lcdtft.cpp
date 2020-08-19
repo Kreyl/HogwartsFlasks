@@ -28,10 +28,16 @@
 PinOutputPWM_t Backlight{LCD_BCKLT};
 
 // Layer Buffers and other sizes
-#define LBUF_SZ         (sizeof(ColorRGB_t) * LCD_WIDTH * LCD_HEIGHT)
 #define LBUF_CNT        (LCD_WIDTH * LCD_HEIGHT)
-#define LINE_SZ         (sizeof(ColorRGB_t) * LCD_WIDTH)
-ColorRGB_t *FrameBuf1;
+#define LINE_SZ         (LCD_PIXEL_SZ * LCD_WIDTH)
+
+#if LBUF_IN_SDRAM
+uint32_t *FrameBuf1;
+#else
+__attribute__ ((section ("DATA_RAM")))
+uint32_t FrameBuf1[LBUF_SZ32];
+#endif
+
 //#define ENABLE_LAYER2   TRUE
 #if ENABLE_LAYER2
 ColorRGB_t *FrameBuf2;
@@ -44,7 +50,10 @@ void LcdInit() {
     Backlight.SetFrequencyHz(10000);
     Backlight.Set(100);
 
-    FrameBuf1 = (ColorRGB_t*)malloc(LBUF_SZ);
+#if LBUF_IN_SDRAM
+    FrameBuf1 = (uint32_t*)malloc(LBUF_SZ);
+#endif
+
 #if ENABLE_LAYER2
     FrameBuf2 = (ColorRGB_t*)malloc(LBUF_SZ);
 #endif
@@ -119,6 +128,7 @@ void LcdInit() {
     // layer window horizontal and vertical position
     LTDC_Layer1->WHPCR = ((LCD_WIDTH  + HBACK_PORCH - 1UL) << 16) | HBACK_PORCH; // Stop and Start positions
     LTDC_Layer1->WVPCR = ((LCD_HEIGHT + VBACK_PORCH - 1UL) << 16) | VBACK_PORCH; // Stop and Start positions
+//    LTDC_Layer1->PFCR  = 0b010UL;    // RGB565
     LTDC_Layer1->PFCR  = 0b001UL;    // RGB888
 //    LTDC_Layer1->PFCR  = 0b000UL;    // ARGB8888
     LTDC_Layer1->CFBAR = (uint32_t)FrameBuf1; // Address of layer buffer
@@ -180,10 +190,10 @@ void LcdPaintL1(uint32_t Left, uint32_t Top, uint32_t Right, uint32_t Bottom, ui
     dmaStreamEnable(PDmaMCpy);
     dmaWaitCompletion(PDmaMCpy);
 
-    dmaStreamSetMemory0(PDmaMCpy, FrameBuf1 + 0xFFFFUL);
-    dmaStreamSetTransactionSize(PDmaMCpy, LBUF_CNT- 0xFFFFUL);
-    dmaStreamEnable(PDmaMCpy);
-    dmaWaitCompletion(PDmaMCpy);
+//    dmaStreamSetMemory0(PDmaMCpy, FrameBuf1 + 0xFFFFUL);
+//    dmaStreamSetTransactionSize(PDmaMCpy, LBUF_CNT- 0xFFFFUL);
+//    dmaStreamEnable(PDmaMCpy);
+//    dmaWaitCompletion(PDmaMCpy);
 //
 //
 //    for(uint32_t i=0; i<LBUF_CNT; i++) {

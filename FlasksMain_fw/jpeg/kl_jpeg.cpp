@@ -20,7 +20,7 @@ static ftVoidVoid IConversionEndCallback = nullptr;
 
 #define JPEG_DMA_IN_MODE  (STM32_DMA_CR_CHSEL(JPEG_DMA_CHNL) \
         | STM32_DMA_CR_MBURST_INCR4 \
-        | DMA_PRIORITY_HIGH \
+        | DMA_PRIORITY_LOW \
         | STM32_DMA_CR_MSIZE_WORD \
         | STM32_DMA_CR_PSIZE_WORD \
         | STM32_DMA_CR_MINC \
@@ -28,7 +28,7 @@ static ftVoidVoid IConversionEndCallback = nullptr;
 
 #define JPEG_DMA_OUT_MODE (STM32_DMA_CR_CHSEL(JPEG_DMA_CHNL) \
         | STM32_DMA_CR_MBURST_INCR4 \
-        | DMA_PRIORITY_VERYHIGH \
+        | DMA_PRIORITY_LOW \
         | STM32_DMA_CR_MSIZE_WORD \
         | STM32_DMA_CR_PSIZE_WORD \
         | STM32_DMA_CR_MINC \
@@ -615,6 +615,8 @@ uint32_t JPEG_GetQuality() {
 }
 #endif
 
+void OnJpegInIrq();
+
 namespace Jpeg {
 JPEG_ConfTypeDef Conf;
 JPEG_YCbCrToRGB_Convert_Function pConvert_Function;
@@ -722,6 +724,7 @@ void PrepareToStart(void *ptr, uint32_t Cnt) {
     JPEG->CFR = JPEG_CFR_CEOCF | JPEG_CFR_CHPDF; // Clear all flags
     JPEG->CR |= JPEG_CR_EOCIE | JPEG_CR_HPDIE; // IRQ on EndOfConversion and EndOfHdrParsing
     JPEG->CR |= (JPEG_CR_IDMAEN | JPEG_CR_ODMAEN); // Enable DMAs
+//    JPEG->CR |= JPEG_CR_ODMAEN | JPEG_CR_IFNFIE;
     // Prepare DMA In
     dmaStreamSetMemory0(PDmaJIn, ptr);
     dmaStreamSetTransactionSize(PDmaJIn, Cnt);
@@ -769,6 +772,10 @@ void OnIrqI() {
         JPEG->CFR = JPEG_CFR_CEOCF | JPEG_CFR_CHPDF; // Clear all flags
         if(IConversionEndCallback) IConversionEndCallback();
     }
+
+//    if(Flags & JPEG_SR_IFNFF) {
+//        OnJpegInIrq();
+//    }
 }
 
 }; // Namespace

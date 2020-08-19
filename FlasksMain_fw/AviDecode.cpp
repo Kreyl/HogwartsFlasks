@@ -68,33 +68,6 @@ private:
     uint32_t DataStart = 0;
 };
 
-class Chunk_t {
-public:
-    uint32_t ckID;
-    uint32_t ckSize = 0; //  includes the size of listType plus the size of listData
-    void MoveTo(uint32_t NewLoc) { NextLoc = NewLoc; }
-    uint8_t ReadHdr() {
-        if(f_tell(&ifile) != NextLoc) f_lseek(&ifile, NextLoc);
-        if(f_eof(&ifile)) return retvEndOfFile;
-        uint32_t BytesRead = 0;
-        if(f_read(&ifile, this, 8, &BytesRead) != FR_OK or BytesRead != 8) return retvFail;
-        if(ckSize & 1) ckSize++; // The data is always padded to nearest WORD boundary. ckSize gives the size of the valid data in the chunk; it does not include the padding
-        NextLoc = f_tell(&ifile) + ckSize;
-        return retvOk;
-    }
-
-    uint8_t ReadData(uint32_t* Buf, uint32_t *ReadSz) {
-        if(f_read(&ifile, Buf, ckSize, ReadSz) == FR_OK) return retvOk;
-        else return retvFail;
-    }
-
-    void Print() { Printf("%4S; Sz=%u\r", &ckID, ckSize); }
-    bool IsVideo() { return ckID == FOURCC('0','0','d','c'); }
-    bool IsAudio() { return ckID == FOURCC('0','1','w','b'); }
-private:
-    uint32_t NextLoc = 0;
-};
-
 struct avimainheader_t {
     uint32_t fcc;
     DWORD  cb;
@@ -174,6 +147,87 @@ struct WAVEFORMATEX {
   }
 };
 
+#define FBUF_SZ     8000000UL
+#define FBUF_SZ32   (FBUF_SZ / 4)
+
+#define FROM_SD
+
+class FileBuf_t {
+private:
+public:
+#ifndef FROM_SD
+//    uint32_t IBuf[FBUF_SZ32] __attribute__((aligned(32)));
+    uint32_t *IBuf;
+#endif
+    void Start() {
+#ifndef FROM_SD
+        IBuf = (uint32_t*)malloc(FBUF_SZ);
+        cacheBufferInvalidate(IBuf, FBUF_SZ);
+        uint32_t BytesRead;
+        f_read(&ifile, IBuf, FBUF_SZ, &BytesRead);
+//        cacheBufferFlush(IBuf, FBUF_SZ);
+#endif
+    }
+} FBuf;
+
+class Chunk_t {
+public:
+    uint32_t ckID;
+    uint32_t ckSize = 0; //  includes the size of listType plus the size of listData
+
+    uint32_t *pData = nullptr;
+
+    void MoveTo(uint32_t NewLoc) {
+#ifdef FROM_SD
+        NextLoc = NewLoc;
+#else
+        ptr = (uint8_t*)FBuf.IBuf;
+#endif
+    }
+
+    uint8_t ReadHdr() {
+#ifdef FROM_SD
+        if(f_tell(&ifile) != NextLoc) f_lseek(&ifile, NextLoc);
+        if(f_eof(&ifile)) return retvEndOfFile;
+        uint32_t BytesRead = 0;
+        if(f_read(&ifile, this, 8, &BytesRead) != FR_OK or BytesRead != 8) return retvFail;
+        if(ckSize & 1) ckSize++;
+        NextLoc = f_tell(&ifile) + ckSize;
+#else
+        ptr += ckSize;
+        memcpy(&ckID, ptr, 4);
+        ptr += 4;
+        memcpy(&ckSize, ptr, 4);
+        ptr += 4;
+        if(ckSize & 1) ckSize++; // The data is always padded to nearest WORD boundary. ckSize gives the size of the valid data in the chunk; it does not include the padding
+        pData = (uint32_t *)ptr;
+#endif
+        return retvOk;
+    }
+
+    uint8_t ReadData(uint32_t* Buf, uint32_t *ReadSz) {
+#ifdef FROM_SD
+        if(f_read(&ifile, Buf, ckSize, ReadSz) == FR_OK) return retvOk;
+        else return retvFail;
+#else
+//        cacheBufferInvalidate(Buf, ckSize);
+        memcpy(Buf, ptr, ckSize);
+//        cacheBufferFlush(Buf, ckSize);
+        *ReadSz = ckSize;
+#endif
+        return retvOk;
+    }
+
+    void Print() { Printf("%4S; Sz=%u\r", &ckID, ckSize); }
+    bool IsVideo() { return ckID == FOURCC('0','0','d','c'); }
+    bool IsAudio() { return ckID == FOURCC('0','1','w','b'); }
+private:
+    uint32_t NextLoc = 0;
+#ifndef FROM_SD
+    uint8_t *ptr = nullptr;
+#endif
+};
+
 #define AUBUF_SZ    4096
 #define AUBUF_CNT   (AUBUF_SZ / 4)
 
@@ -201,11 +255,22 @@ union FileMsg_t {
     FileMsg_t(FileCmd_t ACmd) : Cmd(ACmd) {}
 } __packed;
 
-#define IN_VBUF_SZ      0xA000UL // Packed frame must fit here
-#define IN_VBUF_SZ32    (IN_VBUF_SZ / 4)
+//#define IN_VBUF_SZ      0xA000UL // Packed frame must fit here
+//#define IN_VBUF_SZ32    (IN_VBUF_SZ / 4)
+
+#define IN_VBUF_SZ32    CACHE_SIZE_ALIGN(uint32_t, 8192)
+#define IN_VBUF_SZ      (IN_VBUF_SZ32 * 4)
+
 
 static THD_WORKING_AREA(waFileThd, 1024);
 static void FileThd(void *arg);
+
+__attribute__ ((section ("DATA_RAM")))
+uint32_t VBuf1[IN_VBUF_SZ32] __attribute__((aligned(32)));
+__attribute__ ((section ("DATA_RAM")))
+uint32_t VBuf2[IN_VBUF_SZ32] __attribute__((aligned(32)));
+
+//uint32_t *VBuf1, *VBuf2;
 
 class VFileReader_t {
 private:
@@ -214,7 +279,8 @@ private:
     EvtMsgQ_t<FileMsg_t, 9> MsgQFile;
     uint32_t EndLoc = 0;
     uint32_t NextFrameLoc = 0;
-    uint32_t VBuf1[IN_VBUF_SZ32], VBuf2[IN_VBUF_SZ32];
+
+    uint32_t rneMax = 0;
 
     uint8_t ReadNextFrame() {
         uint32_t *NextBuf = VBuf;
@@ -222,6 +288,8 @@ private:
         systime_t start = chVTGetSystemTimeX();
         while(true) {
             if(VCk.ReadHdr() != retvOk) break;
+//            Printf("rne %u  ", chVTTimeElapsedSinceX(start));
+//            VCk.Print();
             if(VCk.IsVideo()) { // found
                 if(VCk.ckSize > IN_VBUF_SZ) {
                     Printf("Too large data\r");
@@ -229,11 +297,25 @@ private:
                 }
                 // Read data
                 NextBuf = (NextBuf == VBuf1)? VBuf2 : VBuf1;
+//                systime_t start = chVTGetSystemTimeX();
+
                 if(VCk.ReadData(NextBuf, &VSz) != retvOk) break;
+//                Printf("%A\r", NextBuf, 128, ' ');
                 sysinterval_t ela = chVTTimeElapsedSinceX(start);
                 if(ela > 418) Printf("rne %u *********\r", ela);
-//                else Printf("rne %u\r", ela);
+                if(ela > rneMax) rneMax = ela;
+                Printf("rne %u %u\r", ela, rneMax);
+
+//                SCB_CleanDCache();
+//                SCB_CleanDCache_by_Addr(NextBuf, VSz);
+
+//                cacheBufferFlush(NextBuf, VSz);
+//                __DSB();
+//                __ISB();
                 VBuf = NextBuf;
+//                VBuf = VCk.pData;
+//                VSz = VCk.ckSize;
+                VIndx = 0;
                 return retvOk;
             }
         }
@@ -262,13 +344,14 @@ private:
     }
 public:
     uint32_t *VBuf = nullptr, VSz = 0;
+    uint32_t VIndx;
     uint32_t *AuBuf = nullptr, AuSz = 0;
     bool IsLastFrame = false;
 
     void Init() {
         MsgQFile.Init();
-//        Buf1 = (uint32_t*)malloc(IN_VBUF_SZ);
-//        Buf2 = (uint32_t*)malloc(IN_VBUF_SZ);
+//        VBuf1 = (uint32_t*)malloc(IN_VBUF_SZ);
+//        VBuf2 = (uint32_t*)malloc(IN_VBUF_SZ);
 
 //        AuBufs.Buf1 = (uint32_t*)malloc(AUBUF_SZ);
 //        AuBufs.Buf2 = (uint32_t*)malloc(AUBUF_SZ);
@@ -276,19 +359,20 @@ public:
     }
 
     void Start(uint32_t VideoSz) {
-        EndLoc = f_tell(&ifile) + VideoSz;
+        SCB_DisableDCache();
+//        EndLoc = f_tell(&ifile) + VideoSz;
         // Video
         VCk.MoveTo(f_tell(&ifile));
         IsLastFrame = (ReadNextFrame() != retvOk);
         // Audio
-        AuCk.MoveTo(f_tell(&ifile));
-        AuBuf = nullptr;
-        if(ReadNextAudio() == retvOk) {
-            Codec.TransmitBuf(AuBuf, AuSz / 2);
-            chSysLock();
-            PrepareNextAudioI();
-            chSysUnlock();
-        }
+//        AuCk.MoveTo(f_tell(&ifile));
+//        AuBuf = nullptr;
+//        if(ReadNextAudio() == retvOk) {
+//            Codec.TransmitBuf(AuBuf, AuSz / 2);
+//            chSysLock();
+//            PrepareNextAudioI();
+//            chSysUnlock();
+//        }
     }
 
     void PrepareNextFrame() { MsgQFile.SendNowOrExit(FileMsg_t(fcmdReadNextFrame)); }
@@ -312,7 +396,14 @@ public:
             }
         } // while true
     }
-} VFileReader;
+} VFileReader  __attribute__((aligned(32)));
+
+void OnJpegInIrq() {
+    while((JPEG->SR & JPEG_SR_IFNFF) and (VFileReader.VSz > 3) and VFileReader.VBuf) {
+        JPEG->DIR = VFileReader.VBuf[VFileReader.VIndx++];
+        VFileReader.VSz -= 4;
+    }
+}
 
 __noreturn
 static void FileThd(void *arg) {
@@ -516,6 +607,7 @@ uint8_t ProcessMcuBuf() {
     Dma2d::Suspend();
     // From, To, BlockIndex, FromSz
     MCU_BlockIndex += Jpeg::pConvert_Function((uint8_t*)JMcuBuf.BufToProcess, (uint8_t*)FrameBuf1, MCU_BlockIndex, JMcuBuf.DataSzToProcess);
+//    cacheBufferFlush(FrameBuf1, LBUF_SZ / 4);
 
     if(MCU_BlockIndex == Jpeg::Conf.ImageMCUsCnt) return retvOk;
     else return retvInProgress;
@@ -704,6 +796,7 @@ uint8_t Start(const char* FName) {
             }
             // Process movi
             if(ckHdr.TypeIsMOVI()) {
+                FBuf.Start();
                 VFileReader.Start(ckHdr.ckSize);
                 MsgQVideo.SendNowOrExit(VideoMsg_t(vcmdStart));
                 return retvOk; // movi chunk found
