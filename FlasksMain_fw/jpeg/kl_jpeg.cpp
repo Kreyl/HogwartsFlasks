@@ -24,7 +24,8 @@ static ftVoidVoid IConversionEndCallback = nullptr;
         | STM32_DMA_CR_MSIZE_WORD \
         | STM32_DMA_CR_PSIZE_WORD \
         | STM32_DMA_CR_MINC \
-        | STM32_DMA_CR_DIR_M2P)
+        | STM32_DMA_CR_DIR_M2P \
+        | STM32_DMA_CR_TCIE)
 
 #define JPEG_DMA_OUT_MODE (STM32_DMA_CR_CHSEL(JPEG_DMA_CHNL) \
         | STM32_DMA_CR_MBURST_INCR4 \
@@ -615,13 +616,11 @@ uint32_t JPEG_GetQuality() {
 }
 #endif
 
-void OnJpegInIrq();
-
 namespace Jpeg {
 JPEG_ConfTypeDef Conf;
 JPEG_YCbCrToRGB_Convert_Function pConvert_Function;
 
-void Init(stm32_dmaisr_t DmaOutCallback, ftVoidVoid ConversionEndCallback) {
+void Init(stm32_dmaisr_t DmaJpegInCB, stm32_dmaisr_t DmaOutCallback, ftVoidVoid ConversionEndCallback) {
     rccEnableAHB2(RCC_AHB2ENR_JPEGEN, FALSE);
 
     JPEG->CR = JPEG_CR_JCEN; // En and clear all the other
@@ -645,7 +644,7 @@ void Init(stm32_dmaisr_t DmaOutCallback, ftVoidVoid ConversionEndCallback) {
     JPEG->CONFR1 |= JPEG_CONFR1_DE | JPEG_CONFR1_HDR; // En Decode and Hdr processing
 
     // DMA
-    PDmaJIn = dmaStreamAlloc(JPEG_DMA_IN, IRQ_PRIO_MEDIUM, nullptr, nullptr);
+    PDmaJIn = dmaStreamAlloc(JPEG_DMA_IN, IRQ_PRIO_MEDIUM, DmaJpegInCB, nullptr);
     dmaStreamSetPeripheral(PDmaJIn, &JPEG->DIR);
     dmaStreamSetFIFO(PDmaJIn, (DMA_SxFCR_DMDIS | DMA_SxFCR_FTH)); // Enable FIFO, FIFO Thr Full
     PDmaJOut = dmaStreamAlloc(JPEG_DMA_OUT, IRQ_PRIO_MEDIUM, DmaOutCallback, nullptr);
@@ -772,10 +771,6 @@ void OnIrqI() {
         JPEG->CFR = JPEG_CFR_CEOCF | JPEG_CFR_CHPDF; // Clear all flags
         if(IConversionEndCallback) IConversionEndCallback();
     }
-
-//    if(Flags & JPEG_SR_IFNFF) {
-//        OnJpegInIrq();
-//    }
 }
 
 }; // Namespace
