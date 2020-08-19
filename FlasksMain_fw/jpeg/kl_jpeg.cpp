@@ -753,7 +753,7 @@ void Stop() {
 }
 
 void OnIrqI() {
-    PrintfI("JIRQ: %X\r", JPEG->SR);
+//    PrintfI("JIRQ: %X\r", JPEG->SR);
     uint32_t Flags = JPEG->SR;
     // If header parsed
     if(Flags & JPEG_SR_HPDF) {

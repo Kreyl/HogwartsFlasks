@@ -265,7 +265,8 @@ public:
     }
 
     bool IsEmpty() { return (IFullSlotsCount == 0); }
-    bool IsFull()  { return (IFullSlotsCount == Sz); }
+//    bool IsFull()  { return (IFullSlotsCount == Sz); }
+    bool Has2EmptySlots() { return IFullSlotsCount <= (Sz - 2); }
     uint32_t GetFullCount()  { return IFullSlotsCount; }
 
     void Flush() {
@@ -326,10 +327,6 @@ public:
         chThdResume(&ThdPtr, MSG_OK);
     }
 
-    void PrepareNextFrame() {
-        chThdResume(&ThdPtr, MSG_OK);
-    }
-
     void PrepareNextAudioI() {
 //        MsgQFile.SendNowOrExitI(FileMsg_t(fcmdReadNextAudio));
     }
@@ -337,7 +334,7 @@ public:
     uint8_t GetNextFrame() {
         if(IVMeta.IsEmpty()) return retvEmpty;
         chSysLock();
-        PrintfI("\r R%u; N%u Sz%u p%u\r", IVMeta.GetFullCount(), IVMeta.PRead->N, IVMeta.PRead->Sz, (IVMeta.PRead->ptr - IVBuf)*4);
+//        PrintfI("\r R%u; N%u Sz%u p%u\r", IVMeta.GetFullCount(), IVMeta.PRead->N, IVMeta.PRead->Sz, (IVMeta.PRead->ptr - IVBuf)*4);
         VSz = IVMeta.PRead->Sz;
         VBuf = IVMeta.PRead->ptr;
         chSysUnlock();
@@ -347,7 +344,7 @@ public:
     void OnFrameProcessed() {
         chSysLock();
         IVMeta.MoveReadPtr();
-        PrintfI("\r M %u\r", IVMeta.GetFullCount());
+//        PrintfI("\r M %u\r", IVMeta.GetFullCount());
         chThdResumeI(&ThdPtr, MSG_OK);
         chSysUnlock();
     }
@@ -356,59 +353,56 @@ public:
 //        Printf("W %u: %u; ", (wPtrV - IVBuf), VCk.ckSize);
         VCk.ReadData(IVMeta.PWrite->ptr);
         chSysLock();
+        if(VCk.ckSize & 2) VCk.ckSize += 2;
         IVMeta.PWrite->Sz = VCk.ckSize;
         IVMeta.PWrite->N = VCk.N++;
         VCk.AwaitsReading = false;
         // Prepare next write
         uint32_t *ptr = IVMeta.PWrite->ptr;
         IVMeta.MoveWritePtr();
-        IVMeta.PWrite->ptr = ptr + (VCk.ckSize + 3) / 4;
+        IVMeta.PWrite->ptr = ptr + VCk.ckSize / 4;
         chSysUnlock();
     }
 
     uint8_t PutFrameIfPossible() {
         chSysLock();
-        PrintfI("W%u; N%u Sz%u p%u; ", IVMeta.GetFullCount(), VCk.N, VCk.ckSize, (IVMeta.PWrite->ptr - IVBuf)*4);
-        if(IVMeta.IsFull()) {
+//        PrintfI("W%u; N%u Sz%u p%u; ", IVMeta.GetFullCount(), VCk.N, VCk.ckSize, (IVMeta.PWrite->ptr - IVBuf)*4);
+        if(!IVMeta.Has2EmptySlots()) {
             chSysUnlock();
+//            Printf(" Full\r");
             return retvOverflow;
-        }
-        else if(IVMeta.IsEmpty()) {
-            IVMeta.PWrite->ptr = IVBuf;
-            chSysUnlock();
-            WriteFrame();
-            Printf(" FC %u\r", IVMeta.GetFullCount());
-            return retvOk;
         }
         uint32_t *RPtr = IVMeta.PRead->ptr;
         // Where to write?
-        if(RPtr <= IVMeta.PWrite->ptr) {
+        if((RPtr < IVMeta.PWrite->ptr) or (RPtr == IVMeta.PWrite->ptr and IVMeta.IsEmpty())) {
             uint32_t EndSz = ((IVBuf + IN_VBUF_SZ32) - IVMeta.PWrite->ptr) * 4;
-            PrintfI(" Esz: %d", EndSz);
+//            PrintfI(" Esz: %d", EndSz);
             if(EndSz >= VCk.ckSize) { // There is enough space in end of buf
                 chSysUnlock();
                 WriteFrame();
-                Printf(" FC %u\r", IVMeta.GetFullCount());
+//                if(RPtr == IVMeta.PWrite->ptr) Printf("#####################################");
+//                Printf(" FC %u\r", IVMeta.GetFullCount());
                 return retvOk;
             }
             else { // Not enough space in end, move to start
-                PrintfI(" Mv");
+//                PrintfI(" Mv");
                 IVMeta.PWrite->ptr = IVBuf;
             }
         }
         if(IVMeta.PWrite->ptr <= RPtr) {
             uint32_t StartSz = (RPtr - IVMeta.PWrite->ptr) * 4;
-            PrintfI(" SSz: %d", StartSz);
+//            PrintfI(" SSz: %d", StartSz);
             if(StartSz >= VCk.ckSize) {
                 chSysUnlock();
                 WriteFrame();
-                Printf(" FC %u\r", IVMeta.GetFullCount());
+//                if(RPtr == IVMeta.PWrite->ptr) Printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
+//                Printf(" FC %u\r", IVMeta.GetFullCount());
                 return retvOk;
             }
 //            else Printf(" NES");
         }
         chSysUnlock();
-        Printf(" OVF FC %u\r", IVMeta.GetFullCount());
+//        Printf(" OVF FC %u\r", IVMeta.GetFullCount());
         return retvOverflow;
     }
 
@@ -455,105 +449,6 @@ static void FileThd(void *arg) {
     chRegSetThreadName("VideoFile");
     VFileReader.ITask();
 }
-
-////__attribute__ ((section ("DATA_RAM")))
-//class AudioChunk_t {
-//public:
-//    uint32_t ckID = 0; // }
-//    uint32_t Sz = 0;   // } Will be read together
-//    uint32_t Buf[IN_AUBUF_SZ32];
-//    uint32_t NextLoc = 0;
-//
-//    uint8_t ReadNext() {
-//        f_lseek(&ifile, NextLoc); // Goto next chunk
-//        while(true) {
-//            uint32_t BytesRead = 0;
-//            // Read next header
-//            if(f_read(&ifile, this, 8, &BytesRead) != FR_OK or BytesRead != 8) return retvFail;
-////            Printf("%4S; Sz=%u\r", &ckID, Sz);
-//            if(ckID == FOURCC('0','1','w','b')) { // found
-//                if(Sz > IN_AUBUF_SZ) {
-//                    Printf("Too large data\r");
-//                    return retvFail;
-//                }
-//                // Read data
-////                if(f_read(&ifile, Buf, Sz, &BytesRead) == FR_OK and BytesRead == Sz) {
-//////                    cacheBufferFlush(Buf, Sz);
-////                    // Prepare next loc
-////                    NextLoc = f_tell(&ifile);
-////                    if(NextLoc & 1) NextLoc++;
-//                    return retvOk;
-////                }
-//            }
-//            else {
-//                if(Sz & 1) Sz++;
-//                f_lseek(&ifile, f_tell(&ifile) + Sz);
-//            }
-//        }
-//        return retvFail;
-//    }
-//} AudioChunk;
-
-//#define FILEBUF_SZ  80000
-//class VFileBuf_t {
-//private:
-////    uint8_t *Buf1, *Buf2, *WBuf;
-//    uint8_t Buf1[FILEBUF_SZ];
-//    uint32_t Sz1, Sz2;
-//    uint8_t *pNextFrame;
-//public:
-//    uint8_t *RBuf;
-//
-//    uint8_t *FrameData;
-//    uint32_t FrameSz;
-//
-//    void Init() {
-////        Buf1 = (uint8_t*)malloc(FILEBUF_SZ);
-////        Buf2 = (uint8_t*)malloc(FILEBUF_SZ);
-//    }
-//
-//    uint8_t FillNextBuf() {
-//        return retvOk;
-////        uint32_t *WBuf = (RBuf == Buf2)?
-//    }
-//
-//    uint8_t Start() {
-//        Sz1 = 0;
-//        Sz2 = 0;
-//        RBuf = Buf1;
-////        if(FillNextBuf() == retvFail) return retvFail;
-////        if(FillNextBuf() == retvFail) return retvFail;
-//        if(f_read(&ifile, Buf1, FILEBUF_SZ, &Sz1) != FR_OK) return retvFail;
-////        if(f_read(&ifile, Buf2, FILEBUF_SZ, &Sz2) != FR_OK) return retvFail;
-//        RBuf = Buf1;
-//        pNextFrame = RBuf;
-//        return retvOk;
-//    }
-//
-//    uint8_t GetNextFrame() {
-//        while(pNextFrame < (Buf1 + Sz1)) {
-//            // Read next header
-//            uint32_t ckID = *(uint32_t*)pNextFrame;
-//            pNextFrame += 4;
-//            FrameSz = *(uint32_t*)pNextFrame;
-//            pNextFrame += 4;
-//            Printf("%4S; Sz=%u\r", &ckID, FrameSz);
-//            if(ckID == FOURCC('0','0','d','c')) { // found
-//                FrameData = pNextFrame;
-//                // Prepare next loc
-//                pNextFrame += FrameSz;
-//                if(FrameSz & 1) pNextFrame++;
-//                return retvOk;
-//            }
-//            else {
-//                pNextFrame += FrameSz;
-//                if(FrameSz & 1) pNextFrame++;
-//            }
-//        }
-//        return retvFail;
-//    }
-//} VFileBuf;
-
 
 #endif
 
@@ -699,23 +594,18 @@ static void VideoThd(void *arg) {
     chRegSetThreadName("Video");
     systime_t FrameStart = 0;
 //    uint32_t n = 0;
-    bool FrameProcessed = false;
     while(true) {
         VideoMsg_t Msg = MsgQVideo.Fetch(TIME_INFINITE);
         switch(Msg.Cmd) {
             case vcmdStart:
-                if(FrameProcessed) VFileReader.OnFrameProcessed();
                 while(VFileReader.GetNextFrame() != retvOk and !VFileReader.IsEof) {
-                    VFileReader.PrepareNextFrame();
+//                    VFileReader.PrepareNextFrame();
                     chThdSleepMilliseconds(7);
                 }
                 if(VFileReader.IsEof) MsgQVideo.SendNowOrExit(VideoMsg_t(vcmdStop));
                 else {
 //                    Printf("\r%u: %u %u\r", n++, VFileReader.VSz, (VFileReader.VBuf - (uint32_t*)&VFileReader) * 4);
                     StartFrameDecoding(VFileReader.VBuf, VFileReader.VSz);
-                    chThdSleepMilliseconds(99);
-                    FrameProcessed = true;
-                    VFileReader.PrepareNextFrame();
                 }
                 break;
 
@@ -733,6 +623,8 @@ static void VideoThd(void *arg) {
                 break;
 
             case vcmdEndDecode: {
+                Jpeg::Stop();
+                VFileReader.OnFrameProcessed();
                 JMcuBuf.Switch();
                 ProcessMcuBuf();
                 // Delay before frame show
