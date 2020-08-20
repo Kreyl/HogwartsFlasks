@@ -207,9 +207,11 @@ uint8_t ProcessHDRL(int32_t HdrlSz) {
 #endif
 
 #if 1 // ========================== File buffering =============================
-#define IN_VBUF_SZ      0x40000UL
+//#define IN_VBUF_SZ      0x40000UL
+#define IN_VBUF_SZ      0x34000UL
 #define IN_VBUF_SZ32    (IN_VBUF_SZ / 4)
-#define AUBUF_SZ        0x1F000UL
+//#define AUBUF_SZ        0x1F000UL
+#define AUBUF_SZ        0x2B000UL
 
 static uint8_t  IABuf[AUBUF_SZ]     __attribute__((aligned(32), section (".srambuf")));
 static uint32_t IVBuf[IN_VBUF_SZ32] __attribute__((aligned(32), section (".srambuf")));
@@ -320,6 +322,7 @@ public:
         IFullSlotsCount -= Sz;
         return r;
     }
+    uint32_t GetFullCount()  { return IFullSlotsCount; }
 } AuBuf;
 
 template <typename T, uint32_t Sz>
@@ -363,7 +366,6 @@ private:
     thread_t *ThdPtr;
     Chunk_t VCk;
     uint32_t EndLoc = 0;
-
 //    uint32_t rneMax = 0;
 
     void WriteFrame() {
@@ -425,6 +427,8 @@ private:
 public:
     uint32_t *VBuf = nullptr, VSz = 0;
     bool IsEof = false;
+
+    uint32_t GetFullCount()  { return IVMeta.GetFullCount(); }
 
     void Init() {
 //        IVBuf = (uint32_t*)malloc(IN_VBUF_SZ);
@@ -512,7 +516,7 @@ void OnBufTxEndI() {
     uint32_t Sz = 65536UL;
     uint8_t* p = AuBuf.GetRPtrAndMove(&Sz);
     if(Sz > 0) {
-        PrintfI("  R Sz %u\r", Sz);
+//        PrintfI("  R Sz %u\r", Sz);
         Codec.TransmitBuf(p, Sz / 2);
         IsIdle = false;
     }
@@ -592,7 +596,7 @@ void Resume()  { DMA2D->CR &= ~DMA2D_CR_SUSP; }
 #define OUTBUF_SZ   (LCD_HEIGHT * LCD_WIDTH * 4UL) // 4 bytes per pixel
 #define MCU_BUF_CNT ((384UL * 8UL) / sizeof(uint32_t)) // Multiple of 384
 
-class {
+class JMcuBuf_t {
 private:
     uint32_t Buf1[MCU_BUF_CNT];
     uint32_t Buf2[MCU_BUF_CNT];
@@ -625,11 +629,9 @@ void StartFrameDecoding(uint32_t *Buf, uint32_t Sz) {
 }
 
 uint8_t ProcessMcuBuf() {
-    Dma2d::Suspend();
+    // XXX
     // From, To, BlockIndex, FromSz
     MCU_BlockIndex += Jpeg::pConvert_Function((uint8_t*)JMcuBuf.BufToProcess, (uint8_t*)FrameBuf1, MCU_BlockIndex, JMcuBuf.DataSzToProcess);
-//    cacheBufferFlush(FrameBuf1, LBUF_SZ / 4);
-
     if(MCU_BlockIndex == Jpeg::Conf.ImageMCUsCnt) return retvOk;
     else return retvInProgress;
 }
@@ -693,6 +695,7 @@ static void VideoThd(void *arg) {
                 // Delay before frame show
                 sysinterval_t Elapsed = chVTTimeElapsedSinceX(FrameStart);
 //                Printf("e %u\r", Elapsed);
+                Printf("e %u; V %u\r", Elapsed, VFileReader.GetFullCount());
                 if(Elapsed < FrameRate) chThdSleep(FrameRate - Elapsed);
                 FrameStart = chVTGetSystemTimeX();
                 MsgQVideo.SendNowOrExit(VideoMsg_t(vcmdStart));

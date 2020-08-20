@@ -68,7 +68,6 @@ int main() {
     Codec.SetSpeakerVolume(-96);    // To remove speaker pop at power on
     Codec.DisableHeadphones();
     Codec.EnableSpeakerMono();
-//    Codec.SetupMonoStereo(Stereo);  // Always
     Codec.SetupMonoStereo(Mono);  // Always
     Codec.SetupSampleRate(22050); // Just default, will be replaced when changed
 

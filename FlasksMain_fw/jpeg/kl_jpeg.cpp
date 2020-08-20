@@ -722,13 +722,11 @@ void PrepareToStart(void *ptr, uint32_t Cnt) {
     JPEG->CFR = JPEG_CFR_CEOCF | JPEG_CFR_CHPDF; // Clear all flags
     JPEG->CR |= JPEG_CR_EOCIE | JPEG_CR_HPDIE; // IRQ on EndOfConversion and EndOfHdrParsing
     JPEG->CR |= (JPEG_CR_IDMAEN | JPEG_CR_ODMAEN); // Enable DMAs
-//    JPEG->CR |= JPEG_CR_ODMAEN | JPEG_CR_IFNFIE;
     // Prepare DMA In
     dmaStreamSetMemory0(PDmaJIn, ptr);
     dmaStreamSetTransactionSize(PDmaJIn, Cnt);
     dmaStreamSetMode(PDmaJIn, JPEG_DMA_IN_MODE);
-
-    SCB_CleanInvalidateDCache(); // XXX
+    SCB_CleanInvalidateDCache_by_Addr((uint32_t*)ptr, Cnt*4); // Otherwise cache will destroy data
     dmaStreamEnable(PDmaJIn);
 }
 
@@ -740,6 +738,8 @@ void EnableOutDma(void *ptr, uint32_t Cnt) {
     dmaStreamSetMemory0(PDmaJOut, ptr);
     dmaStreamSetTransactionSize(PDmaJOut, Cnt);
     dmaStreamSetMode(PDmaJOut, JPEG_DMA_OUT_MODE);
+//    SCB_CleanInvalidateDCache_by_Addr((uint32_t*)ptr, Cnt*4); // Otherwise cache will destroy data
+    SCB_InvalidateDCache_by_Addr((uint32_t*)ptr, Cnt*4);
     dmaStreamEnable(PDmaJOut);
 }
 
