@@ -727,6 +727,8 @@ void PrepareToStart(void *ptr, uint32_t Cnt) {
     dmaStreamSetMemory0(PDmaJIn, ptr);
     dmaStreamSetTransactionSize(PDmaJIn, Cnt);
     dmaStreamSetMode(PDmaJIn, JPEG_DMA_IN_MODE);
+
+    SCB_CleanInvalidateDCache(); // XXX
     dmaStreamEnable(PDmaJIn);
 }
 

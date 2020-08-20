@@ -128,6 +128,13 @@ SECTIONS
         . = ALIGN(4);
         __eth_end__ = .;
     } > ETH_RAM
+    
+    .srambuf (NOLOAD) : ALIGN(4)
+    {
+        __srambuf_base__ = .;
+        . = ALIGN(4);
+        __srambuf_end__ = .;
+    } > DATA_RAM
 }
 
 /* Code rules inclusion.*/
