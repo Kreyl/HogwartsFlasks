@@ -388,7 +388,7 @@ private:
     MetaBuf_t<SzPtr_t, 32> IVMeta;
 
     thread_t *ThdPtr;
-    Chunk_t VCk;
+    Chunk_t VCk, ACk;
     uint32_t EndLoc = 0;
 
 //    uint32_t rneMax = 0;
@@ -463,24 +463,14 @@ public:
     }
 
     void Start(uint32_t VideoSz) {
-        SCB_DisableDCache();
-//        EndLoc = f_tell(&ifile) + VideoSz;
+//        SCB_DisableDCache();
+        EndLoc = f_tell(&ifile) + VideoSz;
         // Video
         VCk.MoveTo(f_tell(&ifile));
         IVMeta.Flush();
         IVMeta.PWrite->Sz = 0;
         IVMeta.PWrite->ptr = IVBuf;
         IsEof = false;
-        // Audio
-//        AuCk.MoveTo(f_tell(&ifile));
-//        AuBuf = nullptr;
-//        if(ReadNextAudio() == retvOk) {
-//            Codec.TransmitBuf(AuBuf, AuSz / 2);
-//            chSysLock();
-//            PrepareNextAudioI();
-//            chSysUnlock();
-//        }
-
         chThdResume(&ThdPtr, MSG_OK);
     }
 
@@ -509,6 +499,10 @@ public:
             chThdSuspendS(&ThdPtr);
             chSysUnlock();
 
+            if(f_tell(&ifile) >= EndLoc) {
+                IsEof = true;
+                continue;
+            }
             uint8_t VRslt = retvOk;
             while(VRslt == retvOk) {
                 if(VCk.AwaitsReading) {
@@ -521,10 +515,16 @@ public:
                             VCk.AwaitsReading = true;
                             VRslt = PutFrameIfPossible();
                         } // if is video
-                        else if(VCk.IsAudio()) AuBuf.Put(VCk);
+//                        else if(VCk.IsAudio()) {
+//                            if(!ACk.AwaitsReading) {
+//                                ACk = VCk;
+//                                AuBuf.Put(VCk);
+//                            }
+//                        }
                     } // if readhdr
                     else IsEof = true;
                 }
+
             } // while ok
 
 //            FileMsg_t Msg = MsgQFile.Fetch(TIME_INFINITE);
