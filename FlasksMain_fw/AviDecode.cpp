@@ -22,9 +22,6 @@ uint32_t MCU_BlockIndex = 0;
 sysinterval_t FrameRate = 0;
 
 #if 1 // ============================ AVI headers ==============================
-#define IN_AUBUF_SZ     0x2000UL // Packed frame must fit here
-#define IN_AUBUF_SZ32   (IN_VBUF_SZ / 4)
-
 #define FOURCC(c1, c2, c3, c4)  ((uint32_t)((c4 << 24) | (c3 << 16) | (c2 << 8) | c1))
 
 class ChunkHdr_t {
@@ -179,7 +176,7 @@ uint8_t ProcessHDRL(int32_t HdrlSz) {
                         if(StreamHdr.Read() != retvOk) return retvFail;
 //                        StreamHdr.Print();
                         if(StreamHdr.fccType == FOURCC('v','i','d','s') and StreamHdr.fccHandler != FOURCC('M','J','P','G') ) {
-                            Printf("Unsupported video: %4S\r", StreamHdr.fccHandler);
+                            Printf("Unsupported video: %4S\r", &StreamHdr.fccHandler);
                             return retvFail;
                         }
                     }
@@ -212,7 +209,8 @@ uint8_t ProcessHDRL(int32_t HdrlSz) {
 #if 1 // ========================== File buffering =============================
 #define IN_VBUF_SZ      40000UL
 #define IN_VBUF_SZ32    (IN_VBUF_SZ / 4)
-#define AUBUF_SZ        0x40000UL
+#define AUBUF_SZ        32768UL
+//#define AUBUF_SZ        0x40000UL
 
 static THD_WORKING_AREA(waFileThd, 1024);
 static void FileThd(void *arg);
@@ -247,7 +245,7 @@ public:
     void Print() { Printf("%4S; Sz=%u\r", &ckID, ckSize); }
     bool IsVideo() { return ckID == FOURCC('0','0','d','c'); }
     bool IsAudio() { return ckID == FOURCC('0','1','w','b'); }
-private:
+//private:
     uint32_t NextLoc = 0, DataLoc = 0;
 };
 
@@ -262,6 +260,7 @@ private:
 //        cacheBufferInvalidate(PWrite, ACk.ckSize)
         ACk.ReadData(PWrite);
         chSysLock();
+        ACk.AwaitsReading = false;
         PWrite += ACk.ckSize;
         if(PWrite >= (IBuf + AUBUF_SZ)) PWrite = IBuf;
         IFullSlotsCount += ACk.ckSize;
@@ -274,17 +273,17 @@ public:
         PWrite = IBuf;
     }
 
-    void Put(Chunk_t &ACk) {
+    uint8_t Put(Chunk_t &ACk) {
         chSysLock();
-        PrintfI("Put Sz %u; p%u FC %u ", ACk.ckSize, (PWrite - IBuf), IFullSlotsCount);
+//        PrintfI("Put %u; Sz %u; p%u FC %u ", ACk.DataLoc, ACk.ckSize, (PWrite - IBuf), IFullSlotsCount);
         // Where to write?
         if((PRead < PWrite) or (PRead == PWrite and IFullSlotsCount == 0)) {
             uint32_t EndSz = (IBuf + AUBUF_SZ) - PWrite;
             if(EndSz >= ACk.ckSize) { // There is enough space in end of buf
                 chSysUnlock();
                 WriteData(ACk);
-                Printf("%u\r", IFullSlotsCount);
-                return;
+//                Printf("%u\r", IFullSlotsCount);
+                return retvOk;
             }
             else PWrite = IBuf;
         }
@@ -293,12 +292,13 @@ public:
             if(StartSz >= ACk.ckSize) {
                 chSysUnlock();
                 WriteData(ACk);
-                Printf("%u\r", IFullSlotsCount);
-                return;
+//                Printf("%u\r", IFullSlotsCount);
+                return retvOk;
             }
         }
         PrintfI("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ AOvf\r");
         chSysUnlock();
+        return retvFail;
     }
 
     uint8_t* GetRPtrAndMove(uint32_t *pSz) {
@@ -317,35 +317,7 @@ public:
         IFullSlotsCount -= Sz;
         return r;
     }
-} AuBuf __attribute__ ((section ("DATA_RAM")));
-
-//__attribute__ ((section ("DATA_RAM")))
-//uint32_t VBuf1[IN_VBUF_SZ32] __attribute__((aligned(32)));
-//__attribute__ ((section ("DATA_RAM")))
-//uint32_t VBuf2[IN_VBUF_SZ32] __attribute__((aligned(32)));
-
-//uint32_t *VBuf1, *VBuf2;
-
-//uint8_t ReadNextAudio() {
-//    systime_t start = chVTGetSystemTimeX();
-//    while(true) {
-//        if(AuCk.ReadHdr() != retvOk) break;
-//        if(AuCk.IsAudio()) { // found
-//            if(AuCk.ckSize > AUBUF_SZ) {
-//                Printf("Too large Adata\r");
-//                break;
-//            }
-//            AuBuf = (AuBuf == AuBufs.Buf1)? AuBufs.Buf2 : AuBufs.Buf1;
-//            // Read data
-//            if(AuCk.ReadData(AuBuf, &AuSz) != retvOk) break;
-//            sysinterval_t ela = chVTTimeElapsedSinceX(start);
-//            if(ela > 418) Printf("Au %u *********\r", ela);
-//            else Printf("Au %u\r", ela);
-//            return retvOk;
-//        }
-//    } // while true
-//    return retvFail;
-//}
+} AuBuf;// __attribute__ ((section ("DATA_RAM")));
 
 template <typename T, uint32_t Sz>
 class MetaBuf_t {
@@ -467,6 +439,7 @@ public:
         EndLoc = f_tell(&ifile) + VideoSz;
         // Video
         VCk.MoveTo(f_tell(&ifile));
+        ACk.MoveTo(f_tell(&ifile));
         IVMeta.Flush();
         IVMeta.PWrite->Sz = 0;
         IVMeta.PWrite->ptr = IVBuf;
@@ -492,6 +465,8 @@ public:
         chSysUnlock();
     }
 
+    void WakeThdI() { chThdResumeI(&ThdPtr, MSG_OK); }
+
     __noreturn
     void ITask() {
         while(true) {
@@ -503,40 +478,37 @@ public:
                 IsEof = true;
                 continue;
             }
-            uint8_t VRslt = retvOk;
-            while(VRslt == retvOk) {
+            uint8_t VRslt = retvOk, ARslt = retvOk;
+            while(VRslt == retvOk or ARslt == retvOk) {
                 if(VCk.AwaitsReading) {
                     VRslt = PutFrameIfPossible();
                 }
                 else {
                     if(VCk.ReadHdr() == retvOk) {
-//                        VCk.Print();
+                        VCk.Print();
                         if(VCk.IsVideo()) {
                             VCk.AwaitsReading = true;
                             VRslt = PutFrameIfPossible();
                         } // if is video
-//                        else if(VCk.IsAudio()) {
-//                            if(!ACk.AwaitsReading) {
-//                                ACk = VCk;
-//                                AuBuf.Put(VCk);
-//                            }
-//                        }
                     } // if readhdr
                     else IsEof = true;
                 }
 
+//                if(ACk.AwaitsReading) {
+////                    Printf("AwR %u\r",
+//                    ARslt = AuBuf.Put(ACk);
+//                }
+//                else {
+//                    if(ACk.ReadHdr() == retvOk) {
+////                        ACk.Print();
+//                        if(ACk.IsAudio()) {
+//                            ACk.AwaitsReading = true;
+//                            ARslt = AuBuf.Put(ACk);
+//                        } // if is video
+//                    } // if readhdr
+//                    else IsEof = true;
+//                }
             } // while ok
-
-//            FileMsg_t Msg = MsgQFile.Fetch(TIME_INFINITE);
-//            switch(Msg.Cmd) {
-//                case fcmdReadNextFrame:
-//                    IsLastFrame = (ReadNextFrame() != retvOk);
-//                    break;
-//                case fcmdReadNextAudio:
-//                    ReadNextAudio();
-//                    break;
-//                default: break;
-//            }
         } // while true
     }
 } VFileReader  __attribute__((aligned(32)));
@@ -555,19 +527,21 @@ bool IsIdle = true;
 
 void OnBufTxEndI() {
     uint32_t Sz = 4096UL;
+//    uint32_t Sz = AUBUF_SZ;
     uint8_t* p = AuBuf.GetRPtrAndMove(&Sz);
     if(Sz > 0) {
-        PrintfI("\r  R Sz %u; ", Sz);
+//        PrintfI("\r  R Sz %u; ", Sz);
 //        SCB_CleanDCache();
 //        cacheBufferFlush(p, Sz);
         Codec.TransmitBuf(p, Sz / 2);
         IsIdle = false;
-        PrintfI("p %u\r", p - (uint8_t*)&AuBuf);
+//        PrintfI("p %u\r", p - (uint8_t*)&AuBuf);
     }
     else {
         IsIdle = true;
         PrintfI("###########################################################\r");
     }
+    VFileReader.WakeThdI();
 }
 
 void Start() {
@@ -715,7 +689,7 @@ static void VideoThd(void *arg) {
                 if(VFileReader.IsEof) MsgQVideo.SendNowOrExit(VideoMsg_t(vcmdStop));
                 else {
                     StartFrameDecoding(VFileReader.VBuf, VFileReader.VSz);
-                    if(Audio::IsIdle) Audio::Start();
+//                    if(Audio::IsIdle) Audio::Start();
                 }
                 break;
 
@@ -739,7 +713,7 @@ static void VideoThd(void *arg) {
                 ProcessMcuBuf();
                 // Delay before frame show
                 sysinterval_t Elapsed = chVTTimeElapsedSinceX(FrameStart);
-//                Printf("e %u\r", Elapsed);
+                Printf("e %u\r", Elapsed);
                 if(Elapsed < FrameRate) chThdSleep(FrameRate - Elapsed);
                 FrameStart = chVTGetSystemTimeX();
                 MsgQVideo.SendNowOrExit(VideoMsg_t(vcmdStart));
