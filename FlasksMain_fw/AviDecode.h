@@ -12,7 +12,7 @@
 namespace Avi {
 
 void Init();
-uint8_t Start(const char* FName);
+uint8_t Start(const char* FName, uint32_t FrameN = 0);
 void Stop();
 
 }

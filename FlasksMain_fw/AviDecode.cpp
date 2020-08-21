@@ -14,8 +14,6 @@
 #include "CS42L52.h"
 #include "kl_buf.h"
 
-//__attribute__ ((section ("DATA_RAM")))
-
 static FIL ifile;
 extern CS42L52_t Codec;
 uint32_t MCU_BlockIndex = 0;
@@ -150,7 +148,8 @@ uint8_t ProcessHDRL(int32_t HdrlSz) {
     avimainheader_t AviMainHdr;
     if(AviMainHdr.Read() != retvOk) return retvFail;
     HdrlSz -= AviMainHdr.cb + 8;
-    FrameRate = TIME_US2I(AviMainHdr.dwMicroSecPerFrame);
+//    FrameRate = TIME_US2I(AviMainHdr.dwMicroSecPerFrame);
+    FrameRate = 440; // XXX
     Printf("FrameRate_st: %u\r", FrameRate);
 //    AviMainHdr.Print();
     // Read streams headers
@@ -207,14 +206,18 @@ uint8_t ProcessHDRL(int32_t HdrlSz) {
 #endif
 
 #if 1 // ========================== File buffering =============================
-//#define IN_VBUF_SZ      0x40000UL
-#define IN_VBUF_SZ      0x34000UL
+#define RAM0_TOTAL_SZ   (0x5FC00UL) // Const
+#define IN_VBUF_SZ      0x41000UL
 #define IN_VBUF_SZ32    (IN_VBUF_SZ / 4)
-//#define AUBUF_SZ        0x1F000UL
-#define AUBUF_SZ        0x2B000UL
+#define FRAMES_CNT_MAX  20UL
+
+//#define AUBUF_SZ        0x2B000UL
+#define AUBUF_SZ        (RAM0_TOTAL_SZ - IN_VBUF_SZ)
 
 static uint8_t  IABuf[AUBUF_SZ]     __attribute__((aligned(32), section (".srambuf")));
 static uint32_t IVBuf[IN_VBUF_SZ32] __attribute__((aligned(32), section (".srambuf")));
+
+//static uint8_t  *IABuf;
 
 static THD_WORKING_AREA(waFileThd, 1024);
 static void FileThd(void *arg);
@@ -257,7 +260,7 @@ public:
 
 class AuBuf_t {
 private:
-    uint8_t *PRead, *PWrite;
+    uint8_t *PRead, *PWrite, *JumpPtr;
     uint32_t IFullSlotsCount=0;
 
     void WriteData(Chunk_t &ACk) {
@@ -273,31 +276,35 @@ private:
     }
 public:
     void Init() {
-//        IBuf = (uint8_t*)malloc(AUBUF_SZ);
+//        IABuf = (uint8_t*)malloc(AUBUF_SZ);
         PRead = IABuf;
         PWrite = IABuf;
+        JumpPtr = IABuf + AUBUF_SZ;
     }
 
     uint8_t Put(Chunk_t &ACk) {
         chSysLock();
-//        PrintfI("Put %u; Sz %u; p%u FC %u ", ACk.DataLoc, ACk.ckSize, (PWrite - IBuf), IFullSlotsCount);
         // Where to write?
         if((PRead < PWrite) or (PRead == PWrite and IFullSlotsCount == 0)) {
+            JumpPtr = IABuf + AUBUF_SZ;
             uint32_t EndSz = (IABuf + AUBUF_SZ) - PWrite;
             if(EndSz >= ACk.ckSize) { // There is enough space in end of buf
                 chSysUnlock();
                 WriteData(ACk);
-//                Printf("%u\r", IFullSlotsCount);
+//                Printf("a %u\r", IFullSlotsCount);
                 return retvOk;
             }
-            else PWrite = IABuf;
+            else {
+                JumpPtr = PWrite;
+                PWrite = IABuf;
+            }
         }
         if(PWrite <= PRead) {
             uint32_t StartSz = PRead - PWrite;
             if(StartSz >= ACk.ckSize) {
                 chSysUnlock();
                 WriteData(ACk);
-//                Printf("%u\r", IFullSlotsCount);
+//                Printf("b %u\r", IFullSlotsCount);
                 return retvOk;
             }
         }
@@ -312,13 +319,16 @@ public:
             return nullptr;
         }
         uint8_t *r = PRead;
-        uint32_t Sz = (IABuf + AUBUF_SZ) - PRead;
-        if(Sz > IFullSlotsCount) Sz = IFullSlotsCount;
+        // How many slots left in buffer?
+        uint32_t Sz = (PWrite > PRead)? (PWrite - PRead) : (JumpPtr - PRead);
+//        PrintfI("  Sz %u\r", Sz);
+//        if(Sz > IFullSlotsCount) Sz = IFullSlotsCount;
+        // Use min value
         if(Sz > *pSz) Sz = *pSz;
         else if(Sz < *pSz) *pSz = Sz;
         // Move PRead
         PRead += Sz;
-        if(PRead >= (IABuf + AUBUF_SZ)) PRead = IABuf;
+        if(PRead >= JumpPtr) PRead = IABuf;
         IFullSlotsCount -= Sz;
         return r;
     }
@@ -362,11 +372,10 @@ struct SzPtr_t {
 
 class VFileReader_t {
 private:
-    MetaBuf_t<SzPtr_t, 32> IVMeta;
+    MetaBuf_t<SzPtr_t, (FRAMES_CNT_MAX + 2UL)> IVMeta;
     thread_t *ThdPtr;
     Chunk_t VCk;
     uint32_t EndLoc = 0;
-//    uint32_t rneMax = 0;
 
     void WriteFrame() {
 //        Printf("W %u: %u; ", (wPtrV - IVBuf), VCk.ckSize);
@@ -509,11 +518,11 @@ static void FileThd(void *arg) {
 #if 1 // ========================== Audio playback =============================
 namespace Audio {
 
-bool IsIdle = true;
+bool IsIdle;
 
 void OnBufTxEndI() {
 //    uint32_t Sz = 4096UL;
-    uint32_t Sz = 65536UL;
+    uint32_t Sz = 45056UL;
     uint8_t* p = AuBuf.GetRPtrAndMove(&Sz);
     if(Sz > 0) {
 //        PrintfI("  R Sz %u\r", Sz);
@@ -661,7 +670,7 @@ __noreturn
 static void VideoThd(void *arg) {
     chRegSetThreadName("Video");
     systime_t FrameStart = 0;
-//    uint32_t n = 0;
+    uint32_t n = 0;
     while(true) {
         VideoMsg_t Msg = MsgQVideo.Fetch(TIME_INFINITE);
         switch(Msg.Cmd) {
@@ -670,6 +679,7 @@ static void VideoThd(void *arg) {
                 if(VFileReader.IsEof) MsgQVideo.SendNowOrExit(VideoMsg_t(vcmdStop));
                 else {
                     StartFrameDecoding(VFileReader.VBuf, VFileReader.VSz);
+//                    Printf("%5u  ", VFileReader.VSz);
                     if(Audio::IsIdle) Audio::Start();
                 }
                 break;
@@ -685,17 +695,17 @@ static void VideoThd(void *arg) {
                 JMcuBuf.Switch(); // Switch buf and continue reception
                 JMcuBuf.PrepareToFill();
                 ProcessMcuBuf();  // Process what received
+//                Printf("b %u\r", MCU_BlockIndex);
                 break;
 
             case vcmdEndDecode: {
-                Jpeg::Stop();
                 VFileReader.OnFrameProcessed();
                 JMcuBuf.Switch();
                 ProcessMcuBuf();
                 // Delay before frame show
                 sysinterval_t Elapsed = chVTTimeElapsedSinceX(FrameStart);
 //                Printf("e %u\r", Elapsed);
-                Printf("e %u; V %u\r", Elapsed, VFileReader.GetFullCount());
+//                Printf("%4u: e %3u; V %2u; A %6u\r", n++, Elapsed, VFileReader.GetFullCount(), AuBuf.GetFullCount()/1024);
                 if(Elapsed < FrameRate) chThdSleep(FrameRate - Elapsed);
                 FrameStart = chVTGetSystemTimeX();
                 MsgQVideo.SendNowOrExit(VideoMsg_t(vcmdStart));
@@ -719,7 +729,7 @@ void Init() {
     chThdCreateStatic(waVideoThd, sizeof(waVideoThd), HIGHPRIO, (tfunc_t)VideoThd, NULL);
 }
 
-uint8_t Start(const char* FName) {
+uint8_t Start(const char* FName, uint32_t FrameN) {
     uint8_t Rslt = TryOpenFileRead(FName, &ifile);
     if(Rslt != retvOk) return Rslt;
     Rslt = retvFail;
@@ -745,6 +755,14 @@ uint8_t Start(const char* FName) {
             }
             // Process movi
             if(ckHdr.TypeIsMOVI()) {
+                // Fast forward
+                ChunkHdr_t VHdr;
+                while(FrameN > 0) {
+                    if(VHdr.ReadNext() != retvOk) goto End;
+                    if(VHdr.IsVideo()) FrameN--;
+                    if(FrameN == 0) f_lseek(&ifile, f_tell(&ifile) - 8);
+                }
+
                 VFileReader.Start(ckHdr.ckSize);
                 Audio::IsIdle = true;
                 MsgQVideo.SendNowOrExit(VideoMsg_t(vcmdStart));

@@ -20,6 +20,7 @@ static ftVoidVoid IConversionEndCallback = nullptr;
 
 #define JPEG_DMA_IN_MODE  (STM32_DMA_CR_CHSEL(JPEG_DMA_CHNL) \
         | STM32_DMA_CR_MBURST_INCR4 \
+        | STM32_DMA_CR_PBURST_INCR4 \
         | DMA_PRIORITY_LOW \
         | STM32_DMA_CR_MSIZE_WORD \
         | STM32_DMA_CR_PSIZE_WORD \
@@ -28,6 +29,7 @@ static ftVoidVoid IConversionEndCallback = nullptr;
 
 #define JPEG_DMA_OUT_MODE (STM32_DMA_CR_CHSEL(JPEG_DMA_CHNL) \
         | STM32_DMA_CR_MBURST_INCR4 \
+        | STM32_DMA_CR_PBURST_INCR4 \
         | DMA_PRIORITY_LOW \
         | STM32_DMA_CR_MSIZE_WORD \
         | STM32_DMA_CR_PSIZE_WORD \
