@@ -234,19 +234,14 @@ static EvtMsgQ_t<VideoMsg_t, 9> MsgQVideo;
 
 #if 1 // ========================== File buffering =============================
 #define RAM0_TOTAL_SZ   (0x5F000UL) // Const
-#define IN_VBUF_SZ      0x41000UL
+#define IN_VBUF_SZ      0x20000UL
 #define IN_VBUF_SZ32    (IN_VBUF_SZ / 4)
-#define FRAMES_CNT_MAX  20UL
-#define FRAMES_THR      (FRAMES_CNT_MAX / 2)
+#define FRAMES_CNT_MAX  27UL
 
-//#define AUBUF_SZ        0x2B000UL
-#define AUBUF_SZ        (RAM0_TOTAL_SZ - IN_VBUF_SZ)
-#define AUBUF_THR       (AUBUF_SZ - 4096UL)
+#define AUBUF_SZ        0x20000
 
 static uint8_t  IABuf[AUBUF_SZ]     __attribute__((aligned(32), section (".srambuf")));
 static uint32_t IVBuf[IN_VBUF_SZ32] __attribute__((aligned(32), section (".srambuf")));
-
-//static uint8_t  *IABuf;
 
 static THD_WORKING_AREA(waFileThd, 1024);
 static void FileThd(void *arg);
@@ -305,7 +300,6 @@ private:
     }
 public:
     void Init() {
-//        IABuf = (uint8_t*)malloc(AUBUF_SZ);
         PRead = IABuf;
         PWrite = IABuf;
         JumpPtr = IABuf + AUBUF_SZ;
@@ -320,7 +314,6 @@ public:
             if(EndSz >= ACk.ckSize) { // There is enough space in end of buf
                 chSysUnlock();
                 WriteData(ACk);
-//                Printf("a %u\r", IFullSlotsCount);
                 return retvOk;
             }
             else {
@@ -333,7 +326,6 @@ public:
             if(StartSz >= ACk.ckSize) {
                 chSysUnlock();
                 WriteData(ACk);
-//                Printf("b %u\r", IFullSlotsCount);
                 return retvOk;
             }
         }
@@ -350,8 +342,6 @@ public:
         uint8_t *r = PRead;
         // How many slots left in buffer?
         uint32_t Sz = (PWrite > PRead)? (PWrite - PRead) : (JumpPtr - PRead);
-//        PrintfI("  Sz %u\r", Sz);
-//        if(Sz > IFullSlotsCount) Sz = IFullSlotsCount;
         // Use min value
         if(Sz > *pSz) Sz = *pSz;
         else if(Sz < *pSz) *pSz = Sz;
@@ -362,6 +352,7 @@ public:
         return r;
     }
     uint32_t GetFullCount()  { return IFullSlotsCount; }
+    uint32_t GetEmptyCount() { return AUBUF_SZ-IFullSlotsCount; }
 } AuBuf;
 
 template <typename T, uint32_t Sz>
@@ -383,7 +374,6 @@ public:
     }
 
     bool IsEmpty() { return (IFullSlotsCount == 0); }
-//    bool IsFull()  { return (IFullSlotsCount == Sz); }
     bool Has2EmptySlots() { return IFullSlotsCount <= (Sz - 2); }
     uint32_t GetFullCount()  { return IFullSlotsCount; }
 
@@ -423,67 +413,49 @@ private:
 
     uint8_t PutFrameIfPossible() {
         chSysLock();
-//        PrintfI("W%u; N%u Sz%u p%u; ", IVMeta.GetFullCount(), VCk.N, VCk.ckSize, (IVMeta.PWrite->ptr - IVBuf)*4);
         if(!IVMeta.Has2EmptySlots()) {
             chSysUnlock();
-//            Printf(" Full\r");
             return retvOverflow;
         }
         uint32_t *RPtr = IVMeta.PRead->ptr;
         // Where to write?
         if((RPtr < IVMeta.PWrite->ptr) or (RPtr == IVMeta.PWrite->ptr and IVMeta.IsEmpty())) {
             uint32_t EndSz = ((IVBuf + IN_VBUF_SZ32) - IVMeta.PWrite->ptr) * 4;
-//            PrintfI(" Esz: %d", EndSz);
             if(EndSz >= VCk.ckSize) { // There is enough space in end of buf
                 chSysUnlock();
                 WriteFrame();
-//                if(RPtr == IVMeta.PWrite->ptr) Printf("#####################################");
-//                Printf(" FC %u\r", IVMeta.GetFullCount());
                 return retvOk;
             }
-            else { // Not enough space in end, move to start
-//                PrintfI(" Mv");
-                IVMeta.PWrite->ptr = IVBuf;
-            }
+            else IVMeta.PWrite->ptr = IVBuf; // Not enough space in end, move to start
         }
         if(IVMeta.PWrite->ptr <= RPtr) {
             uint32_t StartSz = (RPtr - IVMeta.PWrite->ptr) * 4;
-//            PrintfI(" SSz: %d", StartSz);
             if(StartSz >= VCk.ckSize) {
                 chSysUnlock();
                 WriteFrame();
-//                if(RPtr == IVMeta.PWrite->ptr) Printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
-//                Printf(" FC %u\r", IVMeta.GetFullCount());
                 return retvOk;
             }
-//            else Printf(" NES");
         }
         chSysUnlock();
-//        Printf(" OVF FC %u\r", IVMeta.GetFullCount());
         return retvOverflow;
     }
 
     void PrefillBufs() {
         uint8_t VRslt = retvOk, AuRslt = retvOk;
-        while(VCk.ReadHdr() == retvOk and (VRslt == retvOk and AuRslt == retvOk)) {
-//            VCk.Print();
+        while(VCk.ReadHdr() == retvOk and VRslt == retvOk and AuRslt == retvOk) {
             if(VCk.IsVideo()) {
-                if(IVMeta.GetFullCount() < FRAMES_THR) {
-                    Printf("preV %u ", IVMeta.GetFullCount());
+                if(IVMeta.GetFullCount() < FRAMES_CNT_MAX) {
                     VRslt = PutFrameIfPossible();
-                    Printf("%u\r", IVMeta.GetFullCount());
                 }
                 else VRslt = retvFail;
             } // if is video
             else if(VCk.IsAudio()) {
-                if(AuBuf.GetFullCount() < AUBUF_THR) {
-                    Printf("preA %u ", AuBuf.GetFullCount());
+                if(AuBuf.GetEmptyCount() > VCk.ckSize) {
                     AuRslt = AuBuf.Put(VCk);
-                    Printf("%u\r", AuBuf.GetFullCount());
                 }
                 else AuRslt = retvFail;
             }
-        }
+        } // while
     }
 
 public:
@@ -493,7 +465,6 @@ public:
     uint32_t GetFullCount()  { return IVMeta.GetFullCount(); }
 
     void Init() {
-//        IVBuf = (uint32_t*)malloc(IN_VBUF_SZ);
         chThdCreateStatic(waFileThd, sizeof(waFileThd), NORMALPRIO, (tfunc_t)FileThd, NULL);
     }
 
@@ -514,7 +485,6 @@ public:
     uint8_t GetNextFrame() {
         if(IVMeta.IsEmpty()) return retvEmpty;
         chSysLock();
-//        PrintfI("\r R%u; N%u Sz%u p%u\r", IVMeta.GetFullCount(), IVMeta.PRead->N, IVMeta.PRead->Sz, (IVMeta.PRead->ptr - IVBuf)*4);
         VSz = IVMeta.PRead->Sz;
         VBuf = IVMeta.PRead->ptr;
         chSysUnlock();
@@ -524,7 +494,6 @@ public:
     void OnFrameProcessed() {
         chSysLock();
         IVMeta.MoveReadPtr();
-//        PrintfI("\r M %u\r", IVMeta.GetFullCount());
         chThdResumeI(&ThdPtr, MSG_OK);
         chSysUnlock();
     }
@@ -546,7 +515,6 @@ public:
             while(VRslt == retvOk and AuRslt == retvOk) {
                 if(VCk.AwaitsReading) {
                     VRslt = PutFrameIfPossible();
-//                    Printf("AwR %u\r", VRslt);
                 }
                 else {
                     if(VCk.ReadHdr() == retvOk) {
@@ -554,11 +522,9 @@ public:
                         if(VCk.IsVideo()) {
                             VCk.AwaitsReading = true;
                             VRslt = PutFrameIfPossible();
-//                            Printf("V %u\r", VRslt);
                         } // if is video
                         else if(VCk.IsAudio()) {
                             AuRslt = AuBuf.Put(VCk);
-//                            Printf("A %u\r", VRslt);
                         }
                     } // if readhdr
                     else IsEof = true;
@@ -582,16 +548,8 @@ void OnBufTxEndI() {
     if(VFileReader.IsEof) MsgQVideo.SendNowOrExitI(VideoMsg_t(vcmdStop));
     else {
         uint32_t Sz = 4096UL;
-    //    uint32_t Sz = 45056UL;
-//        uint32_t ASz = AuBuf.GetFullCount() / 4096;
         uint8_t* p = AuBuf.GetRPtrAndMove(&Sz);
         if(Sz > 0) {
-//            PrintfI("  R Sz %u\r", Sz);
-//            PrintfI("V %2u; A %3u %3u; Sz %u\r", VFileReader.GetFullCount(), ASz, AuBuf.GetFullCount()/4096, Sz);
-//            PrintfI("V %2u; A %3u %3u", VFileReader.GetFullCount(), ASz, AuBuf.GetFullCount()/4096);
-//            if(VFileReader.GetFullCount() != ASz) PrintfI("********");
-//            PrintfI("\r");
-
             Codec.TransmitBuf(p, Sz / 2);
             IsIdle = false;
         }
@@ -720,13 +678,10 @@ static void VideoThd(void *arg) {
         VideoMsg_t Msg = MsgQVideo.Fetch(TIME_INFINITE);
         switch(Msg.Cmd) {
             case vcmdStart:
-//                Printf("Strt %u ", VFileReader.GetFullCount());
                 while(VFileReader.GetNextFrame() != retvOk and !VFileReader.IsEof) chThdSleepMilliseconds(7);
                 if(VFileReader.IsEof) MsgQVideo.SendNowOrExit(VideoMsg_t(vcmdStop));
                 else {
-//                    Printf("%u ", VFileReader.GetFullCount());
                     StartFrameDecoding(VFileReader.VBuf, VFileReader.VSz);
-//                    Printf("%5u  ", VFileReader.VSz);
                     if(Audio::IsIdle) Audio::Start();
                 }
                 break;
@@ -742,34 +697,30 @@ static void VideoThd(void *arg) {
                 JMcuBuf.Switch(); // Switch buf and continue reception
                 JMcuBuf.PrepareToFill();
                 ProcessMcuBuf();  // Process what received
-//                Printf("b %u\r", MCU_BlockIndex);
                 break;
 
             case vcmdEndDecode: {
                 VFileReader.OnFrameProcessed();
                 JMcuBuf.Switch();
                 ProcessMcuBuf();
-//                Printf("%u\r", VFileReader.GetFullCount());
                 // Delay before frame show
                 sysinterval_t Elapsed = chVTTimeElapsedSinceX(FrameStart);
 //                Printf("e %u\r", Elapsed);
-//                Printf("%4u: e %3u; V %2u; A %6u\r", n++, Elapsed, VFileReader.GetFullCount(), AuBuf.GetFullCount()/1024);
-
                 if(Elapsed < FrameRate) {
-                    uint32_t v = VFileReader.GetFullCount();
-                    uint32_t a =  AuBuf.GetFullCount()/4096;
                     sysinterval_t FDelay = FrameRate - Elapsed;
-                    Printf("V %2u; A %3u", v, a);
-                    if(a < v) {
+                    // Increase or decrease delay depending on Video/Audio buffer sizes ratio
+                    uint32_t VCnt = VFileReader.GetFullCount(); // Frames in videobuf
+                    uint32_t ACnt =  AuBuf.GetFullCount() / 4096; // "Frames" in audiobuf
+//                    Printf("V %2u; A %3u", VCnt, ACnt);
+                    if(ACnt < VCnt) {
                         FDelay -= 11;
-                        Printf("****");
+//                        Printf("****");
                     }
-                    else if(a > v) {
+                    else if(ACnt > VCnt) {
                         FDelay += 11;
-                        Printf("####");
+//                        Printf("####");
                     }
                     PrintfEOL();
-
                     chThdSleep(FDelay);
                 }
                 FrameStart = chVTGetSystemTimeX();

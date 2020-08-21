@@ -77,16 +77,9 @@ int main() {
 
     Avi::Init();
 //    Avi::Start("Plane_480x272.avi");
-    Avi::Start("SWTrail.avi");
+//    Avi::Start("SWTrail.avi");
 //    Avi::Start("yogSS.avi");
-//    Avi::Start("sw8_m.avi", 000);
-//        for(int i=0; i<1; i++) {
-//            if(Avi::GetNextFrame() != retvOk) break;
-//            Avi::ShowFrame();
-//            chThdSleepMilliseconds(450);
-//        }
-//    }
-//    Avi::Stop();
+    Avi::Start("sw8_m.avi", 000);
 
 //    Npx.Init();
     // USB
