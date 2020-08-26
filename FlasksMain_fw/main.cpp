@@ -31,6 +31,9 @@ CS42L52_t Codec;
 //static bool UsbPinWasHi = false;
 LedBlinker_t Led{LED_PIN};
 static TmrKL_t TmrOneSecond {TIME_MS2I(999), evtIdEverySecond, tktPeriodic}; // Measure battery periodically
+
+void SwitchTo27MHz();
+void SwitchTo216MHz();
 #endif
 
 #if 1 // ================================ Code =================================
@@ -92,19 +95,20 @@ int main() {
     // SAI clock: PLLSAI1 Q
     Clk.SetPllSai1QDiv(8, 1); // Q = 2 * 96 / 8 = 24; 24/1 = 24
     Clk.SetSai2ClkSrc(saiclkPllSaiQ);
-
-    Clk.UpdateFreqValues();
     FLASH->ACR |= FLASH_ACR_ARTEN; // Enable ART accelerator
+    Clk.UpdateFreqValues();
+
     // ==== Init OS ====
     halInit();
     chSysInit();
+
     // ==== Init Hard & Soft ====
-    SdramInit();
+//    SdramInit();
     EvtQMain.Init();
     Uart.Init();
     Printf("\r%S %S\r\n", APP_NAME, XSTRINGIFY(BUILD_TIME));
     Clk.PrintFreqs();
-//    Printf("FLASH->ACR: %X\r", FLASH->ACR);
+//    SwitchTo27MHz();
 
     Led.Init();
     Led.StartOrRestart(lsqIdle);
@@ -115,17 +119,17 @@ int main() {
     SD.Init();
 
     // Audio codec
-    Codec.Init();   // i2c initialized inside, as pull-ups powered by VAA's LDO
-    Codec.SetSpeakerVolume(-96);    // To remove speaker pop at power on
-    Codec.DisableHeadphones();
-    Codec.EnableSpeakerMono();
-    Codec.SetupMonoStereo(Mono);  // Always
-    Codec.SetupSampleRate(22050); // Just default, will be replaced when changed
+//    Codec.Init();   // i2c initialized inside, as pull-ups powered by VAA's LDO
+//    Codec.SetSpeakerVolume(-96);    // To remove speaker pop at power on
+//    Codec.DisableHeadphones();
+//    Codec.EnableSpeakerMono();
+//    Codec.SetupMonoStereo(Mono);  // Always
+//    Codec.SetupSampleRate(22050); // Just default, will be replaced when changed
 
-    LcdInit();
+//    LcdInit();
 
-    Avi::Init();
-    Avi::Start("sw8_m.avi", 000);
+//    Avi::Init();
+//    Avi::Start("sw8_m.avi", 000);
 //    Avi::Start("trailer_48000_0.avi ", 000);
 #endif
 //    Npx.Init();
@@ -167,6 +171,7 @@ void ITask() {
                 break;
 
             case evtIdEverySecond:
+                Printf("S\r");
                 CodeChecker.OnOneSecond();
                 break;
 
@@ -186,6 +191,27 @@ void ITask() {
             default: break;
         } // switch
     } // while true
+}
+
+void SwitchTo27MHz() {
+    chSysLock();
+//    TMR_DISABLE(STM32_ST_TIM);          // Stop counter
+    Clk.SetupBusDividers(ahbDiv8, apbDiv1, apbDiv1);
+    Clk.SetupFlashLatency(27, 3300);
+    Clk.UpdateFreqValues();
+    chSysUnlock();
+    Clk.PrintFreqs();
+}
+
+void SwitchTo216MHz() {
+    chSysLock();
+//    TMR_DISABLE(STM32_ST_TIM);          // Stop counter
+    // APB1 is 54MHz max, APB2 is 108MHz max
+    Clk.SetupFlashLatency(216, 3300);
+    Clk.SetupBusDividers(ahbDiv1, apbDiv4, apbDiv2);
+    Clk.UpdateFreqValues();
+    chSysUnlock();
+    Clk.PrintFreqs();
 }
 
 #if 1 // ======================= Command processing ============================
@@ -220,6 +246,13 @@ void OnCmd(Shell_t *PShell) {
 
     else if(PCmd->NameIs("chk")) {
         SdramCheck();
+    }
+
+    else if(PCmd->NameIs("27")) {
+        SwitchTo27MHz();
+    }
+    else if(PCmd->NameIs("216")) {
+        SwitchTo216MHz();
     }
 
     else {

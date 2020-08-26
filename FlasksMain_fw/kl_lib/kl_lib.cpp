@@ -2754,11 +2754,18 @@ void Clk_t::UpdateFreqValues() {
     APB2FreqHz = AHBFreqHz >> tmp;
 
     // ==== Update prescaler in System Timer ====
-    uint32_t Psc = (SYS_TIM_CLK / OSAL_ST_FREQUENCY) - 1;
+    uint32_t NewPsc = (SYS_TIM_CLK / OSAL_ST_FREQUENCY) - 1;
+    uint32_t OldPsc = STM32_ST_TIM->PSC;
     TMR_DISABLE(STM32_ST_TIM);          // Stop counter
     uint32_t Cnt = STM32_ST_TIM->CNT;   // Save current time
-    STM32_ST_TIM->PSC = Psc;
-    TMR_GENERATE_UPD(STM32_ST_TIM);
+    if(NewPsc < OldPsc) {
+        TMR_GENERATE_UPD(STM32_ST_TIM);
+        STM32_ST_TIM->PSC = NewPsc;
+    }
+    else {
+        STM32_ST_TIM->PSC = NewPsc;
+        TMR_GENERATE_UPD(STM32_ST_TIM);
+    }
     STM32_ST_TIM->CNT = Cnt;            // Restore time
     TMR_ENABLE(STM32_ST_TIM);
 }
@@ -2773,8 +2780,8 @@ uint32_t Clk_t::GetTimInputFreq(TIM_TypeDef* ITmr) {
             else InputFreq = Clk.APB2FreqHz * 4;
         }
         else {
-            if(APB2prs == 1) InputFreq = Clk.APB2FreqHz;
-            else InputFreq = Clk.APB2FreqHz * 2;
+            if(APB2prs & 0b100UL) InputFreq = Clk.APB2FreqHz * 2; // APB is divided AHB
+            else InputFreq = Clk.APB2FreqHz; // APB is not divided
         }
     }
     // APB1
@@ -2790,8 +2797,8 @@ uint32_t Clk_t::GetTimInputFreq(TIM_TypeDef* ITmr) {
                 else InputFreq = Clk.APB1FreqHz * 4;
             }
             else {
-                if(APB1prs == 1) InputFreq = Clk.APB1FreqHz;
-                else InputFreq = Clk.APB1FreqHz * 2;
+                if(APB1prs & 0b100UL) InputFreq = Clk.APB1FreqHz * 2; // APB is divided AHB
+                else InputFreq = Clk.APB1FreqHz; // APB is not divided
             }
         }
     }
