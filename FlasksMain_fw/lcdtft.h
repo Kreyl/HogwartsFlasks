@@ -21,6 +21,7 @@
 #define LBUF_IN_SDRAM_STATIC    TRUE
 
 void LcdInit();
+void LcdDeinit();
 
 void LcdDrawARGB(uint32_t Left, uint32_t Top, uint32_t* Img, uint32_t ImgW, uint32_t ImgH);
 void LcdDrawRGB(uint32_t Left, uint32_t Top, uint32_t* Img, uint32_t ImgW, uint32_t ImgH);

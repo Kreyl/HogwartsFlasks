@@ -1,7 +1,7 @@
 /*
  * CS42L52.h
  *
- *  Created on: 15 марта 2017 г.
+ *  Created on: 15 пїЅпїЅпїЅпїЅпїЅ 2017 пїЅ.
  *      Author: Kreyl
  */
 
@@ -50,6 +50,7 @@ private:
     bool IsOn;
 public:
     void Init();
+    void Deinit();
     void Standby();
     void Resume();
     uint8_t ReadReg(uint8_t RegAddr, uint8_t *PValue);

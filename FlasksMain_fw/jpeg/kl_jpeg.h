@@ -53,6 +53,8 @@ extern JPEG_ConfTypeDef Conf;
 extern JPEG_YCbCrToRGB_Convert_Function pConvert_Function;
 
 void Init(stm32_dmaisr_t DmaOutCallback, ftVoidVoid ConversionEndCallback);
+void Deinit();
+
 void GetInfo();
 
 void PrepareToStart(void *ptr, uint32_t Cnt);

@@ -30,10 +30,15 @@ CS42L52_t Codec;
 
 //static bool UsbPinWasHi = false;
 LedBlinker_t Led{LED_PIN};
-static TmrKL_t TmrOneSecond {TIME_MS2I(999), evtIdEverySecond, tktPeriodic}; // Measure battery periodically
+static TmrKL_t TmrOneSecond {TIME_MS2I(999), evtIdEverySecond, tktPeriodic};
+static TmrKL_t TmrStandbyAudio {TIME_MS2I(4005), evtIdStandbyAudio, tktOneShot};
+static TmrKL_t TmrStandbyVideo {TIME_MS2I(4005), evtIdStandbyVideo, tktOneShot};
 
-void SwitchTo27MHz();
-void SwitchTo216MHz();
+
+void InitAudio();
+void DeinitAudio();
+void InitVideo();
+void DeinitVideo();
 #endif
 
 #if 1 // ================================ Code =================================
@@ -108,33 +113,20 @@ int main() {
     Uart.Init();
     Printf("\r%S %S\r\n", APP_NAME, XSTRINGIFY(BUILD_TIME));
     Clk.PrintFreqs();
-//    SwitchTo27MHz();
 
     Led.Init();
     Led.StartOrRestart(lsqIdle);
 
     SimpleSensors::Init();
-
-#if 1
     SD.Init();
+    Avi::Init();
 
-    // Audio codec
-//    Codec.Init();   // i2c initialized inside, as pull-ups powered by VAA's LDO
-//    Codec.SetSpeakerVolume(-96);    // To remove speaker pop at power on
-//    Codec.DisableHeadphones();
-//    Codec.EnableSpeakerMono();
-//    Codec.SetupMonoStereo(Mono);  // Always
-//    Codec.SetupSampleRate(22050); // Just default, will be replaced when changed
-
-//    LcdInit();
-
-//    Avi::Init();
+    DeinitVideo();
 //    Avi::Start("sw8_m.avi", 000);
 //    Avi::Start("trailer_48000_0.avi ", 000);
-#endif
-//    Npx.Init();
 
     TmrOneSecond.StartOrRestart();
+//    TmrStandbyVideo.StartOrRestart();
 
     // ==== Main cycle ====
     ITask();
@@ -175,6 +167,9 @@ void ITask() {
                 CodeChecker.OnOneSecond();
                 break;
 
+            case evtIdStandbyVideo: DeinitVideo(); break;
+            case evtIdStandbyAudio: DeinitAudio(); break;
+
 #if 0 // ======= USB =======
             case evtIdUsbConnect:
                 Printf("USB connect\r");
@@ -195,7 +190,6 @@ void ITask() {
 
 void SwitchTo27MHz() {
     chSysLock();
-//    TMR_DISABLE(STM32_ST_TIM);          // Stop counter
     Clk.SetupBusDividers(ahbDiv8, apbDiv1, apbDiv1);
     Clk.SetupFlashLatency(27, 3300);
     Clk.UpdateFreqValues();
@@ -205,7 +199,6 @@ void SwitchTo27MHz() {
 
 void SwitchTo216MHz() {
     chSysLock();
-//    TMR_DISABLE(STM32_ST_TIM);          // Stop counter
     // APB1 is 54MHz max, APB2 is 108MHz max
     Clk.SetupFlashLatency(216, 3300);
     Clk.SetupBusDividers(ahbDiv1, apbDiv4, apbDiv2);
@@ -213,6 +206,41 @@ void SwitchTo216MHz() {
     chSysUnlock();
     Clk.PrintFreqs();
 }
+
+
+void InitAudio() {
+    SD.Resume();
+    // Audio codec
+    Codec.Init();
+    Codec.SetSpeakerVolume(-96);    // To remove speaker pop at power on
+    Codec.DisableHeadphones();
+    Codec.EnableSpeakerMono();
+    Codec.SetupMonoStereo(Mono);  // Always
+    Codec.SetupSampleRate(22050); // Just default, will be replaced when changed
+}
+
+void DeinitAudio() {
+    SD.Standby();
+    Codec.Deinit();
+}
+
+void InitVideo() {
+    SwitchTo216MHz();
+    SdramInit();
+    InitAudio();
+    LcdInit();
+    Avi::Resume();
+}
+
+void DeinitVideo() {
+    Avi::Standby();
+    LcdDeinit();
+    DeinitAudio();
+    SdramDeinit();
+    SwitchTo27MHz();
+}
+
+
 
 #if 1 // ======================= Command processing ============================
 void OnCmd(Shell_t *PShell) {
@@ -249,10 +277,10 @@ void OnCmd(Shell_t *PShell) {
     }
 
     else if(PCmd->NameIs("27")) {
-        SwitchTo27MHz();
+        DeinitVideo();
     }
     else if(PCmd->NameIs("216")) {
-        SwitchTo216MHz();
+        InitVideo();
     }
 
     else {

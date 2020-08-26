@@ -62,6 +62,8 @@ void LcdInit() {
 #endif
 
     // Enable clock. Pixel clock set up at main; <=12MHz according to display datasheet
+    RCC->APB2RSTR |= RCC_APB2RSTR_LTDCRST;
+    RCC->APB2RSTR &= ~RCC_APB2RSTR_LTDCRST;
     RCC->APB2ENR |= RCC_APB2ENR_LTDCEN;
 
 #if 1 // ==== GPIO ====
@@ -157,16 +159,50 @@ void LcdInit() {
     // Enable display
     PinSetupOut(LCD_DISP, omPushPull);
     PinSetHi(LCD_DISP);
-
-    // DMA2D
-//    rccEnableDMA2D(FALSE);
-
-    PDmaMCpy = dmaStreamAlloc(MEMCPY_DMA, IRQ_PRIO_MEDIUM, nullptr, nullptr);
-//    dmaStreamSetMode      (PDmaMCpy, Params->DmaModeTx);
-
-
-
 }
+
+void LcdDeinit() {
+    Backlight.Set(0);
+    RCC->APB2ENR &= ~RCC_APB2ENR_LTDCEN;
+    PinSetLo(LCD_DISP);
+
+#if 1 // ==== GPIO ====
+    // GpioA
+    PinSetupAnalog(GPIOA, 1);
+    PinSetupAnalog(GPIOA, 2);
+    PinSetupAnalog(GPIOA, 3);
+    PinSetupAnalog(GPIOA, 4);
+    PinSetupAnalog(GPIOA, 5);
+    PinSetupAnalog(GPIOA, 6);
+    PinSetupAnalog(GPIOA, 10);
+    // GpioB
+    PinSetupAnalog(GPIOB, 0);
+    PinSetupAnalog(GPIOB, 1);
+    PinSetupAnalog(GPIOB, 8);
+    PinSetupAnalog(GPIOB, 9);
+    PinSetupAnalog(GPIOB, 10);
+    PinSetupAnalog(GPIOB, 11);
+    // GpioC
+    PinSetupAnalog(GPIOC, 0);
+    PinSetupAnalog(GPIOC, 6);
+    PinSetupAnalog(GPIOC, 7);
+    PinSetupAnalog(GPIOC, 9);
+    // GpioD
+    PinSetupAnalog(GPIOD, 3);
+    // GpioE
+    PinSetupAnalog(GPIOE, 4);
+    PinSetupAnalog(GPIOE, 5);
+    PinSetupAnalog(GPIOE, 6);
+    // GpioG
+    PinSetupAnalog(GPIOG, 6);
+    PinSetupAnalog(GPIOG, 7);
+    PinSetupAnalog(GPIOG, 10);
+    PinSetupAnalog(GPIOG, 11);
+    PinSetupAnalog(GPIOG, 12);
+    PinSetupAnalog(GPIOG, 13);
+#endif
+}
+
 
 void LcdDrawARGB(uint32_t Left, uint32_t Top, uint32_t* Img, uint32_t ImgW, uint32_t ImgH) {
     uint32_t *dst;

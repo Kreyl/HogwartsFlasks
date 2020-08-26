@@ -622,6 +622,7 @@ JPEG_ConfTypeDef Conf;
 JPEG_YCbCrToRGB_Convert_Function pConvert_Function;
 
 void Init(stm32_dmaisr_t DmaOutCallback, ftVoidVoid ConversionEndCallback) {
+    rccResetAHB2(RCC_AHB2RSTR_JPEGRST);
     rccEnableAHB2(RCC_AHB2ENR_JPEGEN, FALSE);
 
     JPEG->CR = JPEG_CR_JCEN; // En and clear all the other
@@ -655,6 +656,19 @@ void Init(stm32_dmaisr_t DmaOutCallback, ftVoidVoid ConversionEndCallback) {
     IConversionEndCallback = ConversionEndCallback;
     nvicEnableVector(JPEG_IRQn, IRQ_PRIO_MEDIUM);
     Printf("Jpg Init ok\r");
+}
+
+void Deinit() {
+    rccDisableAHB2(RCC_AHB2ENR_JPEGEN);
+    nvicDisableVector(JPEG_IRQn);
+    if(PDmaJIn) {
+        dmaStreamFree(PDmaJIn);
+        PDmaJIn = nullptr;
+    }
+    if(PDmaJOut) {
+        dmaStreamFree(PDmaJOut);
+        PDmaJOut = nullptr;
+    }
 }
 
 void GetInfo() {

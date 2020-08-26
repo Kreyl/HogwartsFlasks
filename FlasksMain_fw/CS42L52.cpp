@@ -257,6 +257,17 @@ void CS42L52_t::Init() {
 #endif
 }
 
+void CS42L52_t::Deinit() {
+    AU_i2c.Deinit();
+    PinRst.SetLo();
+    AU_SAI_RccDis();
+    if(PDmaTx) {
+        dmaStreamFree(PDmaTx);
+        PDmaTx = nullptr;
+    }
+    IsOn = false;
+}
+
 void CS42L52_t::Standby() {
     WriteReg(CS_R_PWR_CTRL1, 0xFF);
     IsOn = false;

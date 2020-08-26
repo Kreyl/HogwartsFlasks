@@ -747,6 +747,14 @@ void Init() {
     chThdCreateStatic(waVideoThd, sizeof(waVideoThd), HIGHPRIO, (tfunc_t)VideoThd, NULL);
 }
 
+void Standby() {
+    Jpeg::Deinit();
+}
+
+void Resume() {
+    Jpeg::Init(DmaJpegOutCB, OnJpegConvEndI);
+}
+
 uint8_t Start(const char* FName, uint32_t FrameN) {
     uint8_t Rslt = TryOpenFileRead(FName, &ifile);
     if(Rslt != retvOk) return Rslt;

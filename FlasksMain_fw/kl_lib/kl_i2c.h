@@ -113,6 +113,7 @@ private:
 public:
     i2c_t(const i2cParams_t *APParams) : PParams(APParams) {}
     void Init();
+    void Deinit();
     void ScanBus();
     void Standby();
     void PutBusLow();

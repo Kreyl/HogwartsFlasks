@@ -23,4 +23,7 @@ enum EvtMsgId_t {
     evtIdSomeButton,
     evtIdCorrectCode,
     evtIdBadCode,
+
+    evtIdStandbyAudio,
+    evtIdStandbyVideo,
 };

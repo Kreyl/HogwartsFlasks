@@ -51,7 +51,11 @@ void sd_t::Init() {
 }
 
 void sd_t::Standby() {
-    PinSetHi(SD_PWR_PIN); // Power off
+    if((SDC_DRV.state == BLK_ACTIVE) or (SDC_DRV.state == BLK_READY)) {
+        sdcDisconnect(&SDC_DRV);
+        sdcStop(&SDC_DRV);
+        IsReady = false;
+    }
 }
 
 uint8_t sd_t::Reconnect() {
@@ -77,8 +81,18 @@ uint8_t sd_t::Reconnect() {
 }
 
 void sd_t::Resume() {
-    PinSetLo(SD_PWR_PIN); // Power on
-    chThdSleepMilliseconds(45);    // Let power to stabilize
+    if((SDC_DRV.state == BLK_ACTIVE) or (SDC_DRV.state == BLK_READY)) return;
+    sdcStart(&SDC_DRV, NULL);
+    if(sdcConnect(&SDC_DRV)) {
+        Printf("SD connect error\r");
+        return;
+    }
+    if(f_mount(&SDC_FS, "", 0) != FR_OK) {
+        Printf("SD mount error\r");
+        sdcDisconnect(&SDC_DRV);
+        return;
+    }
+    IsReady = true;
 }
 
 extern "C"

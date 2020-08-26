@@ -575,6 +575,20 @@ void i2c_t::Init() {
     nvicEnableVector(PParams->IrqErrorNumber, IRQ_PRIO_MEDIUM);
 }
 
+void i2c_t::Deinit() {
+    Standby();
+    nvicDisableVector(PParams->IrqEvtNumber);
+    nvicDisableVector(PParams->IrqErrorNumber);
+    if(PDmaTx) {
+        dmaStreamFree(PDmaTx);
+        PDmaTx = nullptr;
+    }
+    if(PDmaRx) {
+        dmaStreamFree(PDmaRx);
+        PDmaRx = nullptr;
+    }
+}
+
 void i2c_t::ScanBus() {
 #if I2C_USE_SEMAPHORE
     if(chBSemWait(&BSemaphore) != MSG_OK) return;

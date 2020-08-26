@@ -12,6 +12,8 @@
 namespace Avi {
 
 void Init();
+void Standby();
+void Resume();
 uint8_t Start(const char* FName, uint32_t FrameN = 0);
 void Stop();
 

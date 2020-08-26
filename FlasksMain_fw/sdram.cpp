@@ -14,6 +14,9 @@
 #define FMC_SDRAM   FMC_Bank5_6
 
 void SdramInit() {
+    // Reset FMC
+    RCC->AHB3RSTR |= RCC_AHB3RSTR_FMCRST;
+    RCC->AHB3RSTR &= ~RCC_AHB3RSTR_FMCRST;
     // Enable clock
     RCC->AHB3ENR |= RCC_AHB3ENR_FMCEN;
 #if 1 // GPIO
@@ -113,6 +116,55 @@ void SdramInit() {
 #ifdef REMAP_TO_0x6ETC
     SYSCFG->MEMRMP |= SYSCFG_MEMRMP_SWP_FMC_0;
 #endif
+}
+
+void SdramDeinit() {
+    RCC->AHB3ENR &= ~RCC_AHB3ENR_FMCEN;
+    // PortA
+    PinSetupAnalog(GPIOA, 7); // SDNWE
+    // PortC
+    PinSetupAnalog(GPIOC, 4); // SDNE0
+    PinSetupAnalog(GPIOC, 5); // SDCKE0
+    // PortD
+    PinSetupAnalog(GPIOD, 0); // D2
+    PinSetupAnalog(GPIOD, 1);
+    PinSetupAnalog(GPIOD, 8);
+    PinSetupAnalog(GPIOD, 9);
+    PinSetupAnalog(GPIOD, 10);
+    PinSetupAnalog(GPIOD, 14);
+    PinSetupAnalog(GPIOD, 15);
+    // PortE
+    PinSetupAnalog(GPIOE, 0);
+    PinSetupAnalog(GPIOE, 1);
+    PinSetupAnalog(GPIOE, 7);
+    PinSetupAnalog(GPIOE, 8);
+    PinSetupAnalog(GPIOE, 9);
+    PinSetupAnalog(GPIOE, 10);
+    PinSetupAnalog(GPIOE, 11);
+    PinSetupAnalog(GPIOE, 12);
+    PinSetupAnalog(GPIOE, 13);
+    PinSetupAnalog(GPIOE, 14);
+    PinSetupAnalog(GPIOE, 15);
+    // PortF
+    PinSetupAnalog(GPIOF, 0);
+    PinSetupAnalog(GPIOF, 1);
+    PinSetupAnalog(GPIOF, 2);
+    PinSetupAnalog(GPIOF, 3);
+    PinSetupAnalog(GPIOF, 4);
+    PinSetupAnalog(GPIOF, 5);
+    PinSetupAnalog(GPIOF, 11);
+    PinSetupAnalog(GPIOF, 12);
+    PinSetupAnalog(GPIOF, 13);
+    PinSetupAnalog(GPIOF, 14);
+    PinSetupAnalog(GPIOF, 15);
+    // PortG
+    PinSetupAnalog(GPIOG, 0);
+    PinSetupAnalog(GPIOG, 1);
+    PinSetupAnalog(GPIOG, 2);
+    PinSetupAnalog(GPIOG, 4);
+    PinSetupAnalog(GPIOG, 5);
+    PinSetupAnalog(GPIOG, 8);
+    PinSetupAnalog(GPIOG, 15);
 }
 
 void SdramCheck() {
