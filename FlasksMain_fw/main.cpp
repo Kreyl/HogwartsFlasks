@@ -30,20 +30,57 @@ CS42L52_t Codec;
 
 //static bool UsbPinWasHi = false;
 LedBlinker_t Led{LED_PIN};
+static TmrKL_t TmrOneSecond {TIME_MS2I(999), evtIdEverySecond, tktPeriodic}; // Measure battery periodically
 #endif
 
-#if 1 // ============================= Buttons =================================
+#if 1 // ================================ Code =================================
+static enum AppState_t {stateIdle, statePlaying} AppState = stateIdle;
 static const uint8_t Code[] = {1,2,3};
-#define CODE_LEN    countof(Code)
 
-class Btns_t {
+#define CODE_LEN            countof(Code)
+#define BTN_CNT             8
+#define ENTERED_MAX_LEN     9
+#define CODE_TIMEOUT_S      4
+
+class CodeChecker_t {
 private:
-
-public:
-    void Init() {
-
+    uint32_t Cnt = 0;
+    uint8_t WhatEntered[ENTERED_MAX_LEN];
+    bool IsCorrect() {
+        if(Cnt != CODE_LEN) return false;
+        for(uint32_t i=0; i<Cnt; i++) {
+            if(WhatEntered[i] != Code[i]) return false;
+        }
+        return true;
     }
-} Btns;
+    int32_t Timeout = 0;
+public:
+    void OnBtnPress(uint8_t BtnId) {
+        Printf("Btn %u\r", BtnId);
+        WhatEntered[Cnt++] = BtnId;
+        if(Cnt >= CODE_LEN) {
+            if(IsCorrect()) EvtQMain.SendNowOrExit(EvtMsg_t(evtIdCorrectCode));
+            else EvtQMain.SendNowOrExit(EvtMsg_t(evtIdBadCode));
+            Cnt = 0;
+            Timeout = 0;
+        }
+        else {
+            Timeout = CODE_TIMEOUT_S;
+            EvtQMain.SendNowOrExit(EvtMsg_t(evtIdSomeButton));
+        }
+    }
+
+    void OnOneSecond() {
+        if(Timeout > 0) {
+            Timeout--;
+            if(Timeout <= 0) {
+                Cnt = 0; // Reset counter
+                Printf("timeout\r");
+            }
+        }
+    }
+
+} CodeChecker;
 #endif
 
 int main() {
@@ -72,35 +109,28 @@ int main() {
     Led.Init();
     Led.StartOrRestart(lsqIdle);
 
-    Btns.Init();
+    SimpleSensors::Init();
 
-//    SdramCheck();
-//    Lora.Init();
-
-//    SD.Init();
+#if 1
+    SD.Init();
 
     // Audio codec
-//    Codec.Init();   // i2c initialized inside, as pull-ups powered by VAA's LDO
-//    Codec.SetSpeakerVolume(-96);    // To remove speaker pop at power on
-//    Codec.DisableHeadphones();
-//    Codec.EnableSpeakerMono();
-//    Codec.SetupMonoStereo(Mono);  // Always
-//    Codec.SetupSampleRate(22050); // Just default, will be replaced when changed
+    Codec.Init();   // i2c initialized inside, as pull-ups powered by VAA's LDO
+    Codec.SetSpeakerVolume(-96);    // To remove speaker pop at power on
+    Codec.DisableHeadphones();
+    Codec.EnableSpeakerMono();
+    Codec.SetupMonoStereo(Mono);  // Always
+    Codec.SetupSampleRate(22050); // Just default, will be replaced when changed
 
+    LcdInit();
 
-//    LcdInit();
-//    LcdPaintL1(0, 0, 100, 100, 255, 0, 255, 0);
-
-//    Avi::Init();
-//    Avi::Start("Plane_480x272.avi");
-//    Avi::Start("SWTrail.avi");
-//    Avi::Start("sw8_m.avi", 000);
+    Avi::Init();
+    Avi::Start("sw8_m.avi", 000);
 //    Avi::Start("trailer_48000_0.avi ", 000);
-
+#endif
 //    Npx.Init();
-    // USB
-//    UsbMsdCdc.Init();
-//    PinSetupInput(USB_DETECT_PIN, pudPullDown); // Usb detect pin
+
+    TmrOneSecond.StartOrRestart();
 
     // ==== Main cycle ====
     ITask();
@@ -117,17 +147,27 @@ void ITask() {
                 ((Shell_t*)Msg.Ptr)->SignalCmdProcessed();
                 break;
 
+            case evtIdButtons:
+                if(AppState != stateIdle) {
+                    // TODO: stop
+                }
+                CodeChecker.OnBtnPress(Msg.BtnEvtInfo.BtnID);
+                break;
+
+            case evtIdSomeButton:
+                Printf("  SomeBtn\r");
+                break;
+
+            case evtIdCorrectCode:
+                Printf("  Correct\r");
+                break;
+
+            case evtIdBadCode:
+                Printf("  Bad\r");
+                break;
+
             case evtIdEverySecond:
-//                Printf("Second\r");
-//                // Check if USB connected/disconnected
-//                if(PinIsHi(USB_DETECT_PIN) and !UsbPinWasHi) {
-//                    UsbPinWasHi = true;
-//                    EvtQMain.SendNowOrExit(EvtMsg_t(evtIdUsbConnect));
-//                }
-//                else if(!PinIsHi(USB_DETECT_PIN) and UsbPinWasHi) {
-//                    UsbPinWasHi = false;
-//                    EvtQMain.SendNowOrExit(EvtMsg_t(evtIdUsbDisconnect));
-//                }
+                CodeChecker.OnOneSecond();
                 break;
 
 #if 0 // ======= USB =======

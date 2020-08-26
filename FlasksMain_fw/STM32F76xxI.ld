@@ -90,7 +90,7 @@ REGION_ALIAS("DATA_RAM_LMA", flash0);
 REGION_ALIAS("BSS_RAM", ram3);
 
 /* RAM region to be used for the default heap.*/
-REGION_ALIAS("HEAP_RAM", SDRAM);
+REGION_ALIAS("HEAP_RAM", ram0);
 
 /* Stack rules inclusion.*/
 INCLUDE ../rules_stacks.ld
@@ -135,6 +135,13 @@ SECTIONS
         . = ALIGN(4);
         __srambuf_end__ = .;
     } > DATA_RAM
+    
+    .static_sdram (NOLOAD) : ALIGN(4)
+    {
+        __srambuf_base__ = .;
+        . = ALIGN(4);
+        __srambuf_end__ = .;
+    } > SDRAM
 }
 
 /* Code rules inclusion.*/

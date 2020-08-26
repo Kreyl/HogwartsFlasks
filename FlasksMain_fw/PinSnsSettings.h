@@ -29,12 +29,16 @@ const PinSns_t PinSns[] = {
         // Buttons
         {GPIOB, 13, pudPullUp, ProcessButtons},
         {GPIOC,  2, pudPullUp, ProcessButtons},
+        {GPIOA, 12, pudPullUp, ProcessButtons},
+        {GPIOA,  9, pudPullUp, ProcessButtons},
+        {GPIOA, 11, pudPullUp, ProcessButtons},
+
         {GPIOD,  2, pudPullUp, ProcessButtons},
         {GPIOC,  8, pudPullUp, ProcessButtons},
         {GPIOC, 12, pudPullUp, ProcessButtons},
-        {GPIOA, 11, pudPullUp, ProcessButtons},
-        {GPIOA, 12, pudPullUp, ProcessButtons},
-        {GPIOA,  9, pudPullUp, ProcessButtons},
+
+
+
 };
 #define PIN_SNS_CNT     countof(PinSns)
 

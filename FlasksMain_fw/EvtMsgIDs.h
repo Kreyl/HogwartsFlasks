@@ -17,4 +17,10 @@ enum EvtMsgId_t {
     evtIdUsbConnect,
     evtIdUsbDisconnect,
     evtIdUsbReady,
+
+    evtIdButtons,
+
+    evtIdSomeButton,
+    evtIdCorrectCode,
+    evtIdBadCode,
 };

@@ -234,12 +234,12 @@ static EvtMsgQ_t<VideoMsg_t, 9> MsgQVideo;
 
 #if 1 // ========================== File buffering =============================
 #define RAM0_TOTAL_SZ   (0x5F000UL) // Const
-#define IN_VBUF_SZ      0x20000UL
+#define IN_VBUF_SZ      0x30000UL
 #define IN_VBUF_SZ32    (IN_VBUF_SZ / 4)
-#define FRAMES_CNT_MAX  27UL
+#define FRAMES_CNT_MAX  18UL
 
 #define AUBUF_SZ        0x20000
-#define AUBUF_THRESHOLD 9UL
+#define AUBUF_THRESHOLD 12UL
 
 static uint8_t  IABuf[AUBUF_SZ]     __attribute__((aligned(32), section (".srambuf")));
 static uint32_t IVBuf[IN_VBUF_SZ32] __attribute__((aligned(32), section (".srambuf")));

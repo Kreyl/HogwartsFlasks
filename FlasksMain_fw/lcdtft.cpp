@@ -31,8 +31,11 @@ PinOutputPWM_t Backlight{LCD_BCKLT};
 #define LBUF_CNT        (LCD_WIDTH * LCD_HEIGHT)
 #define LINE_SZ         (LCD_PIXEL_SZ * LCD_WIDTH)
 
-#if LBUF_IN_SDRAM
+#if LBUF_IN_SDRAM_MALLOC
 uint32_t *FrameBuf1;
+#elif LBUF_IN_SDRAM_STATIC
+__attribute__ ((section (".static_sdram")))
+uint32_t FrameBuf1[LBUF_SZ32];
 #else
 __attribute__ ((section ("DATA_RAM")))
 uint32_t FrameBuf1[LBUF_SZ32];
@@ -50,7 +53,7 @@ void LcdInit() {
     Backlight.SetFrequencyHz(10000);
     Backlight.Set(100);
 
-#if LBUF_IN_SDRAM
+#if LBUF_IN_SDRAM_MALLOC
     FrameBuf1 = (uint32_t*)malloc(LBUF_SZ);
 #endif
 
