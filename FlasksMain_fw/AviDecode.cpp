@@ -197,7 +197,7 @@ uint8_t ProcessHDRL(int32_t HdrlSz) {
                                 Codec.SetSpeakerVolume(0); // max
                             }
                             else {
-                                Printf("Unsupported audio\r");
+                                Printf("Unsupported audio: %u\r", WFormat.wFormatTag);
                                 return retvFail;
                             }
                         }
@@ -239,6 +239,7 @@ static EvtMsgQ_t<VideoMsg_t, 9> MsgQVideo;
 #define FRAMES_CNT_MAX  27UL
 
 #define AUBUF_SZ        0x20000
+#define AUBUF_THRESHOLD 9UL
 
 static uint8_t  IABuf[AUBUF_SZ]     __attribute__((aligned(32), section (".srambuf")));
 static uint32_t IVBuf[IN_VBUF_SZ32] __attribute__((aligned(32), section (".srambuf")));
@@ -709,16 +710,17 @@ static void VideoThd(void *arg) {
                 if(Elapsed < FrameRate) {
                     sysinterval_t FDelay = FrameRate - Elapsed;
                     // Increase or decrease delay depending on Video/Audio buffer sizes ratio
-                    uint32_t VCnt = VFileReader.GetFullCount(); // Frames in videobuf
+//                    uint32_t VCnt = VFileReader.GetFullCount(); // Frames in videobuf
                     uint32_t ACnt =  AuBuf.GetFullCount() / 4096; // "Frames" in audiobuf
 //                    Printf("V %2u; A %3u", VCnt, ACnt);
-                    if(ACnt < VCnt) {
+                    Printf("A %3u", ACnt);
+                    if(ACnt < AUBUF_THRESHOLD) {
                         FDelay -= 11;
-//                        Printf("****");
+                        Printf("****");
                     }
-                    else if(ACnt > VCnt) {
+                    else if(ACnt > AUBUF_THRESHOLD) {
                         FDelay += 11;
-//                        Printf("####");
+                        Printf("####");
                     }
                     PrintfEOL();
                     chThdSleep(FDelay);
@@ -753,7 +755,7 @@ uint8_t Start(const char* FName, uint32_t FrameN) {
     ChunkHdr_t ckHdr;
     if(ckHdr.ReadNext() != retvOk) goto End;
 //    ckHdr.Print();
-    if(!ckHdr.IsRiff()) { Printf("BadHdr\r"); goto End; }
+    if(!ckHdr.IsRiff()) { Printf("BadHdr: %4S %u\r", &ckHdr.ckID, ckHdr.ckSize); goto End; }
     ckHdr.ReadType();
     if(!ckHdr.TypeIsAVI()) { Printf("BadContent\r"); goto End; }
     ckHdr.ckSize = 0; // To read next chunk, not jumping to end of file

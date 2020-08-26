@@ -32,6 +32,20 @@ CS42L52_t Codec;
 LedBlinker_t Led{LED_PIN};
 #endif
 
+#if 1 // ============================= Buttons =================================
+static const uint8_t Code[] = {1,2,3};
+#define CODE_LEN    countof(Code)
+
+class Btns_t {
+private:
+
+public:
+    void Init() {
+
+    }
+} Btns;
+#endif
+
 int main() {
     // ==== Setup clock ====
     Clk.SetCoreClk216MHz();
@@ -58,28 +72,30 @@ int main() {
     Led.Init();
     Led.StartOrRestart(lsqIdle);
 
+    Btns.Init();
+
 //    SdramCheck();
 //    Lora.Init();
 
-    SD.Init();
+//    SD.Init();
 
     // Audio codec
-    Codec.Init();   // i2c initialized inside, as pull-ups powered by VAA's LDO
-    Codec.SetSpeakerVolume(-96);    // To remove speaker pop at power on
-    Codec.DisableHeadphones();
-    Codec.EnableSpeakerMono();
-    Codec.SetupMonoStereo(Mono);  // Always
-    Codec.SetupSampleRate(22050); // Just default, will be replaced when changed
+//    Codec.Init();   // i2c initialized inside, as pull-ups powered by VAA's LDO
+//    Codec.SetSpeakerVolume(-96);    // To remove speaker pop at power on
+//    Codec.DisableHeadphones();
+//    Codec.EnableSpeakerMono();
+//    Codec.SetupMonoStereo(Mono);  // Always
+//    Codec.SetupSampleRate(22050); // Just default, will be replaced when changed
 
 
-    LcdInit();
+//    LcdInit();
 //    LcdPaintL1(0, 0, 100, 100, 255, 0, 255, 0);
 
-    Avi::Init();
+//    Avi::Init();
 //    Avi::Start("Plane_480x272.avi");
 //    Avi::Start("SWTrail.avi");
-//    Avi::Start("yogSS.avi");
-    Avi::Start("sw8_m.avi", 000);
+//    Avi::Start("sw8_m.avi", 000);
+//    Avi::Start("trailer_48000_0.avi ", 000);
 
 //    Npx.Init();
     // USB

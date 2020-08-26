@@ -1,6 +1,6 @@
 {
   "board": {
-    "active_layer": 0,
+    "active_layer": 31,
     "active_layer_preset": "",
     "hidden_nets": [],
     "high_contrast_mode": 0,
@@ -28,6 +28,7 @@
       8,
       9,
       10,
+      11,
       12,
       13,
       14,
@@ -48,7 +49,7 @@
       29,
       30
     ],
-    "visible_layers": "0f110_00000001"
+    "visible_layers": "0f110_80000007"
   },
   "meta": {
     "filename": "HogwartsFlasksMain.kicad_prl",

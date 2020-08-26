@@ -353,7 +353,7 @@
       "idf": "",
       "netlist": "",
       "specctra_dsn": "HogwartsFlasksMain.dsn",
-      "step": "",
+      "step": "HogwartsFlasksMain.step",
       "vmrl": ""
     },
     "page_layout_descr_file": ""
