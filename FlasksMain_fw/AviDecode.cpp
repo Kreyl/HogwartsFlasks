@@ -193,8 +193,6 @@ uint8_t ProcessHDRL(int32_t HdrlSz) {
                             if(WFormat.wFormatTag == 1) { // WAVE_FORMAT_PCM = 0x0001
                                 Printf("Audio Fs: %u SmpPS\r", WFormat.nSamplesPerSec);
                                 Codec.SetupSampleRate(WFormat.nSamplesPerSec);
-                                Codec.SetMasterVolume(0); // max
-                                Codec.SetSpeakerVolume(0); // max
                             }
                             else {
                                 Printf("Unsupported audio: %u\r", WFormat.wFormatTag);
@@ -660,14 +658,6 @@ void DmaJpegOutCB(void *p, uint32_t flags) {
 }
 
 void OnJpegConvEndI() { MsgQVideo.SendNowOrExitI(VideoMsg_t(vcmdEndDecode)); }
-
-// DMA Tx Completed IRQ
-extern "C"
-void DmaSAITxIrq(void *p, uint32_t flags) {
-    chSysLockFromISR();
-    Audio::OnBufTxEndI();
-    chSysUnlockFromISR();
-}
 #endif
 
 static THD_WORKING_AREA(waVideoThd, 1024);
@@ -756,6 +746,7 @@ void Resume() {
 }
 
 uint8_t Start(const char* FName, uint32_t FrameN) {
+    Codec.SaiDmaCallbackI = Audio::OnBufTxEndI;
     uint8_t Rslt = TryOpenFileRead(FName, &ifile);
     if(Rslt != retvOk) return Rslt;
     Rslt = retvFail;
@@ -782,7 +773,7 @@ uint8_t Start(const char* FName, uint32_t FrameN) {
             // Process movi
             if(ckHdr.TypeIsMOVI()) {
                 // Fast forward
-                ChunkHdr_t VHdr;
+//                ChunkHdr_t VHdr;
 //                while(FrameN > 0) {
 //                bool WasV = false;
 //                FrameN = 0;

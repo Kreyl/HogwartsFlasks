@@ -87,6 +87,7 @@
 									<listOptionValue builtIn="false" value=".././os/stm32F7xx"/>
 									<listOptionValue builtIn="false" value="../Lora"/>
 									<listOptionValue builtIn="false" value="../jpeg"/>
+									<listOptionValue builtIn="false" value="../Audio"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.cpp.compiler.input.cpp.1618118143" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.cpp.compiler.input.cpp"/>
 							</tool>
@@ -219,6 +220,7 @@
 									<listOptionValue builtIn="false" value="../Lora"/>
 									<listOptionValue builtIn="false" value="../sd"/>
 									<listOptionValue builtIn="false" value="../jpeg"/>
+									<listOptionValue builtIn="false" value="../Audio"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.cpp.compiler.input.cpp.1186900274" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.cpp.compiler.input.cpp"/>
 							</tool>

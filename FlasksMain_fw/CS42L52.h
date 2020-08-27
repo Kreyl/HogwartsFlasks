@@ -49,10 +49,13 @@ private:
     int8_t IVolume;
     bool IsOn;
 public:
+    ftVoidVoid SaiDmaCallbackI = nullptr;
+
     void Init();
     void Deinit();
     void Standby();
     void Resume();
+
     uint8_t ReadReg(uint8_t RegAddr, uint8_t *PValue);
     uint8_t WriteReg(uint8_t RegAddr, uint8_t Value);
     uint8_t WriteMany(uint8_t StartAddr, uint8_t *PValues, uint8_t Len);
@@ -104,5 +107,7 @@ public:
 #endif
     CS42L52_t() : IVolume(0), IsOn(false) {}
 };
+
+extern CS42L52_t Codec;
 
 void AuOnNewSampleI(SampleStereo_t &Sample);

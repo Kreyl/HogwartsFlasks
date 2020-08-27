@@ -17,6 +17,7 @@
 #include "lcdtft.h"
 #include "AviDecode.h"
 #include "CS42L52.h"
+#include "AuPlayer.h"
 
 #if 1 // =============== Defines ================
 // Forever
@@ -34,15 +35,21 @@ static TmrKL_t TmrOneSecond {TIME_MS2I(999), evtIdEverySecond, tktPeriodic};
 static TmrKL_t TmrStandbyAudio {TIME_MS2I(4005), evtIdStandbyAudio, tktOneShot};
 static TmrKL_t TmrStandbyVideo {TIME_MS2I(4005), evtIdStandbyVideo, tktOneShot};
 
+static enum AppState_t {stateIdle, stateAudio, stateVideo} AppState = stateIdle;
 
 void InitAudio();
 void DeinitAudio();
 void InitVideo();
 void DeinitVideo();
+
+void PlayAudio(const char* AFName) {
+    if(AppState == stateIdle) InitAudio();
+    AuPlayer.Play(AFName, spmSingle);
+}
+
 #endif
 
 #if 1 // ================================ Code =================================
-static enum AppState_t {stateIdle, statePlaying} AppState = stateIdle;
 static const uint8_t Code[] = {1,2,3};
 
 #define CODE_LEN            countof(Code)
@@ -65,6 +72,7 @@ private:
 public:
     void OnBtnPress(uint8_t BtnId) {
         Printf("Btn %u\r", BtnId);
+        PlayAudio("I_Beep.wav");
         WhatEntered[Cnt++] = BtnId;
         if(Cnt >= CODE_LEN) {
             if(IsCorrect()) EvtQMain.SendNowOrExit(EvtMsg_t(evtIdCorrectCode));
@@ -120,8 +128,12 @@ int main() {
     SimpleSensors::Init();
     SD.Init();
     Avi::Init();
+    AuPlayer.Init();
 
     DeinitVideo();
+
+//    PlayAudio("alive.wav");
+
 //    Avi::Start("sw8_m.avi", 000);
 //    Avi::Start("trailer_48000_0.avi ", 000);
 
@@ -170,6 +182,11 @@ void ITask() {
             case evtIdStandbyVideo: DeinitVideo(); break;
             case evtIdStandbyAudio: DeinitAudio(); break;
 
+            case evtIdAudioPlayStop:
+                Printf("AudioEnd\r");
+                TmrStandbyAudio.StartOrRestart();
+                break;
+
 #if 0 // ======= USB =======
             case evtIdUsbConnect:
                 Printf("USB connect\r");
@@ -215,21 +232,27 @@ void InitAudio() {
     Codec.SetSpeakerVolume(-96);    // To remove speaker pop at power on
     Codec.DisableHeadphones();
     Codec.EnableSpeakerMono();
-    Codec.SetupMonoStereo(Mono);  // Always
+    Codec.SetupMonoStereo(Stereo);  // For wav player
     Codec.SetupSampleRate(22050); // Just default, will be replaced when changed
+    Codec.SetMasterVolume(0); // max
+    Codec.SetSpeakerVolume(0); // max
+    AppState = stateAudio;
 }
 
 void DeinitAudio() {
     SD.Standby();
     Codec.Deinit();
+    AppState = stateIdle;
 }
 
 void InitVideo() {
     SwitchTo216MHz();
     SdramInit();
     InitAudio();
+    Codec.SetupMonoStereo(Mono); // For AVI player
     LcdInit();
     Avi::Resume();
+    AppState = stateVideo;
 }
 
 void DeinitVideo() {
@@ -238,6 +261,7 @@ void DeinitVideo() {
     DeinitAudio();
     SdramDeinit();
     SwitchTo27MHz();
+    AppState = stateIdle;
 }
 
 
@@ -281,6 +305,10 @@ void OnCmd(Shell_t *PShell) {
     }
     else if(PCmd->NameIs("216")) {
         InitVideo();
+    }
+
+    else if(PCmd->NameIs("vi")) {
+        Avi::Start("sw8_m.avi", 000);
     }
 
     else {

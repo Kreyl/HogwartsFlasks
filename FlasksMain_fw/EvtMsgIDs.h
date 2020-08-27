@@ -24,6 +24,8 @@ enum EvtMsgId_t {
     evtIdCorrectCode,
     evtIdBadCode,
 
+    evtIdAudioPlayStop,
+
     evtIdStandbyAudio,
     evtIdStandbyVideo,
 };
