@@ -504,6 +504,7 @@ i2c_t i2c3 {&I2C3Params};
 #endif
 
 void i2c_t::Init() {
+    Deinit();
     // GPIO
     PinSetupAlterFunc(PParams->PGpio, PParams->SclPin, omOpenDrain, pudNone, PParams->PinAF);
     PinSetupAlterFunc(PParams->PGpio, PParams->SdaPin, omOpenDrain, pudNone, PParams->PinAF);

@@ -234,10 +234,12 @@ static EvtMsgQ_t<VideoMsg_t, 9> MsgQVideo;
 #define RAM0_TOTAL_SZ   (0x5F000UL) // Const
 #define IN_VBUF_SZ      0x30000UL
 #define IN_VBUF_SZ32    (IN_VBUF_SZ / 4)
-#define FRAMES_CNT_MAX  18UL
+#define FRAMES_CNT_MAX  22UL
 
-#define AUBUF_SZ        0x20000
-#define AUBUF_THRESHOLD 12UL
+#define AUBUF_SZ            0x20000
+#define AUBUF_THR_FRAMES    22UL
+#define AUDIO_PIECE_PLAY    2048UL
+#define AUBUF_THR_BYTES     (AUBUF_THR_FRAMES * AUDIO_PIECE_PLAY)
 
 static uint8_t  IABuf[AUBUF_SZ]     __attribute__((aligned(32), section (".srambuf")));
 static uint32_t IVBuf[IN_VBUF_SZ32] __attribute__((aligned(32), section (".srambuf")));
@@ -266,6 +268,7 @@ public:
     }
 
     uint8_t ReadData(void* Buf) {
+        if(ckSize == 0) return retvOk;
 //        systime_t Start = chVTGetSystemTimeX();
         uint32_t *ReadSz = 0;
         if(f_tell(&ifile) != DataLoc) f_lseek(&ifile, DataLoc);
@@ -302,6 +305,7 @@ public:
         PRead = IABuf;
         PWrite = IABuf;
         JumpPtr = IABuf + AUBUF_SZ;
+        IFullSlotsCount=0;
     }
 
     uint8_t Put(Chunk_t &ACk) {
@@ -379,6 +383,7 @@ public:
     void Flush() {
         PWrite = IBuf;
         PRead = IBuf;
+        IFullSlotsCount = 0;
     }
 };
 
@@ -442,6 +447,7 @@ private:
     void PrefillBufs() {
         uint8_t VRslt = retvOk, AuRslt = retvOk;
         while(VCk.ReadHdr() == retvOk and VRslt == retvOk and AuRslt == retvOk) {
+//            VCk.Print();
             if(VCk.IsVideo()) {
                 if(IVMeta.GetFullCount() < FRAMES_CNT_MAX) {
                     VRslt = PutFrameIfPossible();
@@ -449,11 +455,12 @@ private:
                 else VRslt = retvFail;
             } // if is video
             else if(VCk.IsAudio()) {
-                if(AuBuf.GetEmptyCount() > VCk.ckSize) {
+                if(AuBuf.GetFullCount() < AUBUF_THR_BYTES) {
                     AuRslt = AuBuf.Put(VCk);
                 }
                 else AuRslt = retvFail;
             }
+            Printf("vr%u; ar: %u\r", VRslt, AuRslt);
         } // while
     }
 
@@ -468,7 +475,6 @@ public:
     }
 
     void Start(uint32_t VideoSz) {
-//        SCB_DisableDCache();
         Audio::IsIdle = true;
         EndLoc = f_tell(&ifile) + VideoSz;
         // Video
@@ -482,7 +488,10 @@ public:
     }
 
     uint8_t GetNextFrame() {
-        if(IVMeta.IsEmpty()) return retvEmpty;
+        if(IVMeta.IsEmpty()) {
+//            Printf("EEEEEEEE\r");
+            return retvEmpty;
+        }
         chSysLock();
         VSz = IVMeta.PRead->Sz;
         VBuf = IVMeta.PRead->ptr;
@@ -499,6 +508,19 @@ public:
 
     void WakeThdI() { chThdResumeI(&ThdPtr, MSG_OK); }
 
+    void Stop() {
+        EndLoc = 0;
+        while(!IsEof) {
+            chThdResume(&ThdPtr, MSG_OK);
+            chThdSleepMilliseconds(1);
+        }
+        chSysLock();
+        IVMeta.Flush();
+        chSysUnlock();
+    }
+
+    bool IsRunning() { return EndLoc != 0; }
+
     __noreturn
     void ITask() {
         while(true) {
@@ -506,29 +528,28 @@ public:
             chThdSuspendS(&ThdPtr);
             chSysUnlock();
 
-            if(f_tell(&ifile) >= EndLoc) {
-                IsEof = true;
-                continue;
+            if(f_tell(&ifile) < EndLoc) {
+                uint8_t VRslt = retvOk, AuRslt = retvOk;
+                while(VRslt == retvOk and AuRslt == retvOk and !IsEof) {
+                    if(VCk.AwaitsReading) {
+                        VRslt = PutFrameIfPossible();
+                    }
+                    else {
+                        if(VCk.ReadHdr() == retvOk) {
+//                            VCk.Print();
+                            if(VCk.IsVideo()) {
+                                VCk.AwaitsReading = true;
+                                VRslt = PutFrameIfPossible();
+                            } // if is video
+                            else if(VCk.IsAudio()) {
+                                AuRslt = AuBuf.Put(VCk);
+                            }
+                        } // if readhdr
+                        else IsEof = true;
+                    }
+                } // while ok
             }
-            uint8_t VRslt = retvOk, AuRslt = retvOk;
-            while(VRslt == retvOk and AuRslt == retvOk) {
-                if(VCk.AwaitsReading) {
-                    VRslt = PutFrameIfPossible();
-                }
-                else {
-                    if(VCk.ReadHdr() == retvOk) {
-//                        VCk.Print();
-                        if(VCk.IsVideo()) {
-                            VCk.AwaitsReading = true;
-                            VRslt = PutFrameIfPossible();
-                        } // if is video
-                        else if(VCk.IsAudio()) {
-                            AuRslt = AuBuf.Put(VCk);
-                        }
-                    } // if readhdr
-                    else IsEof = true;
-                }
-            } // while ok
+            else IsEof = true;
         } // while true
     }
 } VFileReader;
@@ -544,20 +565,17 @@ static void FileThd(void *arg) {
 namespace Audio {
 
 void OnBufTxEndI() {
-    if(VFileReader.IsEof) MsgQVideo.SendNowOrExitI(VideoMsg_t(vcmdStop));
+    uint32_t Sz = 4096UL;
+    uint8_t* p = AuBuf.GetRPtrAndMove(&Sz);
+    if(Sz > 32) {
+        Codec.TransmitBuf(p, Sz / 2);
+        IsIdle = false;
+    }
     else {
-        uint32_t Sz = 4096UL;
-        uint8_t* p = AuBuf.GetRPtrAndMove(&Sz);
-        if(Sz > 0) {
-            Codec.TransmitBuf(p, Sz / 2);
-            IsIdle = false;
-        }
-        else {
-            IsIdle = true;
-            PrintfI("###########################################################\r");
-        }
-        VFileReader.WakeThdI();
-    } // not EOF
+        IsIdle = true;
+        PrintfI("###########################################################\r");
+    }
+    VFileReader.WakeThdI();
 }
 
 void Start() {
@@ -568,6 +586,7 @@ void Start() {
 
 void Stop() {
     Codec.Stop();
+    AuBuf.Init();
 }
 
 }; // Namespace
@@ -664,24 +683,43 @@ static THD_WORKING_AREA(waVideoThd, 1024);
 __noreturn
 static void VideoThd(void *arg) {
     chRegSetThreadName("Video");
-//    uint32_t n = 0;
+//    uint32_t FrameN = 0;
     while(true) {
         VideoMsg_t Msg = MsgQVideo.Fetch(TIME_INFINITE);
         switch(Msg.Cmd) {
             case vcmdStart:
-                while(VFileReader.GetNextFrame() != retvOk and !VFileReader.IsEof) chThdSleepMilliseconds(7);
-                if(VFileReader.IsEof) MsgQVideo.SendNowOrExit(VideoMsg_t(vcmdStop));
-                else {
-                    StartFrameDecoding(VFileReader.VBuf, VFileReader.VSz);
-                    if(Audio::IsIdle) Audio::Start();
-                }
+                while(VFileReader.IsRunning()) {
+                    if(VFileReader.GetNextFrame() == retvOk) {
+                        if(Audio::IsIdle) Audio::Start();
+                        if(VFileReader.VSz == 0) {
+                            chThdSleep(FrameRate);
+                            VFileReader.OnFrameProcessed();
+                            continue;
+                        }
+                        else {
+                            StartFrameDecoding(VFileReader.VBuf, VFileReader.VSz);
+                        }
+                        break;
+                    }
+                    else {
+                        if(VFileReader.IsEof) {
+                            MsgQVideo.SendNowOrExit(VideoMsg_t(vcmdStop));
+                            break;
+                        }
+                        else chThdSleepMilliseconds(7);
+                    }
+                } // while
                 break;
 
             case vcmdStop:
-                Jpeg::Stop();
-                Audio::Stop();
-                CloseFile(&ifile);
-                Printf("End\r");
+                if(VFileReader.IsRunning()) {
+                    Jpeg::Stop();
+                    Audio::Stop();
+                    VFileReader.Stop();
+                    CloseFile(&ifile);
+                    Printf("VEnd\r");
+                    EvtQMain.SendNowOrExit(EvtMsg_t(evtIdVideoPlayStop));
+                }
                 break;
 
             case vcmdNewMCUBufReady:
@@ -697,26 +735,31 @@ static void VideoThd(void *arg) {
                 // Delay before frame show
                 sysinterval_t Elapsed = chVTTimeElapsedSinceX(FrameStart);
 //                Printf("e %u\r", Elapsed);
+//                Printf("N %u; ", FrameN++);
                 if(Elapsed < FrameRate) {
                     sysinterval_t FDelay = FrameRate - Elapsed;
                     // Increase or decrease delay depending on Video/Audio buffer sizes ratio
-//                    uint32_t VCnt = VFileReader.GetFullCount(); // Frames in videobuf
+                    uint32_t VCnt = VFileReader.GetFullCount(); // Frames in videobuf
                     uint32_t ACnt =  AuBuf.GetFullCount() / 4096; // "Frames" in audiobuf
-//                    Printf("V %2u; A %3u", VCnt, ACnt);
-                    Printf("A %3u", ACnt);
-                    if(ACnt < AUBUF_THRESHOLD) {
+                    Printf("V %2u; A %3u", VCnt, ACnt);
+//                    Printf("A %3u", ACnt);
+//                    if(ACnt < AUBUF_THR_FRAMES) {
+                    if(ACnt < VCnt) {
                         FDelay -= 11;
                         Printf("****");
                     }
-                    else if(ACnt > AUBUF_THRESHOLD) {
+//                    else if(ACnt > AUBUF_THR_FRAMES) {
+                    else if(ACnt > VCnt) {
                         FDelay += 11;
                         Printf("####");
                     }
                     PrintfEOL();
                     chThdSleep(FDelay);
                 }
+//                else Printf("NoDelay");
                 FrameStart = chVTGetSystemTimeX();
-                MsgQVideo.SendNowOrExit(VideoMsg_t(vcmdStart));
+                // Start next frame if not stopped
+                if(VFileReader.IsRunning()) MsgQVideo.SendNowOrExit(VideoMsg_t(vcmdStart));
             } break;
 
             default: break;
@@ -793,7 +836,6 @@ uint8_t Start(const char* FName, uint32_t FrameN) {
 ////                    if(VHdr.IsVideo()) FrameN--;
 ////                    if(FrameN == 0) f_lseek(&ifile, f_tell(&ifile) - 8);
 //                }
-
                 VFileReader.Start(ckHdr.ckSize);
                 return retvOk; // movi chunk found
             }

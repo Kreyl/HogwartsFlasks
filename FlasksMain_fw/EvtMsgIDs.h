@@ -20,11 +20,11 @@ enum EvtMsgId_t {
 
     evtIdButtons,
 
-    evtIdSomeButton,
     evtIdCorrectCode,
     evtIdBadCode,
 
     evtIdAudioPlayStop,
+    evtIdVideoPlayStop,
 
     evtIdStandbyAudio,
     evtIdStandbyVideo,

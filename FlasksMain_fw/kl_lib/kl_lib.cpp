@@ -1254,7 +1254,7 @@ uint8_t TryStrToFloat(char* S, float *POutput) {
 }; // namespace
 #endif
 
-#if 0 // ============================== IWDG ===================================
+#if 1 // ============================== IWDG ===================================
 namespace Iwdg {
 enum Pre_t {
     iwdgPre4 = 0x00,
@@ -1267,7 +1267,7 @@ enum Pre_t {
 };
 
 void DisableInDebug() {
-    DBGMCU->APB1FZR1 |= DBGMCU_APB1FZR1_DBG_IWDG_STOP;
+//    DBGMCU->APB1FZR1 |= DBGMCU_APB1FZR1_DBG_IWDG_STOP;
 }
 
 static void Enable() { IWDG->KR = 0xCCCC; }
@@ -2742,6 +2742,10 @@ uint32_t Clk_t::GetSysClkHz() {
 }
 
 void Clk_t::UpdateFreqValues() {
+    TMR_DISABLE(STM32_ST_TIM);
+    nvicDisableVector(STM32_TIM5_NUMBER);
+    uint32_t Cnt = STM32_ST_TIM->CNT;   // Save current time
+
     // AHB freq
     uint32_t tmp = AHBPrescTable[((RCC->CFGR & RCC_CFGR_HPRE) >> 4)];
     AHBFreqHz = GetSysClkHz() >> tmp;
@@ -2754,10 +2758,24 @@ void Clk_t::UpdateFreqValues() {
     APB2FreqHz = AHBFreqHz >> tmp;
 
     // ==== Update prescaler in System Timer ====
+    uint32_t Arr = STM32_ST_TIM->ARR;
+    uint32_t Dier = STM32_ST_TIM->DIER;
+    uint32_t Ccmr = STM32_ST_TIM->CCMR1;
+    uint32_t ccr = STM32_ST_TIM->CCR[0];
+
+    rccDisableTIM5();
+    rccResetTIM5();
+    rccEnableTIM5(FALSE);
+
+    STM32_ST_TIM->ARR = Arr;
+    STM32_ST_TIM->DIER = Dier;
+    STM32_ST_TIM->CCMR1 = Ccmr;
+    STM32_ST_TIM->CCR[0] = ccr;
+
+
     uint32_t NewPsc = (SYS_TIM_CLK / OSAL_ST_FREQUENCY) - 1;
     uint32_t OldPsc = STM32_ST_TIM->PSC;
-    TMR_DISABLE(STM32_ST_TIM);          // Stop counter
-    uint32_t Cnt = STM32_ST_TIM->CNT;   // Save current time
+
     if(NewPsc < OldPsc) {
         TMR_GENERATE_UPD(STM32_ST_TIM);
         STM32_ST_TIM->PSC = NewPsc;
@@ -2766,8 +2784,10 @@ void Clk_t::UpdateFreqValues() {
         STM32_ST_TIM->PSC = NewPsc;
         TMR_GENERATE_UPD(STM32_ST_TIM);
     }
-    STM32_ST_TIM->CNT = Cnt;            // Restore time
+
+    STM32_ST_TIM->CNT = Cnt;
     TMR_ENABLE(STM32_ST_TIM);
+    nvicEnableVector(STM32_TIM5_NUMBER, STM32_ST_IRQ_PRIORITY);
 }
 
 uint32_t Clk_t::GetTimInputFreq(TIM_TypeDef* ITmr) {

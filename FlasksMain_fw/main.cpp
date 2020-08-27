@@ -33,7 +33,6 @@ CS42L52_t Codec;
 LedBlinker_t Led{LED_PIN};
 static TmrKL_t TmrOneSecond {TIME_MS2I(999), evtIdEverySecond, tktPeriodic};
 static TmrKL_t TmrStandbyAudio {TIME_MS2I(4005), evtIdStandbyAudio, tktOneShot};
-static TmrKL_t TmrStandbyVideo {TIME_MS2I(4005), evtIdStandbyVideo, tktOneShot};
 
 static enum AppState_t {stateIdle, stateAudio, stateVideo} AppState = stateIdle;
 
@@ -44,18 +43,34 @@ void DeinitVideo();
 
 void PlayAudio(const char* AFName) {
     if(AppState == stateIdle) InitAudio();
+    TmrStandbyAudio.Stop();
     AuPlayer.Play(AFName, spmSingle);
+}
+
+void PlayVideo(const char* AFName) {
+    AuPlayer.Stop();
+    chThdSleepMilliseconds(720);
+    //    if(AuPlayer.IsPlayingNow())
+//    if(Codec.IsTransmitting())
+//        AuPlayer.WaitEnd();
+    if(AppState != stateVideo) InitVideo();
+    TmrStandbyAudio.Stop();
+    if(Avi::Start(AFName) != retvOk) EvtQMain.SendNowOrExit(EvtMsg_t(evtIdVideoPlayStop));
 }
 
 #endif
 
 #if 1 // ================================ Code =================================
-static const uint8_t Code[] = {1,2,3};
+static const uint8_t Code[] = {7,3,5,1,2,6};
+
+#define FILENAME2PLAY       "predmet.avi"
 
 #define CODE_LEN            countof(Code)
 #define BTN_CNT             8
 #define ENTERED_MAX_LEN     9
 #define CODE_TIMEOUT_S      4
+
+static const char* BtnFnames[BTN_CNT] = {"b1.wav", "b2.wav", "b3.wav", "b4.wav", "b5.wav", "b6.wav", "b7.wav", "b8.wav",};
 
 class CodeChecker_t {
 private:
@@ -69,21 +84,32 @@ private:
         return true;
     }
     int32_t Timeout = 0;
+    bool IsPlayingBadCode = false;
 public:
     void OnBtnPress(uint8_t BtnId) {
         Printf("Btn %u\r", BtnId);
-        PlayAudio("I_Beep.wav");
+        if(AuPlayer.IsPlayingNow()) {
+//            AuPlayer.WaitEnd();
+            AuPlayer.Stop();
+        }
+        if(IsPlayingBadCode) {
+            IsPlayingBadCode = false;
+            return;
+        }
+
+        PlayAudio(BtnFnames[BtnId]);
         WhatEntered[Cnt++] = BtnId;
         if(Cnt >= CODE_LEN) {
             if(IsCorrect()) EvtQMain.SendNowOrExit(EvtMsg_t(evtIdCorrectCode));
-            else EvtQMain.SendNowOrExit(EvtMsg_t(evtIdBadCode));
+            else {
+//                EvtQMain.SendNowOrExit(EvtMsg_t(evtIdBadCode));
+                PlayAudio("lighting2.wav");
+                IsPlayingBadCode = true;
+            }
             Cnt = 0;
             Timeout = 0;
         }
-        else {
-            Timeout = CODE_TIMEOUT_S;
-            EvtQMain.SendNowOrExit(EvtMsg_t(evtIdSomeButton));
-        }
+        else Timeout = CODE_TIMEOUT_S;
     }
 
     void OnOneSecond() {
@@ -91,7 +117,8 @@ public:
             Timeout--;
             if(Timeout <= 0) {
                 Cnt = 0; // Reset counter
-                Printf("timeout\r");
+                if(!AuPlayer.IsPlayingNow()) PlayAudio("I_Error.wav");
+//                Printf("timeout\r");
             }
         }
     }
@@ -100,6 +127,8 @@ public:
 #endif
 
 int main() {
+//    Iwdg::InitAndStart(4005);
+//    Iwdg::Reload();
     // ==== Setup clock ====
     Clk.SetCoreClk216MHz();
 //    Clk.SetCoreClk80MHz();
@@ -132,13 +161,8 @@ int main() {
 
     DeinitVideo();
 
-//    PlayAudio("alive.wav");
-
-//    Avi::Start("sw8_m.avi", 000);
-//    Avi::Start("trailer_48000_0.avi ", 000);
-
     TmrOneSecond.StartOrRestart();
-//    TmrStandbyVideo.StartOrRestart();
+//    PlayAudio("alive.wav");
 
     // ==== Main cycle ====
     ITask();
@@ -156,26 +180,26 @@ void ITask() {
                 break;
 
             case evtIdButtons:
-                if(AppState != stateIdle) {
-                    // TODO: stop
+                if(AppState == stateVideo) {
+                    Avi::Stop();
+                    chThdSleepMilliseconds(4);
                 }
-                CodeChecker.OnBtnPress(Msg.BtnEvtInfo.BtnID);
-                break;
-
-            case evtIdSomeButton:
-                Printf("  SomeBtn\r");
+                else CodeChecker.OnBtnPress(Msg.BtnEvtInfo.BtnID);
                 break;
 
             case evtIdCorrectCode:
                 Printf("  Correct\r");
+                PlayVideo(FILENAME2PLAY);
                 break;
 
-            case evtIdBadCode:
-                Printf("  Bad\r");
-                break;
+//            case evtIdBadCode:
+//                Printf("  Bad\r");
+//                PlayVideo("lighting2.avi");
+//                break;
 
             case evtIdEverySecond:
-                Printf("S\r");
+                Iwdg::Reload();
+//                Printf("S\r");
                 CodeChecker.OnOneSecond();
                 break;
 
@@ -184,7 +208,11 @@ void ITask() {
 
             case evtIdAudioPlayStop:
                 Printf("AudioEnd\r");
-                TmrStandbyAudio.StartOrRestart();
+                if(AppState != stateVideo) TmrStandbyAudio.StartOrRestart();
+                break;
+            case evtIdVideoPlayStop:
+                Printf("VideoEnd\r");
+                DeinitVideo();
                 break;
 
 #if 0 // ======= USB =======
@@ -226,7 +254,8 @@ void SwitchTo216MHz() {
 
 
 void InitAudio() {
-    SD.Resume();
+    Printf("%S\r", __FUNCTION__);
+//    SD.Resume();
     // Audio codec
     Codec.Init();
     Codec.SetSpeakerVolume(-96);    // To remove speaker pop at power on
@@ -240,14 +269,17 @@ void InitAudio() {
 }
 
 void DeinitAudio() {
-    SD.Standby();
+    Printf("%S\r", __FUNCTION__);
     Codec.Deinit();
+//    SD.Standby();
     AppState = stateIdle;
 }
 
 void InitVideo() {
+    Printf("%S\r", __FUNCTION__);
     SwitchTo216MHz();
     SdramInit();
+    Codec.Deinit();
     InitAudio();
     Codec.SetupMonoStereo(Mono); // For AVI player
     LcdInit();
@@ -256,6 +288,7 @@ void InitVideo() {
 }
 
 void DeinitVideo() {
+    Printf("%S\r", __FUNCTION__);
     Avi::Standby();
     LcdDeinit();
     DeinitAudio();
@@ -308,7 +341,7 @@ void OnCmd(Shell_t *PShell) {
     }
 
     else if(PCmd->NameIs("vi")) {
-        Avi::Start("sw8_m.avi", 000);
+        PlayVideo(FILENAME2PLAY);
     }
 
     else {

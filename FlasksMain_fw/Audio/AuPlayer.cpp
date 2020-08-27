@@ -44,11 +44,10 @@ void IDmaSAITxIrq() { AuPlayer.IHandleIrq(); }
 
 void AuPlayer_t::IHandleIrq() {
     PCurBuf = (PCurBuf == &ICurSnd->Buf1)? &ICurSnd->Buf2 : &ICurSnd->Buf1;
-    //PrintfI("%u\r", PCurBuf->Sz);
+//    PrintfI("%u\r", PCurBuf->Sz);
     if(PCurBuf->Sz == 0) {  // End of file, start next
         // Play next if needed
         ISwitchSnds();
-        chBSemSignalI(&IAuSem); // New snd started, may fill next snd
         PCurBuf = &ICurSnd->Buf1;
         if(PCurBuf->Sz != 0) TransmitBuf(PCurBuf);
         EvtQAudio.SendNowOrExitI(EvtMsgAudio_t(aevtOnSoundSwitch));
@@ -82,13 +81,13 @@ void AuPlayer_t::ITask() {
                 PBufToFill = (PCurBuf == &ICurSnd->Buf1)? &ICurSnd->Buf2 : &ICurSnd->Buf1;
                 ICurSnd->ReadToBuf(PBufToFill);
                 if(PBufToFill->Sz == 0 and (INextSnd->Buf1.Sz == 0 or !INextSnd->IsSoundFx)) {
+                    // Wait Irq
+                    while(Codec.IsTransmitting()) chThdSleepMilliseconds(1);
+//                    Codec.Stop();
+
                     EvtQMain.SendNowOrExit(EvtMsg_t(evtIdAudioPlayStop));
                     // Wake waiting thread if any
                     chThdResume(&ThdRef, MSG_OK);   // NotNull check performed inside chThdResume
-                }
-                if(PBufToFill->Sz == 0) {
-                    // Soon is snd change, do not fill nex snd
-                    if(IAuSem.sem.cnt > 0) chBSemWait(&IAuSem);
                 }
             } break;
 
@@ -104,14 +103,10 @@ void AuPlayer_t::ITask() {
 }
 
 void AuPlayer_t::IPlayNext(const char* AFName, PlayMode_t AMode) {
-    // Wait until next snd fill allowed
-    if(chBSemWait(&IAuSem) == MSG_OK) {
-        bool WasPlaying = ICurSnd->IsPlaying();
-        // Fade current sound
-        IPrepareToPlayNext(AFName, AMode);
-        if(WasPlaying) ICurSnd->FadeOut();
-        chBSemSignal(&IAuSem);
-    }
+    bool WasPlaying = ICurSnd->IsPlaying();
+    // Fade current sound
+    IPrepareToPlayNext(AFName, AMode);
+    if(WasPlaying) ICurSnd->FadeOut();
 }
 
 void AuPlayer_t::Init() {
@@ -119,8 +114,6 @@ void AuPlayer_t::Init() {
     PinSetupOut(DBG_GPIO1, DBG_PIN1, omPushPull);
 #endif    // Init radioIC
     EvtQAudio.Init();
-    // Init semaphore: exclude situation that we switched to next snd when it is filling
-    chBSemObjectInit(&IAuSem, false);
     chThdCreateStatic(waAudioThread, sizeof(waAudioThread), NORMALPRIO, (tfunc_t)AudioThread, NULL);
 }
 

@@ -262,13 +262,15 @@ void CS42L52_t::Init() {
 }
 
 void CS42L52_t::Deinit() {
-    AU_i2c.Deinit();
-    PinRst.SetLo();
-    AU_SAI_RccDis();
     if(PDmaTx) {
+        dmaStreamDisable(PDmaTx);
         dmaStreamFree(PDmaTx);
         PDmaTx = nullptr;
     }
+    AU_SAI_A->CR2 = SAI_xCR2_FFLUSH;
+    AU_i2c.Deinit();
+    PinRst.SetLo();
+    AU_SAI_RccDis();
     IsOn = false;
 }
 

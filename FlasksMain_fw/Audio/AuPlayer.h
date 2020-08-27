@@ -57,7 +57,6 @@ private:
     SndBuf_t *PCurBuf;
     void IPlayNext(const char* AFName, PlayMode_t AMode = spmSingle);
     void IPrepareToPlayNext(const char* AFName, PlayMode_t AMode = spmSingle);
-    binary_semaphore_t IAuSem;
 public:
     void Init();
 
@@ -79,7 +78,7 @@ public:
         Codec.TransmitBuf(PBuf->Buf, PBuf->Sz*2);    // Sz16 == SzFrame*2
     }
     AuPlayer_t() : ISnd1(), ISnd2(), ICurSnd(&ISnd1), INextSnd(&ISnd2),
-            PCurBuf(nullptr), IAuSem(), FileToPlayNext(nullptr) {}
+            PCurBuf(nullptr), FileToPlayNext(nullptr) {}
 };
 
 extern AuPlayer_t AuPlayer;
