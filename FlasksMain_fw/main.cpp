@@ -49,7 +49,7 @@ void PlayAudio(const char* AFName) {
 
 void PlayVideo(const char* AFName) {
     AuPlayer.Stop();
-    chThdSleepMilliseconds(720);
+    chThdSleepMilliseconds(360);
     //    if(AuPlayer.IsPlayingNow())
 //    if(Codec.IsTransmitting())
 //        AuPlayer.WaitEnd();
@@ -127,8 +127,8 @@ public:
 #endif
 
 int main() {
-//    Iwdg::InitAndStart(4005);
-//    Iwdg::Reload();
+    Iwdg::InitAndStart(4005);
+    Iwdg::Reload();
     // ==== Setup clock ====
     Clk.SetCoreClk216MHz();
 //    Clk.SetCoreClk80MHz();
@@ -255,7 +255,7 @@ void SwitchTo216MHz() {
 
 void InitAudio() {
     Printf("%S\r", __FUNCTION__);
-//    SD.Resume();
+    SD.Resume();
     // Audio codec
     Codec.Init();
     Codec.SetSpeakerVolume(-96);    // To remove speaker pop at power on
@@ -263,7 +263,7 @@ void InitAudio() {
     Codec.EnableSpeakerMono();
     Codec.SetupMonoStereo(Stereo);  // For wav player
     Codec.SetupSampleRate(22050); // Just default, will be replaced when changed
-    Codec.SetMasterVolume(0); // max
+    Codec.SetMasterVolume(0);
     Codec.SetSpeakerVolume(0); // max
     AppState = stateAudio;
 }
@@ -271,7 +271,7 @@ void InitAudio() {
 void DeinitAudio() {
     Printf("%S\r", __FUNCTION__);
     Codec.Deinit();
-//    SD.Standby();
+    SD.Standby();
     AppState = stateIdle;
 }
 
@@ -281,6 +281,7 @@ void InitVideo() {
     SdramInit();
     Codec.Deinit();
     InitAudio();
+    Codec.SetMasterVolume(9);
     Codec.SetupMonoStereo(Mono); // For AVI player
     LcdInit();
     Avi::Resume();
