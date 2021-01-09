@@ -1,7 +1,7 @@
 /*
  * color.h
  *
- *  Created on: 05 апр. 2014 г.
+ *  Created on: 05 пїЅпїЅпїЅ. 2014 пїЅ.
  *      Author: Kreyl
  */
 
@@ -37,7 +37,7 @@ static inline int32_t CalcSmooth_st_from_ms(int32_t Duration_ms) {
 struct Color_t {
 private:
     __always_inline
-    inline uint8_t SetSingleBrt(int32_t v, const int32_t Brt, const int32_t BrtMax) {
+    uint8_t SetSingleBrt(int32_t v, const int32_t Brt, const int32_t BrtMax) {
         if(v > 0) {
             v = (v * Brt) / BrtMax;
             if(v == 0) v = 1;
@@ -430,15 +430,4 @@ struct ColorHSV_t {
 #define clRGBWMagenta   ((Color_t){255, 0, 255,   0})
 #define clRGBWCyan      ((Color_t){0, 255, 255,   0})
 #define clRGBWWhite     ((Color_t){0,   0,   0, 255})
-#endif
-
-#if 1 // ============================== ARGB ===================================
-struct ColorARGB_t {
-    union {
-        uint32_t DWord32;
-        struct {
-            uint8_t B, G, R, A;
-        } __attribute__((packed));
-    } __attribute__((packed));
-} __attribute__((packed));
 #endif

@@ -1,13 +1,27 @@
 /*
  * lcdtft.h
  *
- *  Created on: 4 нояб. 2019 г.
+ *  Created on: 4 пїЅпїЅпїЅпїЅ. 2019 пїЅ.
  *      Author: Kreyl
  */
 
 #pragma once
 
+#include "color.h"
+
+// Display size
+#define LCD_WIDTH       480UL
+#define LCD_HEIGHT      272UL
+
+#define LCD_PIXEL_SZ    3UL
+#define LBUF_SZ         (LCD_PIXEL_SZ * LCD_WIDTH * LCD_HEIGHT)
+#define LBUF_SZ32       (LBUF_SZ / 4)
+
+#define LBUF_IN_SDRAM_MALLOC    FALSE
+#define LBUF_IN_SDRAM_STATIC    TRUE
+
 void LcdInit();
+void LcdDeinit();
 
 void LcdDrawARGB(uint32_t Left, uint32_t Top, uint32_t* Img, uint32_t ImgW, uint32_t ImgH);
 void LcdDrawRGB(uint32_t Left, uint32_t Top, uint32_t* Img, uint32_t ImgW, uint32_t ImgH);
@@ -16,3 +30,11 @@ void LcdPaintL1(uint32_t Left, uint32_t Top, uint32_t Right, uint32_t Bottom, ui
 
 
 uint8_t LcdDrawBmp(uint8_t *Buff, uint32_t Sz);
+
+#if LBUF_IN_SDRAM_MALLOC
+extern uint32_t *FrameBuf1;
+#elif LBUF_IN_SDRAM_STATIC
+extern uint32_t FrameBuf1[LBUF_SZ32];
+#else
+extern uint32_t FrameBuf1[LBUF_SZ32];
+#endif

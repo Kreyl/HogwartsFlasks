@@ -53,7 +53,7 @@ public:
         uint8_t r = GetNextString();
         if(r == retvOk) {
             char *p;
-            int32_t dw32 = strtoul(Token, &p, 0);
+            int32_t dw32 = strtol(Token, &p, 0);
             if(*p == '\0') *POutput = (T)dw32;
             else r = retvNotANumber;
         }

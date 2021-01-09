@@ -1,7 +1,7 @@
 /*
  * shell.cpp
  *
- *  Created on: 21 апр. 2017 г.
+ *  Created on: 21 пїЅпїЅпїЅ. 2017 пїЅ.
  *      Author: Kreyl
  */
 
@@ -152,7 +152,8 @@ void PrintfHelper_t::IVsPrintf(const char *format, va_list args) {
             case 's':
             case 'S': {
                 char *s = va_arg(args, char*);
-                while(*s != 0) {
+                if(width == 0) width = 0xFFFFFFFF;
+                while(*s != 0 and width--) {
                     if(IPutChar(*s++) != retvOk) goto End;
                 }
             }

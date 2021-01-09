@@ -812,6 +812,10 @@ bool sdc_lld_read_aligned(SDCDriver *sdcp, uint32_t startblk,
   dmaStreamSetTransactionSize(sdcp->dma,
                               (blocks * MMCSD_BLOCK_SIZE) / sizeof (uint32_t));
   dmaStreamSetMode(sdcp->dma, sdcp->dmamode | STM32_DMA_CR_DIR_P2M);
+
+  // Clean cache to avoid Big Problems @KL
+  SCB_CleanInvalidateDCache_by_Addr((uint32_t*)buf, (blocks * MMCSD_BLOCK_SIZE));
+
   dmaStreamEnable(sdcp->dma);
 
   /* Setting up data transfer.*/

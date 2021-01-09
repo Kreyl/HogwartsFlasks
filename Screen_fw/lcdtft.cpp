@@ -1,7 +1,7 @@
 /*
  * lcdtft.cpp
  *
- *  Created on: 4 нояб. 2019 г.
+ *  Created on: 4 пїЅпїЅпїЅпїЅ. 2019 пїЅ.
  *      Author: Kreyl
  */
 
@@ -10,10 +10,7 @@
 #include "shell.h"
 #include "sdram.h"
 #include "color.h"
-
-// Display size
-#define LCD_WIDTH       480UL
-#define LCD_HEIGHT      272UL
+#include "lcdtft.h"
 
 // Sync params
 #define HSYNC_WIDTH     4UL  // See display datasheet
@@ -31,26 +28,42 @@
 PinOutputPWM_t Backlight{LCD_BCKLT};
 
 // Layer Buffers and other sizes
-#define LBUF_SZ         (sizeof(ColorARGB_t) * LCD_WIDTH * LCD_HEIGHT)
 #define LBUF_CNT        (LCD_WIDTH * LCD_HEIGHT)
-#define LINE_SZ         (sizeof(ColorARGB_t) * LCD_WIDTH)
-ColorARGB_t *FrameBuf1;// = (ColorARGB_t*)(SDRAM_ADDR + 0);
+#define LINE_SZ         (LCD_PIXEL_SZ * LCD_WIDTH)
+
+#if LBUF_IN_SDRAM_MALLOC
+uint32_t *FrameBuf1;
+#elif LBUF_IN_SDRAM_STATIC
+__attribute__ ((section (".static_sdram")))
+uint32_t FrameBuf1[LBUF_SZ32];
+#else
+__attribute__ ((section ("DATA_RAM")))
+uint32_t FrameBuf1[LBUF_SZ32];
+#endif
+
 //#define ENABLE_LAYER2   TRUE
 #if ENABLE_LAYER2
-ColorARGB_t *FrameBuf2;// = (ColorARGB_t*)(SDRAM_ADDR + LBUF_SZ);
+ColorRGB_t *FrameBuf2;
 #endif
+
+const stm32_dma_stream_t *PDmaMCpy;
 
 void LcdInit() {
     Backlight.Init();
     Backlight.SetFrequencyHz(10000);
     Backlight.Set(100);
 
-    FrameBuf1 = (ColorARGB_t*)malloc(LBUF_SZ);
+#if LBUF_IN_SDRAM_MALLOC
+    FrameBuf1 = (uint32_t*)malloc(LBUF_SZ);
+#endif
+
 #if ENABLE_LAYER2
-    FrameBuf2 = (ColorARGB_t*)malloc(LBUF_SZ);
+    FrameBuf2 = (ColorRGB_t*)malloc(LBUF_SZ);
 #endif
 
     // Enable clock. Pixel clock set up at main; <=12MHz according to display datasheet
+    RCC->APB2RSTR |= RCC_APB2RSTR_LTDCRST;
+    RCC->APB2RSTR &= ~RCC_APB2RSTR_LTDCRST;
     RCC->APB2ENR |= RCC_APB2ENR_LTDCEN;
 
 #if 1 // ==== GPIO ====
@@ -93,7 +106,9 @@ void LcdInit() {
     PinSetupAlterFunc(GPIOG, 12, omPushPull, pudNone, AF14); // B1
     PinSetupAlterFunc(GPIOG, 13, omPushPull, pudNone, AF14); // R0
 #endif
-   // HSYNC and VSYNC pulse width
+
+#if 1 // ==== HSYNC / VSYNC etc. ====
+    // HSYNC and VSYNC pulse width
     LTDC->SSCR = ((HSYNC_WIDTH - 1UL) << 16) | (VSYNC_WIDTH - 1UL);
     // HBP and VBP
     LTDC->BPCR = ((HSYNC_WIDTH + HBP - 1UL) << 16) | (VSYNC_WIDTH + VBP - 1UL);
@@ -111,18 +126,21 @@ void LcdInit() {
             (0UL << 0);   // LTDC dis
     // Background color: R<<16 | G<<8 | B<<0
     LTDC->BCCR = 0; // Paint it black
+#endif
 
-    // === Layer 1 ===
-    memset(FrameBuf1, 0, LBUF_SZ); // Fill Layer 1
+#if 1 // === Layer 1 ===
+//    memset(FrameBuf1, 0, LBUF_SZ); // Fill Layer 1
     // layer window horizontal and vertical position
     LTDC_Layer1->WHPCR = ((LCD_WIDTH  + HBACK_PORCH - 1UL) << 16) | HBACK_PORCH; // Stop and Start positions
     LTDC_Layer1->WVPCR = ((LCD_HEIGHT + VBACK_PORCH - 1UL) << 16) | VBACK_PORCH; // Stop and Start positions
-//    LTDC_Layer1->PFCR  = 0b001UL;    // RGB888
-    LTDC_Layer1->PFCR  = 0b000UL;    // ARGB8888
+//    LTDC_Layer1->PFCR  = 0b010UL;    // RGB565
+    LTDC_Layer1->PFCR  = 0b001UL;    // RGB888
+//    LTDC_Layer1->PFCR  = 0b000UL;    // ARGB8888
     LTDC_Layer1->CFBAR = (uint32_t)FrameBuf1; // Address of layer buffer
     LTDC_Layer1->CFBLR = (LINE_SZ << 16) | (LINE_SZ + 3UL);
     LTDC_Layer1->CFBLNR = LCD_HEIGHT; // LCD_HEIGHT lines in a buffer
     LTDC_Layer1->CR = 1;    // Enable layer
+#endif
 
 #if ENABLE_LAYER2 // === Layer 2 ===
     LTDC_Layer2->WHPCR = (108UL << 16) | 72UL; // Stop and Start positions
@@ -141,11 +159,50 @@ void LcdInit() {
     // Enable display
     PinSetupOut(LCD_DISP, omPushPull);
     PinSetHi(LCD_DISP);
-
-    // DMA2D
-    rccEnableDMA2D(FALSE);
-
 }
+
+void LcdDeinit() {
+    Backlight.Set(0);
+    RCC->APB2ENR &= ~RCC_APB2ENR_LTDCEN;
+    PinSetLo(LCD_DISP);
+
+#if 1 // ==== GPIO ====
+    // GpioA
+    PinSetupAnalog(GPIOA, 1);
+    PinSetupAnalog(GPIOA, 2);
+    PinSetupAnalog(GPIOA, 3);
+    PinSetupAnalog(GPIOA, 4);
+    PinSetupAnalog(GPIOA, 5);
+    PinSetupAnalog(GPIOA, 6);
+    PinSetupAnalog(GPIOA, 10);
+    // GpioB
+    PinSetupAnalog(GPIOB, 0);
+    PinSetupAnalog(GPIOB, 1);
+    PinSetupAnalog(GPIOB, 8);
+    PinSetupAnalog(GPIOB, 9);
+    PinSetupAnalog(GPIOB, 10);
+    PinSetupAnalog(GPIOB, 11);
+    // GpioC
+    PinSetupAnalog(GPIOC, 0);
+    PinSetupAnalog(GPIOC, 6);
+    PinSetupAnalog(GPIOC, 7);
+    PinSetupAnalog(GPIOC, 9);
+    // GpioD
+    PinSetupAnalog(GPIOD, 3);
+    // GpioE
+    PinSetupAnalog(GPIOE, 4);
+    PinSetupAnalog(GPIOE, 5);
+    PinSetupAnalog(GPIOE, 6);
+    // GpioG
+    PinSetupAnalog(GPIOG, 6);
+    PinSetupAnalog(GPIOG, 7);
+    PinSetupAnalog(GPIOG, 10);
+    PinSetupAnalog(GPIOG, 11);
+    PinSetupAnalog(GPIOG, 12);
+    PinSetupAnalog(GPIOG, 13);
+#endif
+}
+
 
 void LcdDrawARGB(uint32_t Left, uint32_t Top, uint32_t* Img, uint32_t ImgW, uint32_t ImgH) {
     uint32_t *dst;
@@ -159,12 +216,28 @@ void LcdDrawARGB(uint32_t Left, uint32_t Top, uint32_t* Img, uint32_t ImgW, uint
 }
 
 void LcdPaintL1(uint32_t Left, uint32_t Top, uint32_t Right, uint32_t Bottom, uint32_t A, uint32_t R, uint32_t G, uint32_t B) {
-//    Printf("L%u T%u; R%u B%u; %u %u %u %u;   %X\r", Left, Top, Right, Bottom, A, R,G,B, v);
-//    ColorARGB_t *ptr = FrameBuf1 +
-
+    volatile uint32_t v = (R << 16) | (G << 8) | B;
 
 //    for(uint32_t i=0; i<LBUF_CNT; i++) {
 //        FrameBuf1[i].DWord32 = v;
+//    }
+
+    dmaStreamSetPeripheral(PDmaMCpy, &v);
+    dmaStreamSetMemory0(PDmaMCpy, FrameBuf1);
+    dmaStreamSetTransactionSize(PDmaMCpy, 0xFFFF);
+    dmaStreamSetMode(PDmaMCpy, (DMA_PRIORITY_HIGH | STM32_DMA_CR_MSIZE_BYTE | STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MINC | STM32_DMA_CR_DIR_M2M));
+    dmaStreamEnable(PDmaMCpy);
+    dmaWaitCompletion(PDmaMCpy);
+
+//    dmaStreamSetMemory0(PDmaMCpy, FrameBuf1 + 0xFFFFUL);
+//    dmaStreamSetTransactionSize(PDmaMCpy, LBUF_CNT- 0xFFFFUL);
+//    dmaStreamEnable(PDmaMCpy);
+//    dmaWaitCompletion(PDmaMCpy);
+//
+//
+//    for(uint32_t i=0; i<LBUF_CNT; i++) {
+//        if(FrameBuf1[i].DWord32 != v) Printf("%d %X\r", i, FrameBuf1[i].DWord32);
+//        (void)FrameBuf1[i];
 //    }
 }
 

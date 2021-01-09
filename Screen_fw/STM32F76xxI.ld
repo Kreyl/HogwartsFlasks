@@ -45,7 +45,7 @@ MEMORY
     ram5    : org = 0x40024000, len = 4k        /* BCKP SRAM */
     ram6    : org = 0x00000000, len = 0
     ram7    : org = 0x00000000, len = 0
-    SDRAM   : org = 0xC0000000, len = 32M
+    SDRAM   : org = 0x60000000, len = 32M
 }
 
 /* For each data/text section two region are defined, a virtual region
@@ -90,7 +90,7 @@ REGION_ALIAS("DATA_RAM_LMA", flash0);
 REGION_ALIAS("BSS_RAM", ram3);
 
 /* RAM region to be used for the default heap.*/
-REGION_ALIAS("HEAP_RAM", SDRAM);
+REGION_ALIAS("HEAP_RAM", ram0);
 
 /* Stack rules inclusion.*/
 INCLUDE ../rules_stacks.ld
@@ -128,6 +128,20 @@ SECTIONS
         . = ALIGN(4);
         __eth_end__ = .;
     } > ETH_RAM
+    
+    .srambuf (NOLOAD) : ALIGN(4)
+    {
+        __srambuf_base__ = .;
+        . = ALIGN(4);
+        __srambuf_end__ = .;
+    } > DATA_RAM
+    
+    .static_sdram (NOLOAD) : ALIGN(4)
+    {
+        __srambuf_base__ = .;
+        . = ALIGN(4);
+        __srambuf_end__ = .;
+    } > SDRAM
 }
 
 /* Code rules inclusion.*/
