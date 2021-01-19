@@ -276,6 +276,8 @@ int main() {
     Npx.Init();
     Points.Init();
 
+    Lora.Init();
+
     // USB
 //    UsbMsdCdc.Init();
 //    PinSetupInput(USB_DETECT_PIN, pudPullDown); // Usb detect pin

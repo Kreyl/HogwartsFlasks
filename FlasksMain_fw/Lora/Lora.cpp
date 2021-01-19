@@ -6,7 +6,7 @@
  */
 
 #include "Lora.h"
-#include "sx1276.h"
+#include "kl_sx1276.h"
 #include "board.h"
 
 Lora_t Lora;

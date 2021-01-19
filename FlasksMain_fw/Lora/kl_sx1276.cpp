@@ -5,6 +5,7 @@
  *      Author: layst
  */
 
+#include "kl_sx1276.h"
 #include "sx1276.h"
 #include "shell.h"
 #include "sx1276Regs-Fsk.h"
@@ -16,7 +17,7 @@
 
 static Spi_t ISpi{LORA_SPI};
 
-uint8_t SX1276_t::Init() {
+uint8_t SX1276KL_t::Init() {
     PinSetupAnalog   (LORA_NRESET); // Must be floating during POR sequence
     PinSetupOut      (LORA_NSS, omPushPull);
     PinSetupAlterFunc(LORA_SCK);
@@ -39,55 +40,37 @@ uint8_t SX1276_t::Init() {
 
 //    Printf("Lora %X\r", ReadReg(0x27));
 
-    RxChainCalibration();
-    SetOpMode(RF_OPMODE_SLEEP);
-
-    // Init IRQs
-    // TODO
-
-    for(uint32_t i=0; i < (sizeof(RadioRegsInit) / sizeof(RadioRegisters_t)); i++ ) {
-        SetModem(RadioRegsInit[i].Modem);
-        WriteReg(RadioRegsInit[i].Addr, RadioRegsInit[i].Value);
-    }
-
-    SetModem(MODEM_FSK);
-    Settings.State = RF_IDLE;
+//    RxChainCalibration();
+//    SetOpMode(RF_OPMODE_SLEEP);
+//
+//    // Init IRQs
+//    // TODO
+//
+//    for(uint32_t i=0; i < (sizeof(RadioRegsInit) / sizeof(RadioRegisters_t)); i++ ) {
+//        SetModem(RadioRegsInit[i].Modem);
+//        WriteReg(RadioRegsInit[i].Addr, RadioRegsInit[i].Value);
+//    }
+//
+//    SetModem(MODEM_FSK);
+//    Settings.State = RF_IDLE;
 
     return retvOk;
 }
 
-#if 1 // ============================= Rx / Tx =================================
-void SX1276_t::TransmitCarrier(uint32_t freq, int8_t power, sysinterval_t Duration) {
-    SetFreq(freq);
-    // FSK, power, Dev=0, BW=0, datarate=4800, coderate=0, preamble=5. no fixlen. no crc
-    SetTxConfig(MODEM_FSK, power, 0, 0, 4800, 0, 5, false, false, 0, 0, 0, Duration);
-
-    ModifyReg(REG_PACKETCONFIG2, RF_PACKETCONFIG2_DATAMODE_MASK, 0);
-
-    // Disable radio interrupts TODO
-//    WriteReg(REG_DIOMAPPING1, RF_DIOMAPPING1_DIO0_11 | RF_DIOMAPPING1_DIO1_11);
-//    WriteReg(REG_DIOMAPPING2, RF_DIOMAPPING2_DIO4_10 | RF_DIOMAPPING2_DIO5_10);
-
-    Settings.State = RF_TX_RUNNING;
-    StartTmrTimeout(Duration);
-    SetOpMode(RF_OPMODE_TRANSMITTER);
-}
-#endif
-
 #if 1 // ============================ Timers ===================================
-void TmrTimeoutCallback(void *p) { ((SX1276_t*)p)->OnTimeout(); }
-
-void SX1276_t::OnTimeout() {
-
-}
-
-void SX1276_t::StartTmrTimeout(sysinterval_t Timeout_st) {
-    chVTSet(&TmrTimeout, Timeout_st, TmrTimeoutCallback, this);
-}
+//void TmrTimeoutCallback(void *p) { ((SX1276_t*)p)->OnTimeout(); }
+//
+//void SX1276_t::OnTimeout() {
+//
+//}
+//
+//void SX1276_t::StartTmrTimeout(sysinterval_t Timeout_st) {
+//    chVTSet(&TmrTimeout, Timeout_st, TmrTimeoutCallback, this);
+//}
 
 #endif
 
-#if 1 // =========================== Settings ==================================
+#if 0 // =========================== Settings ==================================
 /*
  * Performs the Rx chain calibration for HF bands
  * Must be called just after the reset so all registers are at their default values
@@ -198,7 +181,7 @@ void SX1276_t::SetTxPower(int8_t power) {
 
 #endif
 
-#if 1 // ============================= Low level ===============================
+#if 0 // ============================= Low level ===============================
 uint8_t SX1276_t::ReadReg(uint8_t Addr) {
     NssLo();
     ISpi.ReadWriteByte(Addr);
