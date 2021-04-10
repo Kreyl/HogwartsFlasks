@@ -3,3 +3,5 @@
 *.sch-bak
 *.ses
 PCB/HogwartsFlasksMain-backups/
+Screen_fw/Debug/
+Screen_fw/Release/

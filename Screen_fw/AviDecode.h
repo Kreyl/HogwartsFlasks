@@ -9,8 +9,6 @@
 
 #include <inttypes.h>
 
-#define AVI_AUDIO_EN    FALSE
-
 namespace Avi {
 
 void Init();

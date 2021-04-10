@@ -11,22 +11,19 @@
 #include "kl_jpeg.h"
 #include "MsgQ.h"
 #include "lcdtft.h"
+#include "CS42L52.h"
 #include "kl_buf.h"
 
-#if AVI_AUDIO_EN
-#include "CS42L52.h"
+static FIL ifile;
 extern CS42L52_t Codec;
+uint32_t MCU_BlockIndex = 0;
+sysinterval_t FrameRate = 0;
+systime_t FrameStart = 0;
 
 namespace Audio {
 bool IsIdle;
 void Start();
 };
-#endif
-
-static FIL ifile;
-uint32_t MCU_BlockIndex = 0;
-sysinterval_t FrameRate = 0;
-systime_t FrameStart = 0;
 
 #if 1 // ============================ AVI headers ==============================
 #define FOURCC(c1, c2, c3, c4)  ((uint32_t)((c4 << 24) | (c3 << 16) | (c2 << 8) | c1))
@@ -189,7 +186,6 @@ uint8_t ProcessHDRL(int32_t HdrlSz) {
                         }
                     }
                     else if(Hdr.ckID == FOURCC('s','t','r','f')) { // Format
-#if AVI_AUDIO_EN
                         if(StreamHdr.fccType == FOURCC('a','u','d','s')) {
                             WAVEFORMATEX WFormat;
                             if(WFormat.Read() != retvOk) return retvFail;
@@ -203,7 +199,6 @@ uint8_t ProcessHDRL(int32_t HdrlSz) {
                                 return retvFail;
                             }
                         }
-#endif
                     }
                 } // while(ListSz > 0)
             } // if strl
@@ -246,9 +241,7 @@ static EvtMsgQ_t<VideoMsg_t, 9> MsgQVideo;
 #define AUDIO_PIECE_PLAY    2048UL
 #define AUBUF_THR_BYTES     (AUBUF_THR_FRAMES * AUDIO_PIECE_PLAY)
 
-#if AVI_AUDIO_EN
 static uint8_t  IABuf[AUBUF_SZ]     __attribute__((aligned(32), section (".srambuf")));
-#endif
 static uint32_t IVBuf[IN_VBUF_SZ32] __attribute__((aligned(32), section (".srambuf")));
 
 static THD_WORKING_AREA(waFileThd, 1024);
@@ -291,7 +284,6 @@ public:
     uint32_t NextLoc = 0, DataLoc = 0;
 };
 
-#if AVI_AUDIO_EN
 class AuBuf_t {
 private:
     uint8_t *PRead, *PWrite, *JumpPtr;
@@ -365,7 +357,6 @@ public:
     uint32_t GetFullCount()  { return IFullSlotsCount; }
     uint32_t GetEmptyCount() { return AUBUF_SZ-IFullSlotsCount; }
 } AuBuf;
-#endif
 
 template <typename T, uint32_t Sz>
 class MetaBuf_t {
@@ -463,14 +454,12 @@ private:
                 }
                 else VRslt = retvFail;
             } // if is video
-#if AVI_AUDIO_EN
             else if(VCk.IsAudio()) {
                 if(AuBuf.GetFullCount() < AUBUF_THR_BYTES) {
                     AuRslt = AuBuf.Put(VCk);
                 }
                 else AuRslt = retvFail;
             }
-#endif
             Printf("vr%u; ar: %u\r", VRslt, AuRslt);
         } // while
     }
@@ -486,9 +475,7 @@ public:
     }
 
     void Start(uint32_t VideoSz) {
-#if AVI_AUDIO_EN
         Audio::IsIdle = true;
-#endif
         EndLoc = f_tell(&ifile) + VideoSz;
         // Video
         VCk.MoveTo(f_tell(&ifile));
@@ -554,11 +541,9 @@ public:
                                 VCk.AwaitsReading = true;
                                 VRslt = PutFrameIfPossible();
                             } // if is video
-#if AVI_AUDIO_EN
                             else if(VCk.IsAudio()) {
                                 AuRslt = AuBuf.Put(VCk);
                             }
-#endif
                         } // if readhdr
                         else IsEof = true;
                     }
@@ -576,7 +561,7 @@ static void FileThd(void *arg) {
 }
 #endif
 
-#if AVI_AUDIO_EN // ==================== Audio playback ========================
+#if 1 // ========================== Audio playback =============================
 namespace Audio {
 
 void OnBufTxEndI() {
@@ -705,9 +690,7 @@ static void VideoThd(void *arg) {
             case vcmdStart:
                 while(VFileReader.IsRunning()) {
                     if(VFileReader.GetNextFrame() == retvOk) {
-#if AVI_AUDIO_EN
                         if(Audio::IsIdle) Audio::Start();
-#endif
                         if(VFileReader.VSz == 0) {
                             chThdSleep(FrameRate);
                             VFileReader.OnFrameProcessed();
@@ -731,9 +714,7 @@ static void VideoThd(void *arg) {
             case vcmdStop:
                 if(VFileReader.IsRunning()) {
                     Jpeg::Stop();
-#if AVI_AUDIO_EN
                     Audio::Stop();
-#endif
                     VFileReader.Stop();
                     CloseFile(&ifile);
                     Printf("VEnd\r");
@@ -757,7 +738,6 @@ static void VideoThd(void *arg) {
 //                Printf("N %u; ", FrameN++);
                 if(Elapsed < FrameRate) {
                     sysinterval_t FDelay = FrameRate - Elapsed;
-#if AVI_AUDIO_EN
                     // Increase or decrease delay depending on Video/Audio buffer sizes ratio
                     uint32_t VCnt = VFileReader.GetFullCount(); // Frames in videobuf
                     uint32_t ACnt =  AuBuf.GetFullCount() / 4096; // "Frames" in audiobuf
@@ -774,7 +754,6 @@ static void VideoThd(void *arg) {
                         Printf("####");
                     }
                     PrintfEOL();
-#endif
                     chThdSleep(FDelay);
                 }
 //                else Printf("NoDelay");
@@ -793,9 +772,7 @@ namespace Avi {
 
 void Init() {
     VFileReader.Init();
-#if AVI_AUDIO_EN
     AuBuf.Init();
-#endif
     JPEG_InitColorTables(); // Init The JPEG Color Look Up Tables used for YCbCr to RGB conversion
     Jpeg::Init(DmaJpegOutCB, OnJpegConvEndI);
     // Create and start thread
@@ -812,9 +789,7 @@ void Resume() {
 }
 
 uint8_t Start(const char* FName, uint32_t FrameN) {
-#if AVI_AUDIO_EN
     Codec.SaiDmaCallbackI = Audio::OnBufTxEndI;
-#endif
     uint8_t Rslt = TryOpenFileRead(FName, &ifile);
     if(Rslt != retvOk) return Rslt;
     Rslt = retvFail;
@@ -878,3 +853,5 @@ void Stop() {
 
 } // namespace
 #endif
+
+

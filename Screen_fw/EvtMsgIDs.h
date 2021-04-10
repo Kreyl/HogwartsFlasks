@@ -14,12 +14,18 @@ enum EvtMsgId_t {
     evtIdShellCmd,
     evtIdEverySecond,
 
-    evtIdButtons,
-
     evtIdUsbConnect,
     evtIdUsbDisconnect,
     evtIdUsbReady,
 
+    evtIdButtons,
+
+    evtIdCorrectCode,
+    evtIdBadCode,
+
+    evtIdAudioPlayStop,
     evtIdVideoPlayStop,
+
+    evtIdStandbyAudio,
     evtIdStandbyVideo,
 };

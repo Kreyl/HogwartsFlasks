@@ -7,12 +7,11 @@
 #include "led.h"
 #include "kl_sd.h"
 #include "kl_fs_utils.h"
-#include "kl_time.h"
 #include "kl_i2c.h"
-//#include "usb_msdcdc.h"
 #include "sdram.h"
 #include "lcdtft.h"
 #include "AviDecode.h"
+#include "CS42L52.h"
 
 #if 1 // =============== Defines ================
 // Forever
@@ -22,24 +21,35 @@ CmdUart_t Uart{&CmdUartParams};
 static void ITask();
 static void OnCmd(Shell_t *PShell);
 
-//static bool UsbPinWasHi = false;
+CS42L52_t Codec;
+
 LedBlinker_t Led{LED_PIN};
 static TmrKL_t TmrOneSecond {TIME_MS2I(999), evtIdEverySecond, tktPeriodic};
+//static TmrKL_t TmrStandbyAudio {TIME_MS2I(4005), evtIdStandbyAudio, tktOneShot};
 
-static enum AppState_t {stateIdle, stateVideo} AppState = stateIdle;
+//static enum AppState_t {stateIdle, stateAudio, stateVideo} AppState = stateIdle;
 
-void InitVideo();
-void DeinitVideo();
-
-
-void PlayVideo(const char* AFName) {
-    chThdSleepMilliseconds(360);
-    //    if(AuPlayer.IsPlayingNow())
-//    if(Codec.IsTransmitting())
-//        AuPlayer.WaitEnd();
-    if(AppState != stateVideo) InitVideo();
-    if(Avi::Start(AFName) != retvOk) EvtQMain.SendNowOrExit(EvtMsg_t(evtIdVideoPlayStop));
-}
+//void InitAudio();
+//void DeinitAudio();
+//void InitVideo();
+//void DeinitVideo();
+//
+//void PlayAudio(const char* AFName) {
+//    if(AppState == stateIdle) InitAudio();
+//    TmrStandbyAudio.Stop();
+//    AuPlayer.Play(AFName, spmSingle);
+//}
+//
+//void PlayVideo(const char* AFName) {
+//    AuPlayer.Stop();
+//    chThdSleepMilliseconds(360);
+//    //    if(AuPlayer.IsPlayingNow())
+////    if(Codec.IsTransmitting())
+////        AuPlayer.WaitEnd();
+//    if(AppState != stateVideo) InitVideo();
+//    TmrStandbyAudio.Stop();
+//    if(Avi::Start(AFName) != retvOk) EvtQMain.SendNowOrExit(EvtMsg_t(evtIdVideoPlayStop));
+//}
 
 #endif
 
@@ -47,13 +57,13 @@ int main() {
     Iwdg::InitAndStart(4005);
     Iwdg::Reload();
     // ==== Setup clock ====
-    Clk.SetCoreClk216MHz();
-//    Clk.SetCoreClk80MHz();
+//    Clk.SetCoreClk216MHz();
+    Clk.SetCoreClk80MHz();
     Clk.Setup48Mhz();
-    Clk.SetPllSai1RDiv(3, 8); // SAI R div = 3 => R = 2*96/3 = 64 MHz; LCD_CLK = 64 / 8 = 8MHz
+//    Clk.SetPllSai1RDiv(3, 8); // SAI R div = 3 => R = 2*96/3 = 64 MHz; LCD_CLK = 64 / 8 = 8MHz
     // SAI clock: PLLSAI1 Q
-    Clk.SetPllSai1QDiv(8, 1); // Q = 2 * 96 / 8 = 24; 24/1 = 24
-    Clk.SetSai2ClkSrc(saiclkPllSaiQ);
+//    Clk.SetPllSai1QDiv(8, 1); // Q = 2 * 96 / 8 = 24; 24/1 = 24
+//    Clk.SetSai2ClkSrc(saiclkPllSaiQ);
     FLASH->ACR |= FLASH_ACR_ARTEN; // Enable ART accelerator
     Clk.UpdateFreqValues();
 
@@ -71,13 +81,15 @@ int main() {
     Led.Init();
     Led.StartOrRestart(lsqIdle);
 
-    SimpleSensors::Init();
-    SD.Init();
-    Avi::Init();
+//    SimpleSensors::Init();
+//    SD.Init();
+//    Avi::Init();
+//    AuPlayer.Init();
 
-    DeinitVideo();
+//    DeinitVideo();
 
     TmrOneSecond.StartOrRestart();
+//    PlayAudio("alive.wav");
 
     // ==== Main cycle ====
     ITask();
@@ -94,30 +106,41 @@ void ITask() {
                 ((Shell_t*)Msg.Ptr)->SignalCmdProcessed();
                 break;
 
+//            case evtIdButtons:
+//                if(AppState == stateVideo) {
+//                    Avi::Stop();
+//                    chThdSleepMilliseconds(4);
+//                }
+//                else CodeChecker.OnBtnPress(Msg.BtnEvtInfo.BtnID);
+//                break;
+//
+//            case evtIdCorrectCode:
+//                Printf("  Correct\r");
+//                PlayVideo(FILENAME2PLAY);
+//                break;
+
+//            case evtIdBadCode:
+//                Printf("  Bad\r");
+//                PlayVideo("lighting2.avi");
+//                break;
+
             case evtIdEverySecond:
                 Iwdg::Reload();
 //                Printf("S\r");
                 break;
 
-            case evtIdStandbyVideo: DeinitVideo(); break;
-            case evtIdVideoPlayStop:
-                Printf("VideoEnd\r");
-                DeinitVideo();
-                break;
+//            case evtIdStandbyVideo: DeinitVideo(); break;
+//            case evtIdStandbyAudio: DeinitAudio(); break;
 
-#if 0 // ======= USB =======
-            case evtIdUsbConnect:
-                Printf("USB connect\r");
-                UsbMsdCdc.Connect();
-                break;
-            case evtIdUsbDisconnect:
-                UsbMsdCdc.Disconnect();
-                Printf("USB disconnect\r");
-                break;
-            case evtIdUsbReady:
-                Printf("USB ready\r");
-                break;
-#endif
+//            case evtIdAudioPlayStop:
+//                Printf("AudioEnd\r");
+//                if(AppState != stateVideo) TmrStandbyAudio.StartOrRestart();
+//                break;
+//            case evtIdVideoPlayStop:
+//                Printf("VideoEnd\r");
+//                DeinitVideo();
+//                break;
+
             default: break;
         } // switch
     } // while true
@@ -142,23 +165,53 @@ void SwitchTo216MHz() {
     Clk.PrintFreqs();
 }
 
+
+void InitAudio() {
+    Printf("%S\r", __FUNCTION__);
+    SD.Resume();
+    // Audio codec
+    Codec.Init();
+    Codec.SetSpeakerVolume(-96);    // To remove speaker pop at power on
+    Codec.DisableHeadphones();
+    Codec.EnableSpeakerMono();
+    Codec.SetupMonoStereo(Stereo);  // For wav player
+    Codec.SetupSampleRate(22050); // Just default, will be replaced when changed
+    Codec.SetMasterVolume(0);
+    Codec.SetSpeakerVolume(0); // max
+//    AppState = stateAudio;
+}
+
+void DeinitAudio() {
+    Printf("%S\r", __FUNCTION__);
+    Codec.Deinit();
+    SD.Standby();
+//    AppState = stateIdle;
+}
+
 void InitVideo() {
     Printf("%S\r", __FUNCTION__);
     SwitchTo216MHz();
     SdramInit();
+    Codec.Deinit();
+    InitAudio();
+    Codec.SetMasterVolume(9);
+    Codec.SetupMonoStereo(Mono); // For AVI player
     LcdInit();
     Avi::Resume();
-    AppState = stateVideo;
+//    AppState = stateVideo;
 }
 
 void DeinitVideo() {
     Printf("%S\r", __FUNCTION__);
     Avi::Standby();
     LcdDeinit();
+    DeinitAudio();
     SdramDeinit();
     SwitchTo27MHz();
-    AppState = stateIdle;
+//    AppState = stateIdle;
 }
+
+
 
 #if 1 // ======================= Command processing ============================
 void OnCmd(Shell_t *PShell) {
@@ -183,6 +236,13 @@ void OnCmd(Shell_t *PShell) {
 
     else if(PCmd->NameIs("chk")) {
         SdramCheck();
+    }
+
+    else if(PCmd->NameIs("27")) {
+        DeinitVideo();
+    }
+    else if(PCmd->NameIs("216")) {
+        InitVideo();
     }
 
     else if(PCmd->NameIs("vi")) {
