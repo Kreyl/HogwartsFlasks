@@ -417,6 +417,13 @@ void PinOutputPWM_t::Init() const {
     else if(ILPTim == LPTIM2) AF = AF14;
 #endif
     PinSetupAlterFunc(ISetup.PGpio, ISetup.Pin, ISetup.OutputType, pudNone, AF);
+#elif defined STM32F7XX
+    AlterFunc_t AF = AF1;
+    if(ITmr == TIM1 or ITmr == TIM2) AF = AF1;
+    else if(ITmr == TIM3 or ITmr == TIM4 or ITmr == TIM5) AF = AF2;
+    else if(ITmr == TIM8 or ITmr == TIM9 or ITmr == TIM10 or ITmr == TIM11 or ILPTim == LPTIM1) AF = AF3;
+    else if(ITmr == TIM12 or ITmr == TIM13 or ITmr == TIM14) AF = AF9;
+    PinSetupAlterFunc(ISetup.PGpio, ISetup.Pin, ISetup.OutputType, pudNone, AF);
 #endif
 }
 
@@ -1247,7 +1254,7 @@ uint8_t TryStrToFloat(char* S, float *POutput) {
 }; // namespace
 #endif
 
-#if 0 // ============================== IWDG ===================================
+#if 1 // ============================== IWDG ===================================
 namespace Iwdg {
 enum Pre_t {
     iwdgPre4 = 0x00,
@@ -1260,7 +1267,7 @@ enum Pre_t {
 };
 
 void DisableInDebug() {
-    DBGMCU->APB1FZR1 |= DBGMCU_APB1FZR1_DBG_IWDG_STOP;
+//    DBGMCU->APB1FZR1 |= DBGMCU_APB1FZR1_DBG_IWDG_STOP;
 }
 
 static void Enable() { IWDG->KR = 0xCCCC; }
@@ -2735,6 +2742,10 @@ uint32_t Clk_t::GetSysClkHz() {
 }
 
 void Clk_t::UpdateFreqValues() {
+    TMR_DISABLE(STM32_ST_TIM);
+    nvicDisableVector(STM32_TIM5_NUMBER);
+    uint32_t Cnt = STM32_ST_TIM->CNT;   // Save current time
+
     // AHB freq
     uint32_t tmp = AHBPrescTable[((RCC->CFGR & RCC_CFGR_HPRE) >> 4)];
     AHBFreqHz = GetSysClkHz() >> tmp;
@@ -2747,13 +2758,36 @@ void Clk_t::UpdateFreqValues() {
     APB2FreqHz = AHBFreqHz >> tmp;
 
     // ==== Update prescaler in System Timer ====
-    uint32_t Psc = (SYS_TIM_CLK / OSAL_ST_FREQUENCY) - 1;
-    TMR_DISABLE(STM32_ST_TIM);          // Stop counter
-    uint32_t Cnt = STM32_ST_TIM->CNT;   // Save current time
-    STM32_ST_TIM->PSC = Psc;
-    TMR_GENERATE_UPD(STM32_ST_TIM);
-    STM32_ST_TIM->CNT = Cnt;            // Restore time
+    uint32_t Arr = STM32_ST_TIM->ARR;
+    uint32_t Dier = STM32_ST_TIM->DIER;
+    uint32_t Ccmr = STM32_ST_TIM->CCMR1;
+    uint32_t ccr = STM32_ST_TIM->CCR[0];
+
+    rccDisableTIM5();
+    rccResetTIM5();
+    rccEnableTIM5(FALSE);
+
+    STM32_ST_TIM->ARR = Arr;
+    STM32_ST_TIM->DIER = Dier;
+    STM32_ST_TIM->CCMR1 = Ccmr;
+    STM32_ST_TIM->CCR[0] = ccr;
+
+
+    uint32_t NewPsc = (SYS_TIM_CLK / OSAL_ST_FREQUENCY) - 1;
+    uint32_t OldPsc = STM32_ST_TIM->PSC;
+
+    if(NewPsc < OldPsc) {
+        TMR_GENERATE_UPD(STM32_ST_TIM);
+        STM32_ST_TIM->PSC = NewPsc;
+    }
+    else {
+        STM32_ST_TIM->PSC = NewPsc;
+        TMR_GENERATE_UPD(STM32_ST_TIM);
+    }
+
+    STM32_ST_TIM->CNT = Cnt;
     TMR_ENABLE(STM32_ST_TIM);
+    nvicEnableVector(STM32_TIM5_NUMBER, STM32_ST_IRQ_PRIORITY);
 }
 
 uint32_t Clk_t::GetTimInputFreq(TIM_TypeDef* ITmr) {
@@ -2766,8 +2800,8 @@ uint32_t Clk_t::GetTimInputFreq(TIM_TypeDef* ITmr) {
             else InputFreq = Clk.APB2FreqHz * 4;
         }
         else {
-            if(APB2prs == 1) InputFreq = Clk.APB2FreqHz;
-            else InputFreq = Clk.APB2FreqHz * 2;
+            if(APB2prs & 0b100UL) InputFreq = Clk.APB2FreqHz * 2; // APB is divided AHB
+            else InputFreq = Clk.APB2FreqHz; // APB is not divided
         }
     }
     // APB1
@@ -2783,8 +2817,8 @@ uint32_t Clk_t::GetTimInputFreq(TIM_TypeDef* ITmr) {
                 else InputFreq = Clk.APB1FreqHz * 4;
             }
             else {
-                if(APB1prs == 1) InputFreq = Clk.APB1FreqHz;
-                else InputFreq = Clk.APB1FreqHz * 2;
+                if(APB1prs & 0b100UL) InputFreq = Clk.APB1FreqHz * 2; // APB is divided AHB
+                else InputFreq = Clk.APB1FreqHz; // APB is not divided
             }
         }
     }
@@ -2830,6 +2864,46 @@ void Clk_t::SetCoreClk80MHz() {
     if(EnablePLL() == retvOk) SwitchToPLL();
 }
 
+void Clk_t::SetCoreClk160MHz() {
+    EnablePrefeth();
+    // First, switch to HSI if clock src is not HSI
+    if((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSI) SwitchToHSI();
+    // Disable PLL and SAI, enable HSE
+    DisablePLL();
+    DisablePLLSai();
+    DisablePLLI2S();
+    if(EnableHSE() != retvOk) return;
+    SetupPllSrc(pllsrcHse);
+    SetVoltageScale(mvScale3);
+    // Setup dividers
+    SetupFlashLatency(160, 3300);
+    // APB1 is 54MHz max, APB2 is 108MHz max
+    SetupBusDividers(ahbDiv1, apbDiv4, apbDiv2);
+    // 12MHz / 6 = 2; 2 * 160 / 2 = 160; Q and R are don't care
+    SetupPllMulDiv(6, 160, 2, 8, 2);
+    if(EnablePLL() == retvOk) SwitchToPLL();
+}
+
+void Clk_t::SetCoreClk216MHz() {
+    EnablePrefeth();
+    // First, switch to HSI if clock src is not HSI
+    if((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSI) SwitchToHSI();
+    // Disable PLL and SAI, enable HSE
+    DisablePLL();
+    DisablePLLSai();
+    DisablePLLI2S();
+    if(EnableHSE() != retvOk) return;
+    SetupPllSrc(pllsrcHse);
+    SetVoltageScale(mvScale3);
+    // Setup dividers
+    SetupFlashLatency(216, 3300);
+    // APB1 is 54MHz max, APB2 is 108MHz max
+    SetupBusDividers(ahbDiv1, apbDiv4, apbDiv2);
+    // 12MHz / 6 = 2; 2 * 216 / 2 = 216; Q and R are don't care
+    SetupPllMulDiv(6, 216, 2, 8, 2);
+    if(EnablePLL() == retvOk) SwitchToPLL();
+}
+
 // PLL_SAI output P used to produce 48MHz, it is selected as PLL48CLK
 void Clk_t::Setup48Mhz() {
     // Get SAI input freq
@@ -2854,6 +2928,40 @@ void Clk_t::Setup48Mhz() {
         RCC->DCKCFGR2 &= ~RCC_DCKCFGR2_SDMMC1SEL; // 48MHz selected as SDMMC1 clk
         RCC->DCKCFGR2 |=  RCC_DCKCFGR2_CK48MSEL;  // 48MHz clk from PLLSAI selected
     }
+}
+
+// RDiv = [2; 7]; LCDDiv = {2, 4, 8, 16}
+void Clk_t::SetPllSai1RDiv(uint32_t RDiv, uint32_t LCDDiv) {
+    // R Div
+    uint32_t tmp = RCC->PLLSAICFGR;
+    tmp &= ~RCC_PLLSAICFGR_PLLSAIR;
+    tmp |= (RDiv << RCC_PLLSAICFGR_PLLSAIR_Pos);
+    RCC->PLLSAICFGR = tmp;
+    // LCD div
+    tmp = RCC->DCKCFGR1;
+    tmp &= ~RCC_DCKCFGR1_PLLSAIDIVR;
+    switch(LCDDiv) {
+        case 2: break;
+        case 4:  tmp |= (0b01UL << 16); break;
+        case 8:  tmp |= (0b10UL << 16); break;
+        case 16: tmp |= (0b11UL << 16); break;
+        default: break;
+    } // switch
+    RCC->DCKCFGR1 = tmp;
+}
+
+// QDiv = [2; 15]; QOutDiv = [1; 32]
+void Clk_t::SetPllSai1QDiv(uint32_t QDiv, uint32_t QOutDiv) {
+    // Q Div
+    uint32_t tmp = RCC->PLLSAICFGR;
+    tmp &= ~RCC_PLLSAICFGR_PLLSAIQ;
+    tmp |= (QDiv << RCC_PLLSAICFGR_PLLSAIQ_Pos);
+    RCC->PLLSAICFGR = tmp;
+    // QOut div
+    tmp = RCC->DCKCFGR1;
+    tmp &= ~RCC_DCKCFGR1_PLLSAIDIVQ;
+    tmp |= (QOutDiv-1) << RCC_DCKCFGR1_PLLSAIDIVQ_Pos;
+    RCC->DCKCFGR1 = tmp;
 }
 
 // Scale3: f<=144Mhz; Scale2: 144<f<=169MHz; Scale1: 168<f<=216MHz

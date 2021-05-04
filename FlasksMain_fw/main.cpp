@@ -12,7 +12,8 @@
 #include "Mirilli.h"
 //#include "usb_msdcdc.h"
 #include "sdram.h"
-#include "Lora.h"
+//#include "Lora.h"
+#include "FlasksSnd.h"
 
 #if 1 // =============== Defines ================
 // Forever
@@ -242,9 +243,15 @@ public:
 
 int main() {
     // ==== Setup clock ====
-    Clk.SetCoreClk80MHz();
+    Clk.SetCoreClk160MHz();
     Clk.Setup48Mhz();
+//    Clk.SetPllSai1RDiv(3, 8); // SAI R div = 3 => R = 2*96/3 = 64 MHz; LCD_CLK = 64 / 8 = 8MHz
+    // SAI clock: PLLSAI1 Q
+    Clk.SetPllSai1QDiv(8, 1); // Q = 2 * 96 / 8 = 24; 24/1 = 24
+    Clk.SetSai2ClkSrc(saiclkPllSaiQ);
+    FLASH->ACR |= FLASH_ACR_ARTEN; // Enable ART accelerator
     Clk.UpdateFreqValues();
+
     // ==== Init OS ====
     halInit();
     chSysInit();
@@ -261,9 +268,13 @@ int main() {
 //    SdramCheck();
 //    Lora.Init();
 
-//    SD.Init();
+    SD.Init();
 //    if(SD.IsReady) {
 //    }
+
+    Sound.Init();
+    Sound.SetupVolume(100);
+    Sound.PlayAlive();
 
     // Time
     BackupSpc::EnableAccess();
@@ -275,8 +286,6 @@ int main() {
     // Points
     Npx.Init();
     Points.Init();
-
-    Lora.Init();
 
     // USB
 //    UsbMsdCdc.Init();
