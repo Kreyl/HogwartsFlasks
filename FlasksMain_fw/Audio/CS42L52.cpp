@@ -152,13 +152,16 @@ void AuOnNewSampleI(SampleStereo_t &Sample) { }
 //                        STM32_DMA_CR_TCIE           /* Enable Transmission Complete IRQ */
 #endif
 
-// DMA Tx Completed IRQ
 extern "C"
-void DmaSAITxIrq(void *p, uint32_t flags) {
-    chSysLockFromISR();
-    if(Codec.SaiDmaCallbackI) Codec.SaiDmaCallbackI();
-    chSysUnlockFromISR();
-}
+void DmaSAITxIrq(void *p, uint32_t flags);
+
+// DMA Tx Completed IRQ
+//extern "C"
+//void DmaSAITxIrq(void *p, uint32_t flags) {
+//    chSysLockFromISR();
+//    if(Codec.SaiDmaCallbackI) Codec.SaiDmaCallbackI();
+//    chSysUnlockFromISR();
+//}
 
 void CS42L52_t::Init() {
     PinRst.Init();

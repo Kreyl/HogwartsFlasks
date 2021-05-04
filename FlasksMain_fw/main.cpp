@@ -262,6 +262,7 @@ int main() {
     Printf("\r%S %S\r\n", APP_NAME, XSTRINGIFY(BUILD_TIME));
     Clk.PrintFreqs();
 
+    // Debug LED
     Led.Init();
     Led.StartOrRestart(lsqIdle);
 
