@@ -42,7 +42,7 @@ public:
     void SetCurrentColors();
     void SetAll(Color_t Clr);
     bool AreOff();
-    void OnDmaDone();
+    void OnDmaDoneI();
 };
 
 extern Neopixels_t Npx;

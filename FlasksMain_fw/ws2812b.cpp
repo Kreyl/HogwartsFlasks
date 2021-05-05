@@ -63,7 +63,11 @@ Neopixels_t Npx2(NPX2_LED_CNT, IBitBuf2,
 #endif
 
 
-void NpxDmaDone(void *p, uint32_t flags) { ((Neopixels_t*)p)->OnDmaDone(); }
+void NpxDmaDone(void *p, uint32_t flags) {
+    chSysLockFromISR();
+    ((Neopixels_t*)p)->OnDmaDoneI();
+    chSysUnlockFromISR();
+}
 
 Neopixels_t::Neopixels_t(uint32_t ALedCnt, uint8_t *PBitBuf,
         SPI_TypeDef *ASpi, GPIO_TypeDef *APGpio, uint16_t APin, AlterFunc_t AAf,
@@ -123,7 +127,7 @@ bool Neopixels_t::AreOff() {
     return true;
 }
 
-void Neopixels_t::OnDmaDone() {
+void Neopixels_t::OnDmaDoneI() {
     TransmitDone = true;
     if(OnTransmitEnd) OnTransmitEnd();
 }
