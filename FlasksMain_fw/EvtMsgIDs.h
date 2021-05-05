@@ -14,6 +14,11 @@ enum EvtMsgId_t {
     evtIdShellCmd,
     evtIdEverySecond,
 
+    evtIdPointsSet,
+    evtIdPointsAdd,
+    evtIdPointsRemove,
+    evtIdBckgStop,
+
     evtIdUsbConnect,
     evtIdUsbDisconnect,
     evtIdUsbReady,

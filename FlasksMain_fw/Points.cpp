@@ -22,13 +22,8 @@
 #define FLASK_OFF_CLR       clBlack
 #define EFF_LED2LED_DIST    27
 
-#define INDX_GRIF           0
-#define INDX_SLYZE          1
-#define INDX_RAVE           2
-#define INDX_HUFF           3
-
 #define MAX_FLARE_CNT       7
-#define FLARE_MAX_VALUE     11L
+#define FLARE_MAX_VALUE     9L
 #define FLARE_START_DELAY   22
 #define FLARE_MIN_DELAY     3
 #define FLARE_DIST_BETWEEN  18
@@ -121,10 +116,11 @@ private:
     systime_t FlareAddTime = 0;
 public:
     friend class Flare_t;
-    Flask_t (int32_t AStartID, int32_t AEndID, Color_t AColor) : StartIndx(AStartID), EndIndx(AEndID), Clr(AColor) {
+    Flask_t (int32_t AStartID, int32_t AEndID, Color_t AColor, int32_t Indx) : StartIndx(AStartID), EndIndx(AEndID), Clr(AColor), SelfIndx(Indx) {
         LedCnt = (StartIndx < EndIndx) ? (1 + EndIndx - StartIndx) : (1 + StartIndx - EndIndx);
     }
 
+    int32_t SelfIndx;
     int32_t TargetPoints = 0, DisplayedPoints = 0, PointsInFlight = 0;
 
     void Redraw() {
@@ -163,11 +159,13 @@ public:
         if((PointsInFuture == TargetPoints) or (FlareCnt >= MAX_FLARE_CNT)) return;
         // Check if enough time passed
         if(FlareCnt != 0 and chVTTimeElapsedSinceX(FlareAddTime) < TIME_MS2I(MIN_DELAY_BETWEEN_FLARES)) return;
+        // Add flare
         Flare_t* flre = FindIdleFlare();
         if(!flre) return;
         FlareCnt++;
         flre->Parent = this;
         FlareAddTime = chVTGetSystemTimeX();
+        // Adding points
         if(DeltaPoints > 0) {
             flre->Type = flaretypeDown;
             flre->CurrY = LedCnt;
@@ -175,6 +173,7 @@ public:
             else flre->PointsCarried = DeltaPoints;
             PointsInFlight += flre->PointsCarried;
         }
+        // Removing points
         else {
             flre->Type = flaretypeUp;
             flre->CurrY = CurrValueIndx;
@@ -182,6 +181,7 @@ public:
             else flre->PointsCarried = DeltaPoints;
             DisplayedPoints += flre->PointsCarried;
             Redraw();
+            EvtQMain.SendNowOrExit(EvtMsg_t(evtIdPointsRemove, SelfIndx));
         }
 //        Printf("Flre: Y%u\r", flre->CurrY);
         flre->Start();
@@ -209,6 +209,7 @@ void Flare_t::Move() {
             PFlsk->PointsInFlight -= PointsCarried;
             PFlsk->Redraw();
             MsgQPoints.SendNowOrExit(PointMsg_t(pocmdCheckIfAddFlare, PFlsk));
+            EvtQMain.SendNowOrExit(EvtMsg_t(evtIdPointsAdd, PFlsk->SelfIndx));
             return;
         }
     }
@@ -235,10 +236,10 @@ void Flare_t::Move() {
 }
 
 static Flask_t Flasks[4] = {
-        {0, 128, clRed},
-        {129, 257, clGreen},
-        {258, 386, clBlue},
-        {387, 515, {255, 200, 0}},
+        {0, 128, clRed, INDX_GRIF},
+        {129, 257, clGreen, INDX_SLYZE},
+        {258, 386, clBlue, INDX_RAVE},
+        {387, 515, {255, 200, 0}, INDX_HUFF},
 };
 
 #if 1 // =========================== Thread ====================================
@@ -300,11 +301,18 @@ void Init() {
 }
 
 void Set(int32_t AGrif, int32_t ASlyze, int32_t ARave, int32_t AHuff) {
+    // Check if changed
+    if(     (Flasks[INDX_GRIF].TargetPoints == AGrif) and
+            (Flasks[INDX_SLYZE].TargetPoints == ASlyze) and
+            (Flasks[INDX_RAVE].TargetPoints == ARave) and
+            (Flasks[INDX_HUFF].TargetPoints == AHuff)) return;
+
     // Store in Backup Regs
     BackupSpc::WriteRegister(BCKP_REG_GRIF_INDX, AGrif);
     BackupSpc::WriteRegister(BCKP_REG_SLYZ_INDX, ASlyze);
     BackupSpc::WriteRegister(BCKP_REG_RAVE_INDX, ARave);
     BackupSpc::WriteRegister(BCKP_REG_HUFF_INDX, AHuff);
+
     // Set target values immediately
     Flasks[INDX_GRIF].TargetPoints = AGrif;
     Flasks[INDX_SLYZE].TargetPoints = ASlyze;
@@ -324,6 +332,7 @@ void Set(int32_t AGrif, int32_t ASlyze, int32_t ARave, int32_t AHuff) {
 
     // Set them
     MsgQPoints.SendNowOrExit(PointMsg_t(pocmdNewTarget));
+    EvtQMain.SendNowOrExit(EvtMsg_t(evtIdPointsSet));
 }
 
 void Print() {

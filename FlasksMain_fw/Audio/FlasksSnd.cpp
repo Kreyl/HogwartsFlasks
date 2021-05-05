@@ -10,6 +10,9 @@ FlasksSnd_t Sound;
 #define PRINT_FUNC()    Printf("snd: %S\r", __FUNCTION__)
 
 std::string FNameAlive = "alive.wav";
+std::string FNameAdd = "ding.wav";
+std::string FNameRemove = "puff.wav";
+std::string FNameBackground = "Background.wav";
 
 #if 1 // ============================ SndCmd ===================================
 enum SndCmd_t : uint8_t {
@@ -174,7 +177,7 @@ public:
         }
     }
 };
-static Slot_t Slot[AudioMixer::TRACKS] = {0, 1, 2, 3};
+static Slot_t Slot[AudioMixer::TRACKS] = {0, 1, 2, 3, 4};
 #endif
 
 #if 1 // ============================== Thread =================================
@@ -308,6 +311,10 @@ void FlasksSnd_t::SetupVolume(int32_t Volume) {
     else Codec.SetMasterVolume(-99);
 }
 
+void FlasksSnd_t::SetSlotVolume(uint8_t ASlot, int32_t Volume) {
+    MsgQSnd.SendNowOrExit(SndMsg_t(sndCmdVolume, ASlot, Volume));
+}
+
 bool FlasksSnd_t::IsIdle() {
     for(uint32_t i=1; i<mixer.TRACKS; i++) {
         if(Slot[i].Busy) return false;
@@ -332,7 +339,26 @@ void FlasksSnd_t::PlayAlive() {
     MsgQSnd.SendNowOrExit(SndMsg_t(sndcmdStart, 0, &FNameAlive, DO_NOT_REPEAT, evtIdNone));
 }
 
+void FlasksSnd_t::PlayAdd(uint8_t ASlot) {
+    MsgQSnd.SendNowOrExit(SndMsg_t(sndcmdStart, ASlot, &FNameAdd, DO_NOT_REPEAT, evtIdNone));
+}
+
+void FlasksSnd_t::PlayRemove(uint8_t ASlot) {
+    MsgQSnd.SendNowOrExit(SndMsg_t(sndcmdStart, ASlot, &FNameRemove, DO_NOT_REPEAT, evtIdNone));
+}
+
+void FlasksSnd_t::PlayBackgroundIfNotYet() {
+    if(!Slot[BACKGROUND_SLOT].Busy) {
+        MsgQSnd.SendNowOrExit(SndMsg_t(sndcmdStart, BACKGROUND_SLOT, &FNameBackground, REPEAT, evtIdNone));
+    }
+}
+
+void FlasksSnd_t::StopBackground() {
+    MsgQSnd.SendNowOrExit(SndMsg_t(sndcmdStop, BACKGROUND_SLOT));
+}
+
 void FlasksSnd_t::OnTrackEnd(int SlotN) {
+//    Printf("%S %u\r", __FUNCTION__, SlotN);
     // Play either next file or Hum
 //        Printf("Now1: %u; Next: %u\r", NowFName.length(), NextFName.length());
 //    if(NextFName.length() > 0) {

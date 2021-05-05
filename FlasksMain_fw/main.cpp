@@ -26,6 +26,7 @@ static void OnCmd(Shell_t *PShell);
 
 //static bool UsbPinWasHi = false;
 LedBlinker_t Led{LED_PIN};
+TmrKL_t TmrBckgStop{TIME_MS2I(4500), evtIdBckgStop, tktOneShot};
 #endif
 
 #if 1 // ========= Lume =========
@@ -90,16 +91,18 @@ int main() {
 //    if(SD.IsReady) {
 //    }
 
-    Sound.Init();
-    Sound.SetupVolume(81);
-    Sound.PlayAlive();
-
     // Time
     BackupSpc::EnableAccess();
     ClrH.DWord32 = BackupSpc::ReadRegister(BCKP_REG_CLRH_INDX);
     ClrM.DWord32 = BackupSpc::ReadRegister(BCKP_REG_CLRM_INDX);
     InitMirilli();
     Time.Init();
+
+    Sound.Init();
+    Sound.SetupVolume(81);
+    Sound.PlayAlive();
+    Sound.SetSlotVolume(BACKGROUND_SLOT, 2048);
+    chThdSleepMilliseconds(999);
 
     // Points
     Npx.Init();
@@ -136,6 +139,26 @@ void ITask() {
 //                    UsbPinWasHi = false;
 //                    EvtQMain.SendNowOrExit(EvtMsg_t(evtIdUsbDisconnect));
 //                }
+                break;
+
+            // Points
+            case evtIdPointsSet:
+                Sound.PlayBackgroundIfNotYet();
+                TmrBckgStop.StartOrRestart();
+                break;
+            case evtIdPointsAdd:
+                Sound.PlayAdd(Msg.Value);
+                Sound.PlayBackgroundIfNotYet();
+                TmrBckgStop.StartOrRestart();
+                break;
+            case evtIdPointsRemove:
+                Sound.PlayRemove(Msg.Value);
+                Sound.PlayBackgroundIfNotYet();
+                TmrBckgStop.StartOrRestart();
+                break;
+
+            case evtIdBckgStop:
+                Sound.StopBackground();
                 break;
 
 #if 0 // ======= USB =======

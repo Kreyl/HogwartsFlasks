@@ -24,7 +24,7 @@ public:
 
     static const uint16_t MAX_LEVEL = AudioTrack::MAX_LEVEL;
 
-    static const int TRACKS = 4;
+    static const int TRACKS = 5;
 
     static const size_t AUDIOMIXER_BUFFER_LENGTH = AUDIOMIXER_BUFFER_SIZE / 4;
 

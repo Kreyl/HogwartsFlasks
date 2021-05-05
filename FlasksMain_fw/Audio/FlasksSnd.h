@@ -12,9 +12,10 @@
 
 // Slots
 #define ALL_SLOTS           0xFF
+#define BACKGROUND_SLOT     4
 
-#define FADE_DURATION_ms    36
-#define START_STOP_FADE_DUR 504
+#define FADE_DURATION_ms    450
+#define START_STOP_FADE_DUR 450
 #endif
 
 class SndDir_t {
@@ -44,11 +45,15 @@ private:
 public:
     void Init();
     void SetupVolume(int32_t Volume);
+    void SetSlotVolume(uint8_t ASlot, int32_t Volume);
     bool IsIdle();
     void StopAll();
     // ==== Sound effects ====
     void PlayAlive();
-    void PlayAdd(uint8_t ASlot) { IPlayDir(DirAdd, ASlot, DO_NOT_REPEAT, evtIdNone); }
+    void PlayAdd(uint8_t ASlot);
+    void PlayRemove(uint8_t ASlot);
+    void PlayBackgroundIfNotYet();
+    void StopBackground();
     void OnTrackEnd(int SlotN);
 };
 

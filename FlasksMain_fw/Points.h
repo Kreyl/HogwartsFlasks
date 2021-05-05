@@ -9,6 +9,11 @@
 
 #include <inttypes.h>
 
+#define INDX_GRIF           0
+#define INDX_SLYZE          1
+#define INDX_RAVE           2
+#define INDX_HUFF           3
+
 namespace Points {
 
 void Init();
