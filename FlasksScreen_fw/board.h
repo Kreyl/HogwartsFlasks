@@ -8,8 +8,8 @@
 #pragma once
 
 // ==== General ====
-#define BOARD_NAME          "HogwartsFlasks01"
-#define APP_NAME            "HogwartsFlasks"
+#define BOARD_NAME          "HogwartsFlasks02"
+#define APP_NAME            "HogwartsScreen"
 
 // MCU type as defined in the ST header.
 #define STM32F767xx
@@ -63,6 +63,11 @@
 #define UART_TX_PIN     GPIOG, 14
 #define UART_RX_PIN     GPIOG, 9
 
+// RS485
+#define RS485_TXEN      GPIOC, 8, AF7
+#define RS485_TX        GPIOC, 12
+#define RS485_RX        GPIOD, 2
+
 // SD
 #define SDC_DRV         SDCD2
 #define SD_PWR_PIN      GPIOB, 2
@@ -72,6 +77,10 @@
 #define SD_DAT3         GPIOB,  4, omPushPull, pudPullUp, AF10
 #define SD_CLK          GPIOD,  6, omPushPull, pudNone,   AF11
 #define SD_CMD          GPIOD,  7, omPushPull, pudPullUp, AF11
+
+// LCD
+#define LCD_BCKLT       GPIOF, 6, TIM10, 1, invNotInverted, omPushPull, 99
+#define LCD_DISP        GPIOD, 4
 
 // USB
 #define USB_DETECT_PIN  GPIOA, 9
@@ -108,32 +117,44 @@
 
 #if 1 // =========================== DMA =======================================
 #define STM32_DMA_REQUIRED  TRUE
-// ==== Uart ====
-// Remap is made automatically if required
-#define UART_DMA_TX     STM32_DMA_STREAM_ID(2, 6)
+
+// === DMA1 ===
+#define RS485_DMA_RX    STM32_DMA_STREAM_ID(1, 0)
+#define SPI2_DMA_RX     STM32_DMA_STREAM_ID(1, 1)
+#define MEMCPY_DMA      STM32_DMA_STREAM_ID(1, 2)
+#define SPI2_DMA_TX     STM32_DMA_STREAM_ID(1, 4)
+#define I2C1_DMA_RX     STM32_DMA_STREAM_ID(1, 5)
+#define I2C1_DMA_TX     STM32_DMA_STREAM_ID(1, 6)
+#define RS485_DMA_TX    STM32_DMA_STREAM_ID(1, 7)
+
+// Channels DMA1
+#define SPI2TX_DMA_CHNL 0
+#define I2C1_DMA_CHNL   1
+#define RS485_DMA_CHNL  4
+#define SPI2RX_DMA_CHNL 9
+
+// === DMA2 ===
+#define STM32_SDC_SDMMC2_DMA_STREAM STM32_DMA_STREAM_ID(2, 0)
 #define UART_DMA_RX     STM32_DMA_STREAM_ID(2, 1)
+#define SAI_DMA_A       STM32_DMA_STREAM_ID(2, 2)
+#define JPEG_DMA_IN     STM32_DMA_STREAM_ID(2, 3)
+#define JPEG_DMA_OUT    STM32_DMA_STREAM_ID(2, 4)
+#define NPX2_DMA        STM32_DMA_STREAM_ID(2, 5)  // SPI1 TX
+#define NPX_DMA         STM32_DMA_STREAM_ID(2, 6)  // SPI5 TX
+#define UART_DMA_TX     STM32_DMA_STREAM_ID(2, 7)
+
+// Channels DMA2
+#define NPX2_DMA_CHNL   3
 #define UART_DMA_CHNL   5
+#define NPX_DMA_CHNL    7
+#define JPEG_DMA_CHNL   9
+#define SAI_DMA_CHNL    10
+#define SDMMC_DMA_CHNL  11
+
+// Modes
+#define MEMCPY_DMA_TX_MODE(Chnl) (STM32_DMA_CR_CHSEL(Chnl) | DMA_PRIORITY_HIGH | STM32_DMA_CR_MSIZE_WORD | STM32_DMA_CR_PSIZE_WORD | STM32_DMA_CR_MINC | STM32_DMA_CR_DIR_M2M)
 #define UART_DMA_TX_MODE(Chnl) (STM32_DMA_CR_CHSEL(Chnl) | DMA_PRIORITY_LOW | STM32_DMA_CR_MSIZE_BYTE | STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MINC | STM32_DMA_CR_DIR_M2P | STM32_DMA_CR_TCIE)
 #define UART_DMA_RX_MODE(Chnl) (STM32_DMA_CR_CHSEL(Chnl) | DMA_PRIORITY_MEDIUM | STM32_DMA_CR_MSIZE_BYTE | STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MINC | STM32_DMA_CR_DIR_P2M | STM32_DMA_CR_CIRC)
-
-// NPX
-#define NPX_DMA         STM32_DMA_STREAM_ID(2, 4)  // SPI5 TX
-#define NPX_DMA_CHNL    2
-#define NPX2_DMA        STM32_DMA_STREAM_ID(2, 3)  // SPI1 TX
-#define NPX2_DMA_CHNL   3
-
-#if I2C1_ENABLED // ==== I2C1 ====
-#define I2C1_DMA_TX     STM32_DMA1_STREAM6
-#define I2C1_DMA_RX     STM32_DMA1_STREAM5
-#endif
-#if I2C2_ENABLED // ==== I2C2 ====
-#define I2C2_DMA_TX     STM32_DMA1_STREAM7
-#define I2C2_DMA_RX     STM32_DMA1_STREAM3
-#endif
-
-// ==== SDMMC ====
-#define STM32_SDC_SDMMC2_DMA_STREAM     STM32_DMA_STREAM_ID(2, 0)
-
 
 #if ADC_REQUIRED
 #define ADC_DMA         STM32_DMA_STREAM_ID(2, 0)
@@ -151,10 +172,8 @@
 
 #if 1 // ========================== USART ======================================
 #define PRINTF_FLOAT_EN TRUE
-#define UART_TXBUF_SZ   8192
+#define UART_TXBUF_SZ   2048
 #define UART_RXBUF_SZ   99
-
-#define UARTS_CNT       1
 
 #define CMD_UART        USART6
 
@@ -162,5 +181,11 @@
     CMD_UART, UART_TX_PIN, UART_RX_PIN, \
     UART_DMA_TX, UART_DMA_RX, UART_DMA_TX_MODE(UART_DMA_CHNL), UART_DMA_RX_MODE(UART_DMA_CHNL), \
     uartclkHSI
+
+#define RS485_PARAMS \
+    UART5, RS485_TX, RS485_RX, \
+    RS485_DMA_TX, RS485_DMA_RX, UART_DMA_TX_MODE(RS485_DMA_CHNL), UART_DMA_RX_MODE(RS485_DMA_CHNL), \
+    uartclkHSI // Use independent clock
+
 
 #endif

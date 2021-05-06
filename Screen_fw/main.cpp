@@ -72,7 +72,7 @@ int main() {
     chSysInit();
 
     // ==== Init Hard & Soft ====
-//    SdramInit();
+    SdramInit();
     EvtQMain.Init();
     Uart.Init();
     Printf("\r%S %S\r\n", APP_NAME, XSTRINGIFY(BUILD_TIME));

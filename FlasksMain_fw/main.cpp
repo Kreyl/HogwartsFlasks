@@ -20,13 +20,17 @@
 // Forever
 EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> EvtQMain;
 static const UartParams_t CmdUartParams(115200, CMD_UART_PARAMS);
-CmdUart_t Uart{&CmdUartParams};
+CmdUart_t Uart{CmdUartParams};
+
+static const UartParams_t RS485Params(19200, RS485_PARAMS);
+HostUart485_t RS485{RS485Params, RS485_TXEN};
+
 static void ITask();
 static void OnCmd(Shell_t *PShell);
 
 //static bool UsbPinWasHi = false;
 LedBlinker_t Led{LED_PIN};
-TmrKL_t TmrBckgStop{TIME_MS2I(4500), evtIdBckgStop, tktOneShot};
+TmrKL_t TmrBckgStop{TIME_MS2I(7200), evtIdBckgStop, tktOneShot};
 #endif
 
 #if 1 // ========= Lume =========
@@ -88,8 +92,6 @@ int main() {
 //    Lora.Init();
 
     SD.Init();
-//    if(SD.IsReady) {
-//    }
 
     // Time
     BackupSpc::EnableAccess();
@@ -102,11 +104,13 @@ int main() {
     Sound.SetupVolume(81);
     Sound.PlayAlive();
     Sound.SetSlotVolume(BACKGROUND_SLOT, 2048);
-    chThdSleepMilliseconds(999);
+    chThdSleepMilliseconds(1535);
 
     // Points
     Npx.Init();
     Points::Init();
+
+    RS485.Init();
 
     // USB
 //    UsbMsdCdc.Init();
@@ -116,20 +120,27 @@ int main() {
     ITask();
 }
 
+void SendScreenCmd() {
+    int32_t AGrif, ASlyze, ARave, AHuff;
+    Points::GetDisplayed(&AGrif, &ASlyze, &ARave, &AHuff);
+    int32_t Sum = AGrif + ASlyze + ARave + AHuff;
+    RS485.SendBroadcast(0, 1, "Set", "%d %d %d %d %d", AGrif, ASlyze, ARave, AHuff, Sum);
+}
+
 __noreturn
 void ITask() {
     while(true) {
         EvtMsg_t Msg = EvtQMain.Fetch(TIME_INFINITE);
         switch(Msg.ID) {
-            case evtIdShellCmd:
+            case evtIdUartCmdRcvd:
                 Led.StartOrRestart(lsqCmd);
-                OnCmd((Shell_t*)Msg.Ptr);
-                ((Shell_t*)Msg.Ptr)->SignalCmdProcessed();
+                while(((CmdUart_t*)Msg.Ptr)->TryParseRxBuff() == retvOk) OnCmd((Shell_t*)((CmdUart_t*)Msg.Ptr));
                 break;
 
             case evtIdEverySecond:
 //                Printf("Second\r");
                 IndicateNewSecond();
+//                RS485.SendBroadcast(6, 2, "Ping");
 //                // Check if USB connected/disconnected
 //                if(PinIsHi(USB_DETECT_PIN) and !UsbPinWasHi) {
 //                    UsbPinWasHi = true;
@@ -150,11 +161,13 @@ void ITask() {
                 Sound.PlayAdd(Msg.Value);
                 Sound.PlayBackgroundIfNotYet();
                 TmrBckgStop.StartOrRestart();
+                SendScreenCmd();
                 break;
             case evtIdPointsRemove:
                 Sound.PlayRemove(Msg.Value);
                 Sound.PlayBackgroundIfNotYet();
                 TmrBckgStop.StartOrRestart();
+                SendScreenCmd();
                 break;
 
             case evtIdBckgStop:
@@ -211,16 +224,16 @@ void OnCmd(Shell_t *PShell) {
 //    Printf("%S  ", PCmd->Name);
 
     // Handle command
-    if(PCmd->NameIs("Ping")) PShell->Ack(retvOk);
+    if(PCmd->NameIs("Ping")) PShell->Ok();
     else if(PCmd->NameIs("Version")) PShell->Print("%S %S\r\n", APP_NAME, XSTRINGIFY(BUILD_TIME));
     else if(PCmd->NameIs("mem")) PrintMemoryInfo();
 
 
     else if(PCmd->NameIs("clr")) {
         Color_t Clr;
-        if(PCmd->GetNext<uint8_t>(&Clr.R) != retvOk) { PShell->Ack(retvCmdError); return; }
-        if(PCmd->GetNext<uint8_t>(&Clr.G) != retvOk) { PShell->Ack(retvCmdError); return; }
-        if(PCmd->GetNext<uint8_t>(&Clr.B) != retvOk) { PShell->Ack(retvCmdError); return; }
+        if(PCmd->GetNext<uint8_t>(&Clr.R) != retvOk) { PShell->CmdError(); return; }
+        if(PCmd->GetNext<uint8_t>(&Clr.G) != retvOk) { PShell->CmdError(); return; }
+        if(PCmd->GetNext<uint8_t>(&Clr.B) != retvOk) { PShell->CmdError(); return; }
         for(int i=0; i<2; i++) Npx.ClrBuf[i] = Clr;
         Npx.SetCurrentColors();
     }
@@ -240,46 +253,46 @@ void OnCmd(Shell_t *PShell) {
         Time.Curr = dt;
         Time.SetDateTime();
         IndicateNewSecond();
-        PShell->Ack(retvOk);
+        PShell->Ok();
     }
 
     else if(PCmd->NameIs("Fast")) {
         Time.BeFast();
-        PShell->Ack(retvOk);
+        PShell->Ok();
     }
     else if(PCmd->NameIs("Norm")) {
         Time.BeNormal();
-        PShell->Ack(retvOk);
+        PShell->Ok();
     }
 
     else if(PCmd->NameIs("ClrH")) {
         Color_t Clr;
-        if(PCmd->GetNext<uint8_t>(&Clr.R) != retvOk) { PShell->Ack(retvCmdError); return; }
-        if(PCmd->GetNext<uint8_t>(&Clr.G) != retvOk) { PShell->Ack(retvCmdError); return; }
-        if(PCmd->GetNext<uint8_t>(&Clr.B) != retvOk) { PShell->Ack(retvCmdError); return; }
+        if(PCmd->GetNext<uint8_t>(&Clr.R) != retvOk) { PShell->CmdError(); return; }
+        if(PCmd->GetNext<uint8_t>(&Clr.G) != retvOk) { PShell->CmdError(); return; }
+        if(PCmd->GetNext<uint8_t>(&Clr.B) != retvOk) { PShell->CmdError(); return; }
         ClrH = Clr;
         BackupSpc::WriteRegister(BCKP_REG_CLRH_INDX, Clr.DWord32);
-        PShell->Ack(retvOk);
+        PShell->Ok();
     }
     else if(PCmd->NameIs("ClrM")) {
         Color_t Clr;
-        if(PCmd->GetNext<uint8_t>(&Clr.R) != retvOk) { PShell->Ack(retvCmdError); return; }
-        if(PCmd->GetNext<uint8_t>(&Clr.G) != retvOk) { PShell->Ack(retvCmdError); return; }
-        if(PCmd->GetNext<uint8_t>(&Clr.B) != retvOk) { PShell->Ack(retvCmdError); return; }
+        if(PCmd->GetNext<uint8_t>(&Clr.R) != retvOk) { PShell->CmdError(); return; }
+        if(PCmd->GetNext<uint8_t>(&Clr.G) != retvOk) { PShell->CmdError(); return; }
+        if(PCmd->GetNext<uint8_t>(&Clr.B) != retvOk) { PShell->CmdError(); return; }
         ClrM = Clr;
         BackupSpc::WriteRegister(BCKP_REG_CLRM_INDX, Clr.DWord32);
-        PShell->Ack(retvOk);
+        PShell->Ok();
     }
 #endif
 
     else if(PCmd->NameIs("Set")) {
         int32_t Grif, Slyze, Rave, Huff;
-        if(PCmd->GetNext<int32_t>(&Grif) != retvOk) { PShell->Ack(retvCmdError); return; }
-        if(PCmd->GetNext<int32_t>(&Slyze) != retvOk) { PShell->Ack(retvCmdError); return; }
-        if(PCmd->GetNext<int32_t>(&Rave) != retvOk) { PShell->Ack(retvCmdError); return; }
-        if(PCmd->GetNext<int32_t>(&Huff) != retvOk) { PShell->Ack(retvCmdError); return; }
+        if(PCmd->GetNext<int32_t>(&Grif) != retvOk) { PShell->CmdError(); return; }
+        if(PCmd->GetNext<int32_t>(&Slyze) != retvOk) { PShell->CmdError(); return; }
+        if(PCmd->GetNext<int32_t>(&Rave) != retvOk) { PShell->CmdError(); return; }
+        if(PCmd->GetNext<int32_t>(&Huff) != retvOk) { PShell->CmdError(); return; }
         Points::Set(Grif, Slyze, Rave, Huff);
-        PShell->Ack(retvOk);
+        PShell->Ok();
     }
 
     else if(PCmd->NameIs("Get")) {
@@ -288,7 +301,7 @@ void OnCmd(Shell_t *PShell) {
 
     else {
         Printf("%S\r\n", PCmd->Name);
-        PShell->Ack(retvCmdUnknown);
+        PShell->CmdUnknown();
     }
 }
 #endif

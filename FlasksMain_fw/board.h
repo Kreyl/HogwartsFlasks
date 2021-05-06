@@ -63,6 +63,11 @@
 #define UART_TX_PIN     GPIOG, 14
 #define UART_RX_PIN     GPIOG, 9
 
+// RS485
+#define RS485_TXEN      GPIOC, 8, AF7
+#define RS485_TX        GPIOC, 12
+#define RS485_RX        GPIOD, 2
+
 // SD
 #define SDC_DRV         SDCD2
 #define SD_PWR_PIN      GPIOB, 2
@@ -140,6 +145,7 @@
 #define SPI2_DMA_TX     STM32_DMA_STREAM_ID(1, 4)
 #define I2C1_DMA_RX     STM32_DMA_STREAM_ID(1, 5)
 #define I2C1_DMA_TX     STM32_DMA_STREAM_ID(1, 6)
+#define RS485_DMA_TX    STM32_DMA_STREAM_ID(1, 7)
 
 // Channels DMA1
 #define SPI2TX_DMA_CHNL 0
@@ -187,10 +193,8 @@
 
 #if 1 // ========================== USART ======================================
 #define PRINTF_FLOAT_EN TRUE
-#define UART_TXBUF_SZ   4096
+#define UART_TXBUF_SZ   2048
 #define UART_RXBUF_SZ   99
-
-#define UARTS_CNT       1
 
 #define CMD_UART        USART6
 
@@ -198,5 +202,10 @@
     CMD_UART, UART_TX_PIN, UART_RX_PIN, \
     UART_DMA_TX, UART_DMA_RX, UART_DMA_TX_MODE(UART_DMA_CHNL), UART_DMA_RX_MODE(UART_DMA_CHNL), \
     uartclkHSI
+
+#define RS485_PARAMS \
+    UART5, RS485_TX, RS485_RX, \
+    RS485_DMA_TX, RS485_DMA_RX, UART_DMA_TX_MODE(RS485_DMA_CHNL), UART_DMA_RX_MODE(RS485_DMA_CHNL), \
+    uartclkHSI // Use independent clock
 
 #endif

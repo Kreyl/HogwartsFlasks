@@ -335,6 +335,13 @@ void Set(int32_t AGrif, int32_t ASlyze, int32_t ARave, int32_t AHuff) {
     EvtQMain.SendNowOrExit(EvtMsg_t(evtIdPointsSet));
 }
 
+void GetDisplayed(int32_t *AGrif, int32_t *ASlyze, int32_t *ARave, int32_t *AHuff) {
+    *AGrif = Flasks[INDX_GRIF].DisplayedPoints;
+    *ASlyze = Flasks[INDX_SLYZE].DisplayedPoints;
+    *ARave = Flasks[INDX_RAVE].DisplayedPoints;
+    *AHuff = Flasks[INDX_HUFF].DisplayedPoints;
+}
+
 void Print() {
     Printf("%d %d %d %d / %d %d %d %d\r",
             Flasks[INDX_GRIF].TargetPoints,
