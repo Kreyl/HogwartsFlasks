@@ -34,8 +34,6 @@ TmrKL_t TmrBckgStop{TIME_MS2I(7200), evtIdBckgStop, tktOneShot};
 #endif
 
 #if 1 // ========= Lume =========
-#define BCKP_REG_CLRH_INDX  1
-#define BCKP_REG_CLRM_INDX  2
 static void IndicateNewSecond();
 Color_t ClrH(0, 0, 255);
 Color_t ClrM(0, 255, 0);
@@ -102,9 +100,12 @@ int main() {
 
     Sound.Init();
     Sound.SetupVolume(81);
-    Sound.PlayAlive();
     Sound.SetSlotVolume(BACKGROUND_SLOT, 2048);
+    Sound.PlayAlive();
     chThdSleepMilliseconds(1535);
+    uint32_t Volume = BackupSpc::ReadRegister(BCKP_REG_VOLUME_INDX);
+    if(Volume > 100) Volume = 100;
+    Sound.SetupVolume(Volume);
 
     // Points
     Npx.Init();
@@ -228,6 +229,14 @@ void OnCmd(Shell_t *PShell) {
     else if(PCmd->NameIs("Version")) PShell->Print("%S %S\r\n", APP_NAME, XSTRINGIFY(BUILD_TIME));
     else if(PCmd->NameIs("mem")) PrintMemoryInfo();
 
+    else if(PCmd->NameIs("Volume")) {
+        uint8_t Volume;
+        if(PCmd->GetNext<uint8_t>(&Volume) != retvOk) return;
+        if(Volume > 100) Volume = 100;
+        Sound.SetupVolume(Volume);
+        BackupSpc::WriteRegister(BCKP_REG_VOLUME_INDX, Volume);
+        PShell->Ok();
+    }
 
     else if(PCmd->NameIs("clr")) {
         Color_t Clr;
@@ -256,6 +265,7 @@ void OnCmd(Shell_t *PShell) {
         PShell->Ok();
     }
 
+    // Time speed
     else if(PCmd->NameIs("Fast")) {
         Time.BeFast();
         PShell->Ok();
@@ -265,6 +275,7 @@ void OnCmd(Shell_t *PShell) {
         PShell->Ok();
     }
 
+    // Clock colors
     else if(PCmd->NameIs("ClrH")) {
         Color_t Clr;
         if(PCmd->GetNext<uint8_t>(&Clr.R) != retvOk) { PShell->CmdError(); return; }
@@ -297,6 +308,19 @@ void OnCmd(Shell_t *PShell) {
 
     else if(PCmd->NameIs("Get")) {
         Points::Print();
+    }
+
+
+    else if(PCmd->NameIs("help")) {
+        PShell->Print("%S %S\r\n", APP_NAME, XSTRINGIFY(BUILD_TIME));
+        Printf( "Volume <0..100>\r"
+                "SetTime <Year> <Month> <Day> <H> <M>\r"
+                "GetTime\r"
+                "ClrH <R> <G> <B>  - color of hour miril\r"
+                "ClrM <R> <G> <B>  - color of minute miril\r"
+                "Set <Grif> <Slyze> <Rave> <Huff> - set points\r"
+                "Get - get current points\r"
+        );
     }
 
     else {

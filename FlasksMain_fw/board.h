@@ -31,6 +31,18 @@
 
 #define ADC_REQUIRED            FALSE
 
+#if 1 // ===================== Backup regs addresses ===========================
+#define BCKP_REG_SETUP_INDX     0
+#define BCKP_REG_CLRH_INDX      1
+#define BCKP_REG_CLRM_INDX      2
+#define BCKP_REG_VOLUME_INDX    9
+#define BCKP_REG_GRIF_INDX      11
+#define BCKP_REG_SLYZ_INDX      12
+#define BCKP_REG_RAVE_INDX      13
+#define BCKP_REG_HUFF_INDX      14
+
+#endif
+
 #if 1 // ========================== GPIO =======================================
 // EXTI
 #define INDIVIDUAL_EXTI_IRQ_REQUIRED    FALSE

@@ -11,8 +11,6 @@
 #include "kl_lib.h"
 #include "uart.h"
 
-#define BCKP_REG_SETUP_INDX 0
-
 #define SECS_IN_A_DAY       (24UL * 60UL * 60UL)
 #define YEAR_MIN            2000
 #define YEAR_MAX            2099

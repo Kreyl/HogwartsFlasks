@@ -13,11 +13,6 @@
 #include "EvtMsgIDs.h"
 
 #if 1 // =============================== Defines ===============================
-#define BCKP_REG_GRIF_INDX  11
-#define BCKP_REG_SLYZ_INDX  12
-#define BCKP_REG_RAVE_INDX  13
-#define BCKP_REG_HUFF_INDX  14
-
 #define FLASK_MAX_VALUE     1000L
 #define FLASK_OFF_CLR       clBlack
 #define EFF_LED2LED_DIST    27
