@@ -12,7 +12,7 @@
 #include "Mirilli.h"
 //#include "usb_msdcdc.h"
 #include "sdram.h"
-//#include "Lora.h"
+#include "Lora.h"
 #include "FlasksSnd.h"
 #include "Points.h"
 
@@ -76,7 +76,7 @@ int main() {
     halInit();
     chSysInit();
     // ==== Init Hard & Soft ====
-    SdramInit();
+//    SdramInit();
     EvtQMain.Init();
     Uart.Init();
     Printf("\r%S %S\r\n", APP_NAME, XSTRINGIFY(BUILD_TIME));
@@ -87,31 +87,33 @@ int main() {
     Led.StartOrRestart(lsqIdle);
 
 //    SdramCheck();
-//    Lora.Init();
+    Lora.Init();
 
-    SD.Init();
+//    SD.Init();
 
     // Time
-    BackupSpc::EnableAccess();
-    ClrH.DWord32 = BackupSpc::ReadRegister(BCKP_REG_CLRH_INDX);
-    ClrM.DWord32 = BackupSpc::ReadRegister(BCKP_REG_CLRM_INDX);
-    InitMirilli();
-    Time.Init();
+//    BackupSpc::EnableAccess();
+//    ClrH.DWord32 = BackupSpc::ReadRegister(BCKP_REG_CLRH_INDX);
+//    ClrM.DWord32 = BackupSpc::ReadRegister(BCKP_REG_CLRM_INDX);
+//    InitMirilli();
+//    Time.Init();
 
-    Sound.Init();
-    Sound.SetupVolume(81);
-    Sound.SetSlotVolume(BACKGROUND_SLOT, 2048);
-    Sound.PlayAlive();
-    chThdSleepMilliseconds(1535);
-    uint32_t Volume = BackupSpc::ReadRegister(BCKP_REG_VOLUME_INDX);
-    if(Volume > 100) Volume = 100;
-    Sound.SetupVolume(Volume);
+//    Sound.Init();
+//    Sound.SetupVolume(81);
+//    Sound.SetSlotVolume(BACKGROUND_SLOT, 2048);
+//    Sound.PlayAlive();
+//    chThdSleepMilliseconds(1535);
+//    uint32_t Volume = BackupSpc::ReadRegister(BCKP_REG_VOLUME_INDX);
+//    if(Volume > 100) Volume = 100;
+//    Sound.SetupVolume(Volume);
 
     // Points
     Npx.Init();
-    Points::Init();
-
-    RS485.Init();
+    Npx.SetAll(clBlack);
+    Npx.SetCurrentColors();
+//    Points::Init();
+//
+//    RS485.Init();
 
     // USB
 //    UsbMsdCdc.Init();

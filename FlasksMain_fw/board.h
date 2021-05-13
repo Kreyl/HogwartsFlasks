@@ -64,12 +64,12 @@
 #define NPX2_AF         AF5
 
 // ==== Lora ====
-#define LORA_SPI        SPI2
-#define LORA_SCK        GPIOB, 13, omPushPull, pudNone, AF5
-#define LORA_MISO       GPIOC,  2, omPushPull, pudNone, AF5
-#define LORA_MOSI       GPIOC,  3, omPushPull, pudNone, AF5
-#define LORA_NSS        GPIOB, 12
-#define LORA_NRESET     GPIOC, 10
+#define SX_SPI          SPI2
+#define SX_SCK          GPIOB, 13, omPushPull, pudNone, AF5
+#define SX_MISO         GPIOC,  2, omPushPull, pudNone, AF5
+#define SX_MOSI         GPIOC,  3, omPushPull, pudNone, AF5
+#define SX_NSS          GPIOB, 12
+#define SX_NRESET       GPIOC, 10
 
 // UART
 #define UART_TX_PIN     GPIOG, 14
