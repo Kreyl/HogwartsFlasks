@@ -88,6 +88,11 @@ int main() {
 
 //    SdramCheck();
     Lora.Init();
+    Lora.SetChannel(868000000);
+    Lora.SetupTxConfigLora(2, bwLora125kHz, sprfact64chipsPersym, coderate4s5, true, 8);
+
+    uint8_t Try[9] = {1,2,3,4,5,6,7,8,9};
+    Lora.TransmitByLora(Try, 9);
 
 //    SD.Init();
 
@@ -230,6 +235,8 @@ void OnCmd(Shell_t *PShell) {
     if(PCmd->NameIs("Ping")) PShell->Ok();
     else if(PCmd->NameIs("Version")) PShell->Print("%S %S\r\n", APP_NAME, XSTRINGIFY(BUILD_TIME));
     else if(PCmd->NameIs("mem")) PrintMemoryInfo();
+
+    else if(PCmd->NameIs("st")) { Lora.PrintState(); }
 
     else if(PCmd->NameIs("Volume")) {
         uint8_t Volume;

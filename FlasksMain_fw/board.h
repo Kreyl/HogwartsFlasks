@@ -70,6 +70,10 @@
 #define SX_MOSI         GPIOC,  3, omPushPull, pudNone, AF5
 #define SX_NSS          GPIOB, 12
 #define SX_NRESET       GPIOC, 10
+#define SX_DIO0_GPIO    GPIOA
+#define SX_DIO0_PIN     0
+#define SX_DIO1_GPIO    GPIOC
+#define SX_DIO1_PIN     1
 
 // UART
 #define UART_TX_PIN     GPIOG, 14

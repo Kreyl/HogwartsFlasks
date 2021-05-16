@@ -998,16 +998,16 @@ extern void PrintfCNow(const char *format, ...);
 #if INDIVIDUAL_EXTI_IRQ_REQUIRED
 IrqHandler_t* ExtiIrqHandler[16];
 #else
-#if defined STM32L1XX || defined STM32F4XX || defined STM32F2XX || defined STM32L4XX || defined STM32F1XX
+#if defined STM32L1XX || defined STM32F4XX || defined STM32F2XX || defined STM32L4XX || defined STM32F1XX || defined STM32F7XX
 ftVoidVoid ExtiIrqHandler[5], ExtiIrqHandler_9_5, ExtiIrqHandler_15_10;
 #elif defined STM32F030 || defined STM32F0
 ftVoidVoid ExtiIrqHandler_0_1, ExtiIrqHandler_2_3, ExtiIrqHandler_4_15;
 #endif
 #endif // INDIVIDUAL_EXTI_IRQ_REQUIRED
 
-#if defined STM32L1XX || defined STM32F2XX || defined STM32L4XX || defined STM32F1XX
+#if defined STM32L1XX || defined STM32F2XX || defined STM32L4XX || defined STM32F1XX || defined STM32F7XX
 // EXTI pending register
-#if defined STM32L1XX || defined STM32F2XX || defined STM32F1XX
+#if defined STM32L1XX || defined STM32F2XX || defined STM32F1XX || defined STM32F7XX
 #define EXTI_PENDING_REG    EXTI->PR
 #elif defined STM32L4XX
 #define EXTI_PENDING_REG    EXTI->PR1
