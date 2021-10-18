@@ -12,7 +12,7 @@
 #include "Mirilli.h"
 //#include "usb_msdcdc.h"
 #include "sdram.h"
-//#include "Lora.h"
+#include "radio_lvl1.h"
 #include "FlasksSnd.h"
 #include "Points.h"
 
@@ -110,8 +110,9 @@ int main() {
     // Points
     Npx.Init();
     Points::Init();
-
     RS485.Init();
+
+    Radio.Init();
 
     // USB
 //    UsbMsdCdc.Init();
