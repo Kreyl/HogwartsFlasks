@@ -87,7 +87,6 @@ int main() {
     Led.StartOrRestart(lsqIdle);
 
 //    SdramCheck();
-//    Lora.Init();
 
     SD.Init();
 

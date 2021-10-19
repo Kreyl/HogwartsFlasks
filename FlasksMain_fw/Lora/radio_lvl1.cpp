@@ -44,16 +44,25 @@ __noreturn
 void rLevel1_t::ITask() {
     while(true) {
         uint8_t Len = RPKT_LEN;
-        Lora.SetupRxConfigLora(LORA_BW, LORA_SPREADRFCT, LORA_CODERATE, hdrmodeExplicit, 64);
+        Lora.SetupRxConfigLora(LORA_BW, LORA_SPREADRFCT, LORA_CODERATE, hdrmodeExplicit, Len);
         uint8_t Rslt = Lora.ReceiveByLora((uint8_t*)&PktRx, &Len, 27000);
-        if(Rslt == retvOk) {
+        if(Rslt == retvOk and PktRx.SaltPnt == RPKT_SALT) { // Additional check
             Printf("SNR: %d; RSSI: %d; Len: %u\r", Lora.RxParams.SNR, Lora.RxParams.RSSI, Len);
-            Points::Set(PktRx.Grif, PktRx.Slyze, PktRx.Rave, PktRx.Huff);
-            // Send reply
-            PktTx.Reply = 0xCA115EA1;
-            //chThdSleepMilliseconds(1);
-            Lora.SetupTxConfigLora(TX_PWR_dBm, LORA_BW, LORA_SPREADRFCT, LORA_CODERATE, hdrmodeExplicit);
-            Lora.TransmitByLora((uint8_t*)&PktTx, RPKT_LEN);
+            Printf("%A\r", &PktRx, RPKT_LEN, ' ');
+            if(PktRx.Grif  >= -999 and PktRx.Grif  <= 9999 and
+               PktRx.Slyze >= -999 and PktRx.Slyze <= 9999 and
+               PktRx.Rave  >= -999 and PktRx.Rave  <= 9999 and
+               PktRx.Huff  >= -999 and PktRx.Huff  <= 9999
+            ) {
+                Points::Set(PktRx.Grif, PktRx.Slyze, PktRx.Rave, PktRx.Huff);
+                // Send reply
+                PktTx.Reply = 0xCA115EA1;
+                PktTx.SaltRply = RPKT_SALT;
+                //chThdSleepMilliseconds(1);
+                Lora.SetupTxConfigLora(TX_PWR_dBm, LORA_BW, LORA_SPREADRFCT, LORA_CODERATE, hdrmodeExplicit);
+                Lora.TransmitByLora((uint8_t*)&PktTx, RPKT_LEN);
+            }
+            else Printf("Bad Values: %d %d %d %d\r", PktRx.Grif, PktRx.Slyze, PktRx.Rave, PktRx.Huff);
         }
         else if(Rslt == retvCRCError) Printf("CRC Err\r");
     } // while true
@@ -69,8 +78,8 @@ uint8_t rLevel1_t::Init() {
     //RMsgQ.Init();
     if(Lora.Init() == retvOk) {
         Lora.SetChannel(868000000);
-//        Lora.SetupTxConfigLora(TX_PWR_dBm, LORA_BW, LORA_SPREADRFCT, LORA_CODERATE, hdrmodeExplicit);
-//        Lora.SetupRxConfigLora(LORA_BW, LORA_SPREADRFCT, LORA_CODERATE, hdrmodeExplicit, 64);
+        Lora.SetupTxConfigLora(TX_PWR_dBm, LORA_BW, LORA_SPREADRFCT, LORA_CODERATE, hdrmodeExplicit);
+        Lora.SetupRxConfigLora(LORA_BW, LORA_SPREADRFCT, LORA_CODERATE, hdrmodeExplicit, 64);
         // Thread
         chThdCreateStatic(warLvl1Thread, sizeof(warLvl1Thread), HIGHPRIO, (tfunc_t)rLvl1Thread, NULL);
         return retvOk;

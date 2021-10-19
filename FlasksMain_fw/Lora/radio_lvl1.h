@@ -11,8 +11,12 @@
 union rPkt_t {
     struct {
         int16_t Grif, Slyze, Rave, Huff;
+        uint32_t SaltPnt;
     } __attribute__((__packed__));
-    uint32_t Reply;
+    struct {
+        uint32_t Reply;
+        uint32_t SaltRply;
+    } __attribute__((__packed__));
 //    rPkt_t& operator = (const rPkt_t &Right) {
 //        DW32 = Right.DW32;
 //        return *this;
@@ -20,17 +24,21 @@ union rPkt_t {
 } __attribute__ ((__packed__));
 #endif
 
+#define RPKT_SALT   0xF1170511 // Fly to sly
 #define RPKT_LEN    sizeof(rPkt_t)
 
 #if 1 // =================== Channels, cycles, Rssi  ===========================
 #define RCHNL_HZ        868000000
 
 // [2; 20]
-#define TX_PWR_dBm      5
-
-#define LORA_BW         bwLora125kHz
-#define LORA_SPREADRFCT sprfact128chipsPersym
-#define LORA_CODERATE   coderate4s5
+#define TX_PWR_dBm      11
+// bwLora125kHz, bwLora250kHz, bwLora500kHz
+#define LORA_BW         bwLora250kHz
+// sprfact64chipsPersym, sprfact128chipsPersym, sprfact256chipsPersym, sprfact512chipsPersym,
+// sprfact1024chipsPersym, sprfact2048chipsPersym, sprfact4096chipsPersym
+#define LORA_SPREADRFCT sprfact1024chipsPersym
+// coderate4s5, coderate4s6, coderate4s7, coderate4s8
+#define LORA_CODERATE   coderate4s8
 
 #endif
 
