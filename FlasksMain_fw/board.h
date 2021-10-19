@@ -74,6 +74,10 @@
 #define SX_DIO0_PIN     0
 #define SX_DIO1_GPIO    GPIOC
 #define SX_DIO1_PIN     1
+#define SX_DIO2_GPIO    GPIOE
+#define SX_DIO2_PIN     2
+#define SX_DIO3_GPIO    GPIOE
+#define SX_DIO3_PIN     3
 
 // UART
 #define UART_TX_PIN     GPIOG, 14

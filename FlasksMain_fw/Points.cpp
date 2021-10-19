@@ -14,6 +14,7 @@
 
 #if 1 // =============================== Defines ===============================
 #define FLASK_MAX_VALUE     1000L
+#define FLASK_MAX_INCREMENT 500L
 #define FLASK_OFF_CLR       clBlack
 #define EFF_LED2LED_DIST    27
 
@@ -120,9 +121,12 @@ public:
 
     void Redraw() {
         // Redraw value
-        CurrValueIndx = ((DisplayedPoints * LedCnt) / FlaskMaxValue);
+//        Printf("CVI: %u / ", CurrValueIndx);
+        CurrValueIndx = (DisplayedPoints * LedCnt) / FlaskMaxValue;
         if(CurrValueIndx == 0 and DisplayedPoints > 0) CurrValueIndx = 1;
-        if(CurrValueIndx < 0) CurrValueIndx = 0;
+        else if(CurrValueIndx < 0) CurrValueIndx = 0;
+        else if(CurrValueIndx >= LedCnt) CurrValueIndx = LedCnt - 1;
+//        Printf("%u\r", CurrValueIndx);
         if(StartIndx < EndIndx) { // Normal direction
             int32_t TargetLedID = StartIndx + CurrValueIndx;
             // Set LEDs on
@@ -315,11 +319,15 @@ void Set(int32_t AGrif, int32_t ASlyze, int32_t ARave, int32_t AHuff) {
     Flasks[INDX_HUFF].TargetPoints = AHuff;
 
     // Calculate scaling. Find max, min is always 0
-    int32_t max = FLASK_MAX_VALUE;
+    int32_t max = 0;
     if(AGrif  > max) max = AGrif;
     if(ASlyze > max) max = ASlyze;
     if(ARave  > max) max = ARave;
     if(AHuff  > max) max = AHuff;
+    // Construct new max value: 1000, 1500, 2000, 2500...
+    max = (1 + (max / FLASK_MAX_INCREMENT)) * FLASK_MAX_INCREMENT;
+    if(max < FLASK_MAX_VALUE) max = FLASK_MAX_VALUE;
+    // Rescale if needed
     if(max != FlaskMaxValue) {
         FlaskMaxValue = max;
         MsgQPoints.SendNowOrExit(PointMsg_t(pocmdRescale));

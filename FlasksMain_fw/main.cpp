@@ -12,7 +12,7 @@
 #include "Mirilli.h"
 //#include "usb_msdcdc.h"
 #include "sdram.h"
-#include "Lora.h"
+#include "radio_lvl1.h"
 #include "FlasksSnd.h"
 #include "Points.h"
 
@@ -76,7 +76,7 @@ int main() {
     halInit();
     chSysInit();
     // ==== Init Hard & Soft ====
-//    SdramInit();
+    SdramInit();
     EvtQMain.Init();
     Uart.Init();
     Printf("\r%S %S\r\n", APP_NAME, XSTRINGIFY(BUILD_TIME));
@@ -87,38 +87,31 @@ int main() {
     Led.StartOrRestart(lsqIdle);
 
 //    SdramCheck();
-    Lora.Init();
-    Lora.SetChannel(868000000);
-    Lora.SetupTxConfigLora(2, bwLora125kHz, sprfact64chipsPersym, coderate4s5, true, 8);
 
-    uint8_t Try[9] = {1,2,3,4,5,6,7,8,9};
-    Lora.TransmitByLora(Try, 9);
-
-//    SD.Init();
+    SD.Init();
 
     // Time
-//    BackupSpc::EnableAccess();
-//    ClrH.DWord32 = BackupSpc::ReadRegister(BCKP_REG_CLRH_INDX);
-//    ClrM.DWord32 = BackupSpc::ReadRegister(BCKP_REG_CLRM_INDX);
-//    InitMirilli();
-//    Time.Init();
+    BackupSpc::EnableAccess();
+    ClrH.DWord32 = BackupSpc::ReadRegister(BCKP_REG_CLRH_INDX);
+    ClrM.DWord32 = BackupSpc::ReadRegister(BCKP_REG_CLRM_INDX);
+    InitMirilli();
+    Time.Init();
 
-//    Sound.Init();
-//    Sound.SetupVolume(81);
-//    Sound.SetSlotVolume(BACKGROUND_SLOT, 2048);
-//    Sound.PlayAlive();
-//    chThdSleepMilliseconds(1535);
-//    uint32_t Volume = BackupSpc::ReadRegister(BCKP_REG_VOLUME_INDX);
-//    if(Volume > 100) Volume = 100;
-//    Sound.SetupVolume(Volume);
+    Sound.Init();
+    Sound.SetupVolume(81);
+    Sound.SetSlotVolume(BACKGROUND_SLOT, 2048);
+    Sound.PlayAlive();
+    chThdSleepMilliseconds(1535);
+    uint32_t Volume = BackupSpc::ReadRegister(BCKP_REG_VOLUME_INDX);
+    if(Volume > 100) Volume = 100;
+    Sound.SetupVolume(Volume);
 
     // Points
     Npx.Init();
-    Npx.SetAll(clBlack);
-    Npx.SetCurrentColors();
-//    Points::Init();
-//
-//    RS485.Init();
+    Points::Init();
+    RS485.Init();
+
+    Radio.Init();
 
     // USB
 //    UsbMsdCdc.Init();
@@ -235,8 +228,6 @@ void OnCmd(Shell_t *PShell) {
     if(PCmd->NameIs("Ping")) PShell->Ok();
     else if(PCmd->NameIs("Version")) PShell->Print("%S %S\r\n", APP_NAME, XSTRINGIFY(BUILD_TIME));
     else if(PCmd->NameIs("mem")) PrintMemoryInfo();
-
-    else if(PCmd->NameIs("st")) { Lora.PrintState(); }
 
     else if(PCmd->NameIs("Volume")) {
         uint8_t Volume;
