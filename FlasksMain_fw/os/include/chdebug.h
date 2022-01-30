@@ -18,7 +18,7 @@
 */
 
 /**
- * @file    rt/include/chdebug.h
+ * @file    chdebug.h
  * @brief   Debug support macros and structures.
  *
  * @addtogroup checks_assertions

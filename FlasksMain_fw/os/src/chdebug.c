@@ -18,7 +18,7 @@
 */
 
 /**
- * @file    rt/src/chdebug.c
+ * @file    chdebug.c
  * @brief   Debug support code.
  *
  * @addtogroup checks_assertions

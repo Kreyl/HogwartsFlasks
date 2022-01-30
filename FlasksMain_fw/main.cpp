@@ -9,63 +9,130 @@
 #include "kl_sd.h"
 #include "kl_fs_utils.h"
 #include "kl_time.h"
+#include "kl_i2c.h"
 #include "Mirilli.h"
 //#include "usb_msdcdc.h"
 #include "sdram.h"
-#include "radio_lvl1.h"
-#include "FlasksSnd.h"
-#include "Points.h"
+#include "lcdtft.h"
+#include "AviDecode.h"
+#include "CS42L52.h"
+#include "AuPlayer.h"
 
 #if 1 // =============== Defines ================
 // Forever
 EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> EvtQMain;
 static const UartParams_t CmdUartParams(115200, CMD_UART_PARAMS);
-CmdUart_t Uart{CmdUartParams};
-
-static const UartParams_t RS485Params(19200, RS485_PARAMS);
-HostUart485_t RS485{RS485Params, RS485_TXEN};
-
+CmdUart_t Uart{&CmdUartParams};
 static void ITask();
 static void OnCmd(Shell_t *PShell);
 
+CS42L52_t Codec;
+
 //static bool UsbPinWasHi = false;
 LedBlinker_t Led{LED_PIN};
-TmrKL_t TmrBckgStop{TIME_MS2I(7200), evtIdBckgStop, tktOneShot};
+static TmrKL_t TmrOneSecond {TIME_MS2I(999), evtIdEverySecond, tktPeriodic};
+static TmrKL_t TmrStandbyAudio {TIME_MS2I(4005), evtIdStandbyAudio, tktOneShot};
+
+static enum AppState_t {stateIdle, stateAudio, stateVideo} AppState = stateIdle;
+
+void InitAudio();
+void DeinitAudio();
+void InitVideo();
+void DeinitVideo();
+
+void PlayAudio(const char* AFName) {
+    if(AppState == stateIdle) InitAudio();
+    TmrStandbyAudio.Stop();
+    AuPlayer.Play(AFName, spmSingle);
+}
+
+void PlayVideo(const char* AFName) {
+    AuPlayer.Stop();
+    chThdSleepMilliseconds(360);
+    //    if(AuPlayer.IsPlayingNow())
+//    if(Codec.IsTransmitting())
+//        AuPlayer.WaitEnd();
+    if(AppState != stateVideo) InitVideo();
+    TmrStandbyAudio.Stop();
+    if(Avi::Start(AFName) != retvOk) EvtQMain.SendNowOrExit(EvtMsg_t(evtIdVideoPlayStop));
+}
+
 #endif
 
-#if 1 // ========= Lume =========
-static void IndicateNewSecond();
-Color_t ClrH(0, 0, 255);
-Color_t ClrM(0, 255, 0);
+#if 1 // ================================ Code =================================
+static const uint8_t Code[] = {7,3,5,1,2,6};
 
-class Hypertime_t {
-public:
-    void ConvertFromTime() {
-        // Hours
-        int32_t FH = Time.Curr.H;
-        if(FH > 11) FH -= 12;
-        if(H != FH) {
-            H = FH;
-            NewH = true;
+#define FILENAME2PLAY       "predmet.avi"
+
+#define CODE_LEN            countof(Code)
+#define BTN_CNT             8
+#define ENTERED_MAX_LEN     9
+#define CODE_TIMEOUT_S      4
+
+static const char* BtnFnames[BTN_CNT] = {"b1.wav", "b2.wav", "b3.wav", "b4.wav", "b5.wav", "b6.wav", "b7.wav", "b8.wav",};
+
+class CodeChecker_t {
+private:
+    uint32_t Cnt = 0;
+    uint8_t WhatEntered[ENTERED_MAX_LEN];
+    bool IsCorrect() {
+        if(Cnt != CODE_LEN) return false;
+        for(uint32_t i=0; i<Cnt; i++) {
+            if(WhatEntered[i] != Code[i]) return false;
         }
-        // Minutes
-        int32_t S = Time.Curr.M * 60 + Time.Curr.S;
-        int32_t FMin = S / 150;    // 150s in one hyperminute (== 2.5 minutes)
-        if(M != FMin) {
-            M = FMin;
-            NewM = true;
+        return true;
+    }
+    int32_t Timeout = 0;
+    bool IsPlayingBadCode = false;
+public:
+    void OnBtnPress(uint8_t BtnId) {
+        Printf("Btn %u\r", BtnId);
+        if(AuPlayer.IsPlayingNow()) {
+//            AuPlayer.WaitEnd();
+            AuPlayer.Stop();
+        }
+        if(IsPlayingBadCode) {
+            IsPlayingBadCode = false;
+            return;
+        }
+
+        PlayAudio(BtnFnames[BtnId]);
+        WhatEntered[Cnt++] = BtnId;
+        if(Cnt >= CODE_LEN) {
+            if(IsCorrect()) EvtQMain.SendNowOrExit(EvtMsg_t(evtIdCorrectCode));
+            else {
+//                EvtQMain.SendNowOrExit(EvtMsg_t(evtIdBadCode));
+                PlayAudio("lighting2.wav");
+                IsPlayingBadCode = true;
+            }
+            Cnt = 0;
+            Timeout = 0;
+        }
+        else Timeout = CODE_TIMEOUT_S;
+    }
+
+    void OnOneSecond() {
+        if(Timeout > 0) {
+            Timeout--;
+            if(Timeout <= 0) {
+                Cnt = 0; // Reset counter
+                if(!AuPlayer.IsPlayingNow()) PlayAudio("I_Error.wav");
+//                Printf("timeout\r");
+            }
         }
     }
-    int32_t H, M;
-    bool NewH = true, NewM = true;
-} Hypertime;
+
+} CodeChecker;
 #endif
 
 int main() {
+    Iwdg::InitAndStart(4005);
+    Iwdg::Reload();
     // ==== Setup clock ====
-    Clk.SetCoreClk160MHz();
+    Clk.SetCoreClk216MHz();
+//    Clk.SetCoreClk80MHz();
     Clk.Setup48Mhz();
-//    Clk.SetPllSai1RDiv(3, 8); // SAI R div = 3 => R = 2*96/3 = 64 MHz; LCD_CLK = 64 / 8 = 8MHz
+    Clk.SetPllSai1RDiv(3, 8); // SAI R div = 3 => R = 2*96/3 = 64 MHz; LCD_CLK = 64 / 8 = 8MHz
     // SAI clock: PLLSAI1 Q
     Clk.SetPllSai1QDiv(8, 1); // Q = 2 * 96 / 8 = 24; 24/1 = 24
     Clk.SetSai2ClkSrc(saiclkPllSaiQ);
@@ -75,57 +142,29 @@ int main() {
     // ==== Init OS ====
     halInit();
     chSysInit();
+
     // ==== Init Hard & Soft ====
-    SdramInit();
+//    SdramInit();
     EvtQMain.Init();
     Uart.Init();
     Printf("\r%S %S\r\n", APP_NAME, XSTRINGIFY(BUILD_TIME));
     Clk.PrintFreqs();
 
-    // Debug LED
     Led.Init();
     Led.StartOrRestart(lsqIdle);
 
-//    SdramCheck();
-
+    SimpleSensors::Init();
     SD.Init();
+    Avi::Init();
+    AuPlayer.Init();
 
-    // Time
-    BackupSpc::EnableAccess();
-    ClrH.DWord32 = BackupSpc::ReadRegister(BCKP_REG_CLRH_INDX);
-    ClrM.DWord32 = BackupSpc::ReadRegister(BCKP_REG_CLRM_INDX);
-    InitMirilli();
-    Time.Init();
+    DeinitVideo();
 
-    Sound.Init();
-    Sound.SetupVolume(81);
-    Sound.SetSlotVolume(BACKGROUND_SLOT, 2048);
-    Sound.PlayAlive();
-    chThdSleepMilliseconds(1535);
-    uint32_t Volume = BackupSpc::ReadRegister(BCKP_REG_VOLUME_INDX);
-    if(Volume > 100) Volume = 100;
-    Sound.SetupVolume(Volume);
-
-    // Points
-    Npx.Init();
-    Points::Init();
-    RS485.Init();
-
-    Radio.Init();
-
-    // USB
-//    UsbMsdCdc.Init();
-//    PinSetupInput(USB_DETECT_PIN, pudPullDown); // Usb detect pin
+    TmrOneSecond.StartOrRestart();
+    PlayAudio("alive.wav");
 
     // ==== Main cycle ====
     ITask();
-}
-
-void SendScreenCmd() {
-    int32_t AGrif, ASlyze, ARave, AHuff;
-    Points::GetDisplayed(&AGrif, &ASlyze, &ARave, &AHuff);
-    int32_t Sum = AGrif + ASlyze + ARave + AHuff;
-    RS485.SendBroadcast(0, 1, "Set", "%d %d %d %d %d", AGrif, ASlyze, ARave, AHuff, Sum);
 }
 
 __noreturn
@@ -133,46 +172,46 @@ void ITask() {
     while(true) {
         EvtMsg_t Msg = EvtQMain.Fetch(TIME_INFINITE);
         switch(Msg.ID) {
-            case evtIdUartCmdRcvd:
+            case evtIdShellCmd:
                 Led.StartOrRestart(lsqCmd);
-                while(((CmdUart_t*)Msg.Ptr)->TryParseRxBuff() == retvOk) OnCmd((Shell_t*)((CmdUart_t*)Msg.Ptr));
+                OnCmd((Shell_t*)Msg.Ptr);
+                ((Shell_t*)Msg.Ptr)->SignalCmdProcessed();
                 break;
+
+            case evtIdButtons:
+                if(AppState == stateVideo) {
+                    Avi::Stop();
+                    chThdSleepMilliseconds(4);
+                }
+                else CodeChecker.OnBtnPress(Msg.BtnEvtInfo.BtnID);
+                break;
+
+            case evtIdCorrectCode:
+                Printf("  Correct\r");
+                PlayVideo(FILENAME2PLAY);
+                break;
+
+//            case evtIdBadCode:
+//                Printf("  Bad\r");
+//                PlayVideo("lighting2.avi");
+//                break;
 
             case evtIdEverySecond:
-//                Printf("Second\r");
-                IndicateNewSecond();
-//                RS485.SendBroadcast(6, 2, "Ping");
-//                // Check if USB connected/disconnected
-//                if(PinIsHi(USB_DETECT_PIN) and !UsbPinWasHi) {
-//                    UsbPinWasHi = true;
-//                    EvtQMain.SendNowOrExit(EvtMsg_t(evtIdUsbConnect));
-//                }
-//                else if(!PinIsHi(USB_DETECT_PIN) and UsbPinWasHi) {
-//                    UsbPinWasHi = false;
-//                    EvtQMain.SendNowOrExit(EvtMsg_t(evtIdUsbDisconnect));
-//                }
+                Iwdg::Reload();
+//                Printf("S\r");
+                CodeChecker.OnOneSecond();
                 break;
 
-            // Points
-            case evtIdPointsSet:
-                Sound.PlayBackgroundIfNotYet();
-                TmrBckgStop.StartOrRestart();
-                break;
-            case evtIdPointsAdd:
-                Sound.PlayAdd(Msg.Value);
-                Sound.PlayBackgroundIfNotYet();
-                TmrBckgStop.StartOrRestart();
-                SendScreenCmd();
-                break;
-            case evtIdPointsRemove:
-                Sound.PlayRemove(Msg.Value);
-                Sound.PlayBackgroundIfNotYet();
-                TmrBckgStop.StartOrRestart();
-                SendScreenCmd();
-                break;
+            case evtIdStandbyVideo: DeinitVideo(); break;
+            case evtIdStandbyAudio: DeinitAudio(); break;
 
-            case evtIdBckgStop:
-                Sound.StopBackground();
+            case evtIdAudioPlayStop:
+                Printf("AudioEnd\r");
+                if(AppState != stateVideo) TmrStandbyAudio.StartOrRestart();
+                break;
+            case evtIdVideoPlayStop:
+                Printf("VideoEnd\r");
+                DeinitVideo();
                 break;
 
 #if 0 // ======= USB =======
@@ -193,31 +232,72 @@ void ITask() {
     } // while true
 }
 
-#if 1 // ============================== Lume ===================================
-void IndicateNewSecond() {
-    Time.GetDateTime();
-    Hypertime.ConvertFromTime();
-//    Printf("HyperH: %u; HyperM: %u;   ", Hypertime.H, Hypertime.M);
-    ResetColorsToOffState(ClrH, ClrM);
-
-    SetTargetClrH(Hypertime.H, ClrH);
-    if(Hypertime.M == 0) {
-        SetTargetClrM(0, ClrM);
-        SetTargetClrM(11, ClrM);
-    }
-    else {
-        uint32_t N = Hypertime.M / 2;
-        if(Hypertime.M & 1) { // Odd, single
-            SetTargetClrM(N, ClrM);
-        }
-        else { // Even, couple
-            SetTargetClrM(N, ClrM);
-            SetTargetClrM(N-1, ClrM);
-        }
-    }
-    WakeMirilli();
+void SwitchTo27MHz() {
+    chSysLock();
+    Clk.SetupBusDividers(ahbDiv8, apbDiv1, apbDiv1);
+    Clk.SetupFlashLatency(27, 3300);
+    Clk.UpdateFreqValues();
+    chSysUnlock();
+    Clk.PrintFreqs();
 }
-#endif
+
+void SwitchTo216MHz() {
+    chSysLock();
+    // APB1 is 54MHz max, APB2 is 108MHz max
+    Clk.SetupFlashLatency(216, 3300);
+    Clk.SetupBusDividers(ahbDiv1, apbDiv4, apbDiv2);
+    Clk.UpdateFreqValues();
+    chSysUnlock();
+    Clk.PrintFreqs();
+}
+
+
+void InitAudio() {
+    Printf("%S\r", __FUNCTION__);
+    SD.Resume();
+    // Audio codec
+    Codec.Init();
+    Codec.SetSpeakerVolume(-96);    // To remove speaker pop at power on
+    Codec.DisableHeadphones();
+    Codec.EnableSpeakerMono();
+    Codec.SetupMonoStereo(Stereo);  // For wav player
+    Codec.SetupSampleRate(22050); // Just default, will be replaced when changed
+    Codec.SetMasterVolume(0);
+    Codec.SetSpeakerVolume(0); // max
+    AppState = stateAudio;
+}
+
+void DeinitAudio() {
+    Printf("%S\r", __FUNCTION__);
+    Codec.Deinit();
+    SD.Standby();
+    AppState = stateIdle;
+}
+
+void InitVideo() {
+    Printf("%S\r", __FUNCTION__);
+    SwitchTo216MHz();
+    SdramInit();
+    Codec.Deinit();
+    InitAudio();
+    Codec.SetMasterVolume(9);
+    Codec.SetupMonoStereo(Mono); // For AVI player
+    LcdInit();
+    Avi::Resume();
+    AppState = stateVideo;
+}
+
+void DeinitVideo() {
+    Printf("%S\r", __FUNCTION__);
+    Avi::Standby();
+    LcdDeinit();
+    DeinitAudio();
+    SdramDeinit();
+    SwitchTo27MHz();
+    AppState = stateIdle;
+}
+
+
 
 #if 1 // ======================= Command processing ============================
 void OnCmd(Shell_t *PShell) {
@@ -225,107 +305,48 @@ void OnCmd(Shell_t *PShell) {
 //    Printf("%S  ", PCmd->Name);
 
     // Handle command
-    if(PCmd->NameIs("Ping")) PShell->Ok();
+    if(PCmd->NameIs("Ping")) PShell->Ack(retvOk);
     else if(PCmd->NameIs("Version")) PShell->Print("%S %S\r\n", APP_NAME, XSTRINGIFY(BUILD_TIME));
     else if(PCmd->NameIs("mem")) PrintMemoryInfo();
 
-    else if(PCmd->NameIs("Volume")) {
-        uint8_t Volume;
-        if(PCmd->GetNext<uint8_t>(&Volume) != retvOk) return;
-        if(Volume > 100) Volume = 100;
-        Sound.SetupVolume(Volume);
-        BackupSpc::WriteRegister(BCKP_REG_VOLUME_INDX, Volume);
-        PShell->Ok();
-    }
 
     else if(PCmd->NameIs("clr")) {
         Color_t Clr;
-        if(PCmd->GetNext<uint8_t>(&Clr.R) != retvOk) { PShell->CmdError(); return; }
-        if(PCmd->GetNext<uint8_t>(&Clr.G) != retvOk) { PShell->CmdError(); return; }
-        if(PCmd->GetNext<uint8_t>(&Clr.B) != retvOk) { PShell->CmdError(); return; }
+        if(PCmd->GetNext<uint8_t>(&Clr.R) != retvOk) { PShell->Ack(retvCmdError); return; }
+        if(PCmd->GetNext<uint8_t>(&Clr.G) != retvOk) { PShell->Ack(retvCmdError); return; }
+        if(PCmd->GetNext<uint8_t>(&Clr.B) != retvOk) { PShell->Ack(retvCmdError); return; }
         for(int i=0; i<2; i++) Npx.ClrBuf[i] = Clr;
         Npx.SetCurrentColors();
     }
 
-#if 1 // Lume
-    else if(PCmd->NameIs("GetTime")) {
-        Time.GetDateTime();
-        Time.Curr.Print();
-    }
-    else if(PCmd->NameIs("SetTime")) {
-        DateTime_t dt = Time.Curr;
-        if(PCmd->GetNext<int32_t>(&dt.Year) != retvOk) return;
-        if(PCmd->GetNext<int32_t>(&dt.Month) != retvOk) return;
-        if(PCmd->GetNext<int32_t>(&dt.Day) != retvOk) return;
-        if(PCmd->GetNext<int32_t>(&dt.H) != retvOk) return;
-        if(PCmd->GetNext<int32_t>(&dt.M) != retvOk) return;
-        Time.Curr = dt;
-        Time.SetDateTime();
-        IndicateNewSecond();
-        PShell->Ok();
+    else if(PCmd->NameIs("lcd")) {
+        uint32_t A, R, G, B;
+        if(PCmd->GetNext<uint32_t>(&A) != retvOk) { PShell->Ack(retvCmdError); return; }
+        if(PCmd->GetNext<uint32_t>(&R) != retvOk) { PShell->Ack(retvCmdError); return; }
+        if(PCmd->GetNext<uint32_t>(&G) != retvOk) { PShell->Ack(retvCmdError); return; }
+        if(PCmd->GetNext<uint32_t>(&B) != retvOk) { PShell->Ack(retvCmdError); return; }
+        LcdPaintL1(0, 0, 99, 99, A, R, G, B);
+        PShell->Ack(retvOk);
     }
 
-    // Time speed
-    else if(PCmd->NameIs("Fast")) {
-        Time.BeFast();
-        PShell->Ok();
-    }
-    else if(PCmd->NameIs("Norm")) {
-        Time.BeNormal();
-        PShell->Ok();
+    else if(PCmd->NameIs("chk")) {
+        SdramCheck();
     }
 
-    // Clock colors
-    else if(PCmd->NameIs("ClrH")) {
-        Color_t Clr;
-        if(PCmd->GetNext<uint8_t>(&Clr.R) != retvOk) { PShell->CmdError(); return; }
-        if(PCmd->GetNext<uint8_t>(&Clr.G) != retvOk) { PShell->CmdError(); return; }
-        if(PCmd->GetNext<uint8_t>(&Clr.B) != retvOk) { PShell->CmdError(); return; }
-        ClrH = Clr;
-        BackupSpc::WriteRegister(BCKP_REG_CLRH_INDX, Clr.DWord32);
-        PShell->Ok();
+    else if(PCmd->NameIs("27")) {
+        DeinitVideo();
     }
-    else if(PCmd->NameIs("ClrM")) {
-        Color_t Clr;
-        if(PCmd->GetNext<uint8_t>(&Clr.R) != retvOk) { PShell->CmdError(); return; }
-        if(PCmd->GetNext<uint8_t>(&Clr.G) != retvOk) { PShell->CmdError(); return; }
-        if(PCmd->GetNext<uint8_t>(&Clr.B) != retvOk) { PShell->CmdError(); return; }
-        ClrM = Clr;
-        BackupSpc::WriteRegister(BCKP_REG_CLRM_INDX, Clr.DWord32);
-        PShell->Ok();
-    }
-#endif
-
-    else if(PCmd->NameIs("Set")) {
-        int32_t Grif, Slyze, Rave, Huff;
-        if(PCmd->GetNext<int32_t>(&Grif) != retvOk) { PShell->CmdError(); return; }
-        if(PCmd->GetNext<int32_t>(&Slyze) != retvOk) { PShell->CmdError(); return; }
-        if(PCmd->GetNext<int32_t>(&Rave) != retvOk) { PShell->CmdError(); return; }
-        if(PCmd->GetNext<int32_t>(&Huff) != retvOk) { PShell->CmdError(); return; }
-        Points::Set(Grif, Slyze, Rave, Huff);
-        PShell->Ok();
+    else if(PCmd->NameIs("216")) {
+        InitVideo();
     }
 
-    else if(PCmd->NameIs("Get")) {
-        Points::Print();
-    }
-
-
-    else if(PCmd->NameIs("help")) {
-        PShell->Print("%S %S\r\n", APP_NAME, XSTRINGIFY(BUILD_TIME));
-        Printf( "Volume <0..100>\r"
-                "SetTime <Year> <Month> <Day> <H> <M>\r"
-                "GetTime\r"
-                "ClrH <R> <G> <B>  - color of hour miril\r"
-                "ClrM <R> <G> <B>  - color of minute miril\r"
-                "Set <Grif> <Slyze> <Rave> <Huff> - set points\r"
-                "Get - get current points\r"
-        );
+    else if(PCmd->NameIs("vi")) {
+        PlayVideo(FILENAME2PLAY);
     }
 
     else {
         Printf("%S\r\n", PCmd->Name);
-        PShell->CmdUnknown();
+        PShell->Ack(retvCmdUnknown);
     }
 }
 #endif

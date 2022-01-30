@@ -18,7 +18,7 @@
 */
 
 /**
- * @file    rt/src/chstats.c
+ * @file    chstats.c
  * @brief   Statistics module code.
  *
  * @addtogroup statistics

@@ -50,10 +50,6 @@
 #define HAL_USE_DAC                         FALSE
 #endif
 
-#if !defined(HAL_USE_EFL)
-#define HAL_USE_EFL                         FALSE
-#endif
-
 #if !defined(HAL_USE_GPT)
 #define HAL_USE_GPT                         FALSE
 #endif
@@ -129,11 +125,10 @@
 #include "hal_ioblock.h"
 #include "hal_mmcsd.h"
 #include "hal_persistent.h"
-//#include "hal_flash.h"
 
 /* Shared headers.*/
-//#include "hal_buffers.h"
-//#include "hal_queues.h"
+#include "hal_buffers.h"
+#include "hal_queues.h"
 
 /* Normal drivers.*/
 //#include "hal_pal.h"
@@ -141,7 +136,6 @@
 //#include "hal_can.h"
 //#include "hal_crypto.h"
 //#include "hal_dac.h"
-//#include "hal_efl.h"
 //#include "hal_gpt.h"
 //#include "hal_i2c.h"
 //#include "hal_i2s.h"
@@ -155,7 +149,7 @@
 //#include "hal_spi.h"
 //#include "hal_trng.h"
 //#include "hal_uart.h"
-//#include "hal_usb.h"
+#include "hal_usb.h"
 //#include "hal_wdg.h"
 //#include "hal_wspi.h"
 
@@ -169,7 +163,7 @@
 
 /* Complex drivers.*/
 //#include "hal_mmc_spi.h"
-//#include "hal_serial_usb.h"
+#include "hal_serial_usb.h"
 
 /* Community drivers.*/
 #if defined(HAL_USE_COMMUNITY) || defined(__DOXYGEN__)
@@ -199,7 +193,7 @@
 /**
  * @brief   HAL version string.
  */
-#define HAL_VERSION             "7.1.4"
+#define HAL_VERSION             "7.0.3"
 
 /**
  * @brief   HAL version major number.
@@ -209,25 +203,19 @@
 /**
  * @brief   HAL version minor number.
  */
-#define CH_HAL_MINOR            1
+#define CH_HAL_MINOR            0
 
 /**
  * @brief   HAL version patch number.
  */
-#define CH_HAL_PATCH            4
+#define CH_HAL_PATCH            3
 /** @} */
 
 /**
  * @name    Return codes
  * @{
  */
-/**
- * @brief HAL operation success.
- */
 #define HAL_SUCCESS             false
-/**
- * @brief HAL operation failed.
- */
 #define HAL_FAILED              true
 /** @} */
 
@@ -244,7 +232,7 @@
 #error "invalid configuration file"
 #endif
 
-#if !defined(_CHIBIOS_HAL_CONF_VER_7_1_)
+#if !defined(_CHIBIOS_HAL_CONF_VER_7_0_)
 #error "obsolete or unknown configuration file"
 #endif
 

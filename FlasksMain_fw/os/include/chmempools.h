@@ -18,7 +18,7 @@
 */
 
 /**
- * @file    oslib/include/chmempools.h
+ * @file    chmempools.h
  * @brief   Memory Pools macros and structures.
  *
  * @addtogroup oslib_mempools
@@ -253,7 +253,7 @@ static inline void chGuardedPoolObjectInit(guarded_memory_pool_t *gmp,
  * @pre     The guarded memory pool must be already been initialized.
  *
  * @param[in] gmp       pointer to a @p guarded_memory_pool_t structure
- * @return              The counter of the guard semaphore.
+ * @return              The number of objects.
  *
  * @iclass
  */

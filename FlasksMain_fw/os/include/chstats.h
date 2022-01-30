@@ -18,7 +18,7 @@
 */
 
 /**
- * @file    rt/include/chstats.h
+ * @file    chstats.h
  * @brief   Statistics module macros and structures.
  *
  * @addtogroup statistics

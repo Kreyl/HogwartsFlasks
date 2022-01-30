@@ -21,7 +21,7 @@
  */
 
 /**
- * @file    rt/include/chevents.h
+ * @file    chevents.h
  * @brief   Events macros and structures.
  *
  * @addtogroup events

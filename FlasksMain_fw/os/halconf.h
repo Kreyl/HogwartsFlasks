@@ -29,7 +29,7 @@
 #define HALCONF_H
 
 #define _CHIBIOS_HAL_CONF_
-#define _CHIBIOS_HAL_CONF_VER_7_1_
+#define _CHIBIOS_HAL_CONF_VER_7_0_
 
 #include "mcuconf.h"
 
@@ -66,13 +66,6 @@
  */
 #if !defined(HAL_USE_DAC) || defined(__DOXYGEN__)
 #define HAL_USE_DAC                         FALSE
-#endif
-
-/**
- * @brief   Enables the EFlash subsystem.
- */
-#if !defined(HAL_USE_EFL) || defined(__DOXYGEN__)
-#define HAL_USE_EFL                         FALSE
 #endif
 
 /**
@@ -149,7 +142,7 @@
  * @brief   Enables the SERIAL over USB subsystem.
  */
 #if !defined(HAL_USE_SERIAL_USB) || defined(__DOXYGEN__)
-#define HAL_USE_SERIAL_USB                  FALSE
+#define HAL_USE_SERIAL_USB                  TRUE
 #endif
 
 /**
@@ -184,7 +177,7 @@
  * @brief   Enables the USB subsystem.
  */
 #if !defined(HAL_USE_USB) || defined(__DOXYGEN__)
-#define HAL_USE_USB                         FALSE
+#define HAL_USE_USB                         TRUE
 #endif
 
 /**
@@ -230,7 +223,7 @@
  * @note    Disabling this option saves both code and data space.
  */
 #if !defined(ADC_USE_WAIT) || defined(__DOXYGEN__)
-#define ADC_USE_WAIT                        TRUE
+#define ADC_USE_WAIT                        FALSE
 #endif
 
 /**
@@ -238,7 +231,7 @@
  * @note    Disabling this option saves both code and data space.
  */
 #if !defined(ADC_USE_MUTUAL_EXCLUSION) || defined(__DOXYGEN__)
-#define ADC_USE_MUTUAL_EXCLUSION            TRUE
+#define ADC_USE_MUTUAL_EXCLUSION            FALSE
 #endif
 
 /*===========================================================================*/
@@ -457,6 +450,7 @@
 #if !defined(SPI_USE_CIRCULAR) || defined(__DOXYGEN__)
 #define SPI_USE_CIRCULAR                    FALSE
 #endif
+
 
 /**
  * @brief   Enables the @p spiAcquireBus() and @p spiReleaseBus() APIs.

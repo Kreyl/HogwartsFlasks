@@ -18,32 +18,32 @@ ENTRY(Reset_Handler)
 
 SECTIONS
 {
-    .vectors : ALIGN(1024)
+    .vectors : ALIGN(16)
     {
         KEEP(*(.vectors))
     } > VECTORS_FLASH AT > VECTORS_FLASH_LMA
 
     .xtors : ALIGN(4)
     {
-        __init_array_base__ = .;
+        __init_array_start = .;
         KEEP(*(SORT(.init_array.*)))
         KEEP(*(.init_array))
-        __init_array_end__ = .;
-        __fini_array_base__ = .;
+        __init_array_end = .;
+        __fini_array_start = .;
         KEEP(*(.fini_array))
         KEEP(*(SORT(.fini_array.*)))
-        __fini_array_end__ = .;
+        __fini_array_end = .;
     } > XTORS_FLASH AT > XTORS_FLASH_LMA
 
-    .text : ALIGN_WITH_INPUT
+    .text : ALIGN(4)
     {
-        __text_base__ = .;
+        __text_base = .;
         *(.text)
         *(.text.*)
         *(.glue_7t)
         *(.glue_7)
         *(.gcc*)
-        __text_end__ = .;
+        __text_end = .;
     } > TEXT_FLASH AT > TEXT_FLASH_LMA
 
     .rodata : ALIGN(4)
@@ -61,10 +61,8 @@ SECTIONS
     } > VARIOUS_FLASH AT > VARIOUS_FLASH_LMA
 
     .ARM.exidx : {
-        __exidx_base__ = .;
         __exidx_start = .;
         *(.ARM.exidx* .gnu.linkonce.armexidx.*)
-        __exidx_end__ = .;
         __exidx_end = .;
      } > VARIOUS_FLASH AT > VARIOUS_FLASH_LMA
 

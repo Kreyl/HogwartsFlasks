@@ -11,15 +11,21 @@ enum EvtMsgId_t {
     evtIdNone = 0, // Always
 
     // Pretending to eternity
-    evtIdUartCmdRcvd,
+    evtIdShellCmd,
     evtIdEverySecond,
-
-    evtIdPointsSet,
-    evtIdPointsAdd,
-    evtIdPointsRemove,
-    evtIdBckgStop,
 
     evtIdUsbConnect,
     evtIdUsbDisconnect,
     evtIdUsbReady,
+
+    evtIdButtons,
+
+    evtIdCorrectCode,
+    evtIdBadCode,
+
+    evtIdAudioPlayStop,
+    evtIdVideoPlayStop,
+
+    evtIdStandbyAudio,
+    evtIdStandbyVideo,
 };

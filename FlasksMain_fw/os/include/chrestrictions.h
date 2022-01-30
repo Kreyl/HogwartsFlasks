@@ -18,7 +18,7 @@
 */
 
 /**
- * @file    rt/include/chrestrictions.h
+ * @file    chrestrictions.h
  * @brief   Licensing restrictions header.
  *
  * @addtogroup rt_restrictions

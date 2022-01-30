@@ -1,6 +1,48 @@
+/*
+    ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+*/
+
+/**
+ * @file    STM32F7xx/hal_lld.h
+ * @brief   STM32F7xx HAL subsystem low level driver header.
+ * @pre     This module requires the following macros to be defined in the
+ *          @p board.h file:
+ *          - STM32_LSECLK.
+ *          - STM32_LSEDRV.
+ *          - STM32_LSE_BYPASS (optionally).
+ *          - STM32_HSECLK.
+ *          - STM32_HSE_BYPASS (optionally).
+ *          - STM32_VDD (as hundredths of Volt).
+ *          .
+ *          One of the following macros must also be defined:
+ *          - STM32F722xx, STM32F723xx very high-performance MCUs.
+ *          - STM32F732xx, STM32F733xx very high-performance MCUs.
+ *          - STM32F745xx, STM32F746xx, STM32F756xx very high-performance MCUs.
+ *          - STM32F765xx, STM32F767xx, STM32F769xx very high-performance MCUs.
+ *          - STM32F777xx, STM32F779xx very high-performance MCUs.
+ *          .
+ *
+ * @addtogroup HAL
+ * @{
+ */
+
 #ifndef HAL_LLD_H
 #define HAL_LLD_H
 
+#include "board.h"
+#include "mcuconf.h"
 #include "stm32_registry.h"
 
 /*===========================================================================*/
@@ -66,96 +108,6 @@
 /** @} */
 
 /**
- * @name    Absolute Maximum Ratings
- * @{
- */
-/**
- * @brief   Absolute maximum system clock.
- */
-#define STM32_SYSCLK_MAX        216000000
-
-/**
- * @brief   Maximum HSE clock frequency.
- */
-#define STM32_HSECLK_MAX        26000000
-
-/**
- * @brief   Maximum HSE clock frequency using an external source.
- */
-#define STM32_HSECLK_BYP_MAX    50000000
-
-/**
- * @brief   Minimum HSE clock frequency.
- */
-#define STM32_HSECLK_MIN        4000000
-
-/**
- * @brief   Minimum HSE clock frequency.
- */
-#define STM32_HSECLK_BYP_MIN    1000000
-
-/**
- * @brief   Maximum LSE clock frequency.
- */
-#define STM32_LSECLK_MAX        32768
-
-/**
- * @brief   Maximum LSE clock frequency.
- */
-#define STM32_LSECLK_BYP_MAX    1000000
-
-/**
- * @brief   Minimum LSE clock frequency.
- */
-#define STM32_LSECLK_MIN        32768
-
-/**
- * @brief   Maximum PLLs input clock frequency.
- */
-#define STM32_PLLIN_MAX         2100000
-
-/**
- * @brief   Minimum PLLs input clock frequency.
- */
-#define STM32_PLLIN_MIN         950000
-
-/**
- * @brief   Maximum PLLs VCO clock frequency.
- */
-#define STM32_PLLVCO_MAX        432000000
-
-/**
- * @brief   Minimum PLLs VCO clock frequency.
- */
-#define STM32_PLLVCO_MIN        192000000
-
-/**
- * @brief   Maximum PLL output clock frequency.
- */
-#define STM32_PLLOUT_MAX        216000000
-
-/**
- * @brief   Minimum PLL output clock frequency.
- */
-#define STM32_PLLOUT_MIN        24000000
-
-/**
- * @brief   Maximum APB1 clock frequency.
- */
-#define STM32_PCLK1_MAX         (STM32_PLLOUT_MAX / 4)
-
-/**
- * @brief   Maximum APB2 clock frequency.
- */
-#define STM32_PCLK2_MAX         (STM32_PLLOUT_MAX / 2)
-
-/**
- * @brief   Maximum SPI/I2S clock frequency.
- */
-#define STM32_SPII2S_MAX        54000000
-/** @} */
-
-/**
  * @name    Internal clock sources
  * @{
  */
@@ -163,6 +115,64 @@
 #define STM32_LSICLK            32000       /**< Low speed internal clock.  */
 /** @} */
 
+/*===========================================================================*/
+/* Driver pre-compile time settings.                                         */
+/*===========================================================================*/
+
+/**
+ * @brief   Disables the PWR/RCC initialization in the HAL.
+ */
+#if !defined(STM32_NO_INIT) || defined(__DOXYGEN__)
+#define STM32_NO_INIT                       FALSE
+#endif
+
+#if !defined(STM32F7xx_MCUCONF)
+#error "Using a wrong mcuconf.h file, STM32F7xx_MCUCONF not defined"
+#endif
+
+#if defined(STM32F722xx) && !defined(STM32F722_MCUCONF)
+#error "Using a wrong mcuconf.h file, STM32F722_MCUCONF not defined"
+#endif
+
+#if defined(STM32F732xx) && !defined(STM32F732_MCUCONF)
+#error "Using a wrong mcuconf.h file, STM32F732_MCUCONF not defined"
+#endif
+
+#if defined(STM32F723xx) && !defined(STM32F723_MCUCONF)
+#error "Using a wrong mcuconf.h file, STM32F723_MCUCONF not defined"
+#endif
+
+#if defined(STM32F733xx) && !defined(STM32F733_MCUCONF)
+#error "Using a wrong mcuconf.h file, STM32F733_MCUCONF not defined"
+#endif
+
+#if defined(STM32F746xx) && !defined(STM32F746_MCUCONF)
+#error "Using a wrong mcuconf.h file, STM32F746_MCUCONF not defined"
+#endif
+
+#if defined(STM32F756xx) && !defined(STM32F756_MCUCONF)
+#error "Using a wrong mcuconf.h file, STM32F756_MCUCONF not defined"
+#endif
+
+#if defined(STM32F765xx) && !defined(STM32F765_MCUCONF)
+#error "Using a wrong mcuconf.h file, STM32F765_MCUCONF not defined"
+#endif
+
+#if defined(STM32F767xx) && !defined(STM32F767_MCUCONF)
+#error "Using a wrong mcuconf.h file, STM32F767_MCUCONF not defined"
+#endif
+
+#if defined(STM32F777xx) && !defined(STM32F777_MCUCONF)
+#error "Using a wrong mcuconf.h file, STM32F777_MCUCONF not defined"
+#endif
+
+#if defined(STM32F769xx) && !defined(STM32F769_MCUCONF)
+#error "Using a wrong mcuconf.h file, STM32F769_MCUCONF not defined"
+#endif
+
+#if defined(STM32F779xx) && !defined(STM32F779_MCUCONF)
+#error "Using a wrong mcuconf.h file, STM32F779_MCUCONF not defined"
+#endif
 
 /* Various helpers.*/
 #include "nvic.h"
@@ -172,13 +182,11 @@
 #include "stm32_dma.h"
 #include "stm32_exti.h"
 #include "stm32_rcc.h"
-#include "stm32_tim.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
   void hal_lld_init(void);
-  void stm32_clock_init(void);
 #ifdef __cplusplus
 }
 #endif

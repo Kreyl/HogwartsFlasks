@@ -222,16 +222,16 @@
 #endif
 
 #if defined(STM32F2XX) || defined(STM32F4XX) || defined(STM32F7XX)
-#define STM32_USBCLK                        STM32_PLL48CLK
+#define STM32_USBCLK                        48000000
 #elif defined(STM32F10X_CL)
 #define STM32_USBCLK                        STM32_OTGFSCLK
 #elif defined(STM32L4XX) || defined(STM32L4XXP)
 #define STM32_USBCLK                        STM32_48CLK
 #elif  defined(STM32H7XX)
 /* Defines directly STM32_USBCLK.*/
-#define rccEnableOTG_FS                     rccEnableUSB2_OTG_FS
-#define rccDisableOTG_FS                    rccDisableUSB2_OTG_FS
-#define rccResetOTG_FS                      rccResetUSB2_OTG_FS
+#define rccEnableOTG_FS                     rccEnableUSB2_OTG_HS
+#define rccDisableOTG_FS                    rccDisableUSB2_OTG_HS
+#define rccResetOTG_FS                      rccResetUSB2_OTG_HS
 #define rccEnableOTG_HS                     rccEnableUSB1_OTG_HS
 #define rccDisableOTG_HS                    rccDisableUSB1_OTG_HS
 #define rccResetOTG_HS                      rccResetUSB1_OTG_HS
@@ -556,7 +556,7 @@ struct USBDriver {
  * @notapi
  */
 #define usb_lld_wakeup_host(usbp)                                           \
-  do {                                                                      \
+  do{                                                                       \
     (usbp)->otg->DCTL |= DCTL_RWUSIG;                                       \
     osalThreadSleepMilliseconds(STM32_USB_HOST_WAKEUP_DURATION);            \
     (usbp)->otg->DCTL &= ~DCTL_RWUSIG;                                      \

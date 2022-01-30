@@ -1,7 +1,7 @@
 /*
  * SnsPins.h
  *
- *  Created on: 17 ÿíâ. 2015 ã.
+ *  Created on: 17 ï¿½ï¿½ï¿½. 2015 ï¿½.
  *      Author: Kreyl
  */
 
@@ -13,6 +13,7 @@
 #pragma once
 
 #include "SimpleSensors.h"
+#include "kl_lib.h"
 
 #ifndef SIMPLESENSORS_ENABLED
 #define SIMPLESENSORS_ENABLED   FALSE
@@ -26,10 +27,18 @@ extern void ProcessButtons(PinSnsState_t *PState, uint32_t Len);
 
 const PinSns_t PinSns[] = {
         // Buttons
-        {BTN1_PIN, ProcessButtons},
-        {BTN2_PIN, ProcessButtons},
-        {BTN3_PIN, ProcessButtons},
-        {BTN4_PIN, ProcessButtons},
+        {GPIOB, 13, pudPullUp, ProcessButtons},
+        {GPIOC,  2, pudPullUp, ProcessButtons},
+        {GPIOA, 12, pudPullUp, ProcessButtons},
+        {GPIOA,  9, pudPullUp, ProcessButtons},
+        {GPIOA, 11, pudPullUp, ProcessButtons},
+
+        {GPIOD,  2, pudPullUp, ProcessButtons},
+        {GPIOC,  8, pudPullUp, ProcessButtons},
+        {GPIOC, 12, pudPullUp, ProcessButtons},
+
+
+
 };
 #define PIN_SNS_CNT     countof(PinSns)
 

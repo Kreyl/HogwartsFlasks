@@ -152,16 +152,13 @@ void AuOnNewSampleI(SampleStereo_t &Sample) { }
 //                        STM32_DMA_CR_TCIE           /* Enable Transmission Complete IRQ */
 #endif
 
-extern "C"
-void DmaSAITxIrq(void *p, uint32_t flags);
-
 // DMA Tx Completed IRQ
-//extern "C"
-//void DmaSAITxIrq(void *p, uint32_t flags) {
-//    chSysLockFromISR();
-//    if(Codec.SaiDmaCallbackI) Codec.SaiDmaCallbackI();
-//    chSysUnlockFromISR();
-//}
+extern "C"
+void DmaSAITxIrq(void *p, uint32_t flags) {
+    chSysLockFromISR();
+    if(Codec.SaiDmaCallbackI) Codec.SaiDmaCallbackI();
+    chSysUnlockFromISR();
+}
 
 void CS42L52_t::Init() {
     PinRst.Init();
@@ -527,7 +524,7 @@ void CS42L52_t::DisableSpeakers() {
 }
 #endif
 
-#if 0 // ============================== IRQ ====================================
+#if 1 // ============================== IRQ ====================================
 extern "C"
 OSAL_IRQ_HANDLER(SAI_IRQ_HANDLER) {
     OSAL_IRQ_PROLOGUE();

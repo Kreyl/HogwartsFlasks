@@ -18,7 +18,7 @@
 */
 
 /**
- * @file    rt/src/chsys.c
+ * @file    chsys.c
  * @brief   System related code.
  *
  * @addtogroup system
@@ -102,7 +102,6 @@ void chSysInit(void) {
   _scheduler_init();
   _vt_init();
   _trace_init();
-  _oslib_init();
 
 #if CH_DBG_SYSTEM_STATE_CHECK == TRUE
   ch.dbg.isr_cnt  = (cnt_t)0;
@@ -110,6 +109,15 @@ void chSysInit(void) {
 #endif
 #if CH_CFG_USE_TM == TRUE
   _tm_init();
+#endif
+#if CH_CFG_USE_MEMCORE == TRUE
+  _core_init();
+#endif
+#if CH_CFG_USE_HEAP == TRUE
+  _heap_init();
+#endif
+#if CH_CFG_USE_FACTORY == TRUE
+  _factory_init();
 #endif
 #if CH_DBG_STATISTICS == TRUE
   _stats_init();
@@ -236,21 +244,21 @@ bool chSysIntegrityCheckI(unsigned testmask) {
 
   /* Ready List integrity check.*/
   if ((testmask & CH_INTEGRITY_RLIST) != 0U) {
-    ch_priority_queue_t *pqp;
+    thread_t *tp;
 
     /* Scanning the ready list forward.*/
     n = (cnt_t)0;
-    pqp = ch.rlist.pqueue.next;
-    while (pqp != &ch.rlist.pqueue) {
+    tp = ch.rlist.queue.next;
+    while (tp != (thread_t *)&ch.rlist.queue) {
       n++;
-      pqp = pqp->next;
+      tp = tp->queue.next;
     }
 
     /* Scanning the ready list backward.*/
-    pqp = ch.rlist.pqueue.prev;
-    while (pqp != &ch.rlist.pqueue) {
+    tp = ch.rlist.queue.prev;
+    while (tp != (thread_t *)&ch.rlist.queue) {
       n--;
-      pqp = pqp->prev;
+      tp = tp->queue.prev;
     }
 
     /* The number of elements must match.*/
@@ -261,21 +269,21 @@ bool chSysIntegrityCheckI(unsigned testmask) {
 
   /* Timers list integrity check.*/
   if ((testmask & CH_INTEGRITY_VTLIST) != 0U) {
-    delta_list_t *dlp;
+    virtual_timer_t * vtp;
 
     /* Scanning the timers list forward.*/
     n = (cnt_t)0;
-    dlp = ch.vtlist.dlist.next;
-    while (dlp != &ch.vtlist.dlist) {
+    vtp = ch.vtlist.next;
+    while (vtp != (virtual_timer_t *)&ch.vtlist) {
       n++;
-      dlp = dlp->next;
+      vtp = vtp->next;
     }
 
     /* Scanning the timers list backward.*/
-    dlp = ch.vtlist.dlist.prev;
-    while (dlp != &ch.vtlist.dlist) {
+    vtp = ch.vtlist.prev;
+    while (vtp != (virtual_timer_t *)&ch.vtlist) {
       n--;
-      dlp = dlp->prev;
+      vtp = vtp->prev;
     }
 
     /* The number of elements must match.*/
@@ -403,8 +411,8 @@ void chSysRestoreStatusX(syssts_t sts) {
  * @details This function verifies if the current realtime counter value
  *          lies within the specified range or not. The test takes care
  *          of the realtime counter wrapping to zero on overflow.
- * @note    When start==end then the function returns always false because a
- *          null time range is specified.
+ * @note    When start==end then the function returns always true because the
+ *          whole time range is specified.
  * @note    This function is only available if the port layer supports the
  *          option @p PORT_SUPPORTS_RT.
  *
@@ -418,8 +426,7 @@ void chSysRestoreStatusX(syssts_t sts) {
  */
 bool chSysIsCounterWithinX(rtcnt_t cnt, rtcnt_t start, rtcnt_t end) {
 
-  return (bool)(((rtcnt_t)cnt - (rtcnt_t)start) <
-                ((rtcnt_t)end - (rtcnt_t)start));
+  return (bool)((cnt - start) < (end - start));
 }
 
 /**

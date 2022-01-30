@@ -18,7 +18,7 @@
 */
 
 /**
- * @file    rt/include/chtm.h
+ * @file    chtm.h
  * @brief   Time Measurement module macros and structures.
  *
  * @addtogroup time_measurement

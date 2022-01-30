@@ -20,6 +20,7 @@
 #endif
 
 void SdramInit();
+void SdramDeinit();
 void SdramCheck();
 
 /* else if(PCmd->NameIs("chk")) { SdramCheck(); }  */

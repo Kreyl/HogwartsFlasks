@@ -18,7 +18,7 @@
 */
 
 /**
- * @file    rt/include/chchecks.h
+ * @file    chchecks.h
  * @brief   Configuration file checks header.
  *
  * @addtogroup conf_checks
@@ -44,7 +44,7 @@
 #error "invalid configuration file"
 #endif
 
-#if !defined(_CHIBIOS_RT_CONF_VER_6_1_)
+#if !defined(_CHIBIOS_RT_CONF_VER_6_0_)
 #error "obsolete or unknown configuration file"
 #endif
 

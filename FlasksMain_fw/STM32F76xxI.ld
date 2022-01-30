@@ -144,9 +144,6 @@ SECTIONS
     } > SDRAM
 }
 
-/* Stack rules inclusion.*/
-INCLUDE ../rules_stacks.ld
-
 /* Code rules inclusion.*/
 INCLUDE ../rules_code.ld
 

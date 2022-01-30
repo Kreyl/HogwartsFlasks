@@ -142,7 +142,7 @@
 
 #if (STM32_SDC_USE_SDMMC1 && !defined(STM32_SDMMC1_NUMBER)) ||              \
     (STM32_SDC_USE_SDMMC2 && !defined(STM32_SDMMC2_NUMBER))
-#error "STM32_SDMMCx_NUMBER not defined in registry"
+#error "STM32_ADCx_NUMBER not defined in registry"
 #endif
 
 #if (STM32_SDC_USE_SDMMC1 && !defined(STM32_SDC_SDMMC1_DMA_MSK)) ||         \
@@ -172,12 +172,12 @@
 //#if STM32_HAS_SDMMC1 && !defined(STM32_SDMMC1CLK)
 //#error "STM32_SDMMC1CLK not defined"
 //#endif
-
-/* Clock related tests.*/
+//
+///* Clock related tests.*/
 //#if STM32_HAS_SDMMC2 && !defined(STM32_SDMMC2CLK)
 //#error "STM32_SDMMC2CLK not defined"
 //#endif
-
+//
 //#if !defined(STM32_HCLK)
 //#error "STM32_HCLK not defined"
 //#endif
@@ -269,6 +269,15 @@ typedef struct SDCDriver SDCDriver;
  */
 typedef struct {
   /**
+   * @brief   Working area for memory consuming operations.
+   * @note    Buffer must be word aligned and big enough to store 512 bytes.
+   * @note    It is mandatory for detecting MMC cards bigger than 2GB else it
+   *          can be @p NULL. SD cards do NOT need it.
+   * @note    Memory pointed by this buffer is only used by @p sdcConnect(),
+   *          afterward it can be reused for other purposes.
+   */
+  uint8_t       *scratchpad;
+  /**
    * @brief   Bus width.
    */
   sdcbusmode_t  bus_width;
@@ -341,10 +350,6 @@ struct SDCDriver {
    * @note      Needed for debugging aid.
    */
   SDMMC_TypeDef             *sdmmc;
-  /**
-   * @brief   Buffer for internal operations.
-   */
-  uint8_t                   buf[MMCSD_BLOCK_SIZE];
 };
 
 /*===========================================================================*/

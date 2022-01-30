@@ -20,24 +20,24 @@ SECTIONS
     {
         PROVIDE(_textdata = LOADADDR(.data));
         PROVIDE(_data = .);
-       __textdata_base__ = LOADADDR(.data);
-       __data_base__ = .;
+        _textdata_start = LOADADDR(.data);
+        _data_start = .;
         *(.data)
         *(.data.*)
         *(.ramtext)
         . = ALIGN(4);
         PROVIDE(_edata = .);
-        __data_end__ = .;
+        _data_end = .;
     } > DATA_RAM AT > DATA_RAM_LMA
 
     .bss (NOLOAD) : ALIGN(4)
     {
-        __bss_base__ = .;
+        _bss_start = .;
         *(.bss)
         *(.bss.*)
         *(COMMON)
         . = ALIGN(4);
-        __bss_end__ = .;
+        _bss_end = .;
         PROVIDE(end = .);
     } > BSS_RAM
 }

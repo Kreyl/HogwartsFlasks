@@ -18,7 +18,7 @@
 */
 
 /**
- * @file    oslib/include/chfactory.h
+ * @file    chfactory.h
  * @brief   ChibiOS objects factory structures and macros.
  *
  * @addtogroup oslib_objects_factory
@@ -215,6 +215,13 @@ typedef struct ch_dyn_object {
    * @brief   List element of the dynamic buffer object.
    */
   dyn_element_t         element;
+  /*lint -save -e9038 [18.7] Required by design.*/
+  /**
+   * @brief   The buffer.
+   * @note    This requires C99.
+   */
+  uint8_t               buffer[];
+  /*lint restore*/
 } dyn_buffer_t;
 #endif
 
@@ -247,6 +254,13 @@ typedef struct ch_dyn_mailbox {
    * @brief   The mailbox.
    */
   mailbox_t             mbx;
+  /*lint -save -e9038 [18.7] Required by design.*/
+ /**
+   * @brief   Messages buffer.
+   * @note    This requires C99.
+   */
+  msg_t                 msgbuf[];
+  /*lint restore*/
 } dyn_mailbox_t;
 #endif
 
@@ -263,6 +277,15 @@ typedef struct ch_dyn_objects_fifo {
    * @brief   The objects FIFO.
    */
   objects_fifo_t        fifo;
+  /*lint -save -e9038 [18.7] Required by design.*/
+  /**
+   * @brief   Messages buffer.
+   * @note    This open array is followed by another area containing the
+   *          objects, this area is not represented in this structure.
+   * @note    This requires C99.
+   */
+  msg_t                 msgbuf[];
+  /*lint restore*/
 } dyn_objects_fifo_t;
 #endif
 
@@ -279,6 +302,13 @@ typedef struct ch_dyn_pipe {
    * @brief   The pipe.
    */
   pipe_t                pipe;
+  /*lint -save -e9038 [18.7] Required by design.*/
+  /**
+   * @brief   Messages buffer.
+   * @note    This requires C99.
+   */
+  uint8_t               buffer[];
+  /*lint restore*/
 } dyn_pipe_t;
 #endif
 
@@ -452,7 +482,7 @@ static inline size_t chFactoryGetBufferSize(dyn_buffer_t *dbp) {
  */
 static inline uint8_t *chFactoryGetBuffer(dyn_buffer_t *dbp) {
 
-  return (uint8_t *)(dbp + 1);
+  return dbp->buffer;
 }
 #endif /* CH_CFG_FACTORY_GENERIC_BUFFERS == TRUE */
 

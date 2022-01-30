@@ -5,6 +5,8 @@
 
 #include "wavreader.h"
 
+#define HAS_COSINE_TABLE
+
 class AudioTrack
 {
 public:

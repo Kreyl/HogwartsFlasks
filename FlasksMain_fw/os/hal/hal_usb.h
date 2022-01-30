@@ -25,9 +25,6 @@
 #ifndef HAL_USB_H
 #define HAL_USB_H
 
-#include <inttypes.h>
-#include "ch.h"
-
 #if (HAL_USE_USB == TRUE) || defined(__DOXYGEN__)
 
 /*===========================================================================*/
