@@ -121,8 +121,8 @@ void main() {
     ITask();
 }
 
-void SendScreenCmd() {
-    Points::Values v = Points::GetDisplayed();
+// Sum is used as simple CRC
+void SendScreenCmd(Points::Values v) {
     RS485.SendBroadcast(0, 1, "Set", "%d %d %d %d %d", v.grif, v.slyze, v.rave, v.huff, v.Sum());
 }
 
@@ -160,13 +160,13 @@ void ITask() {
                 Sound.PlayAdd(Msg.Value);
                 Sound.PlayBackgroundIfNotYet();
                 TmrBckgStop.StartOrRestart();
-                SendScreenCmd();
+                SendScreenCmd(Points::GetDisplayed());
                 break;
             case evtIdPointsRemove:
                 Sound.PlayRemove(Msg.Value);
                 Sound.PlayBackgroundIfNotYet();
                 TmrBckgStop.StartOrRestart();
-                SendScreenCmd();
+                SendScreenCmd(Points::GetDisplayed());
                 break;
 
             case evtIdBckgStop:
@@ -303,7 +303,7 @@ void OnCmd(Shell_t *PShell) {
         Points::Values v;
         if(PCmd->GetArray(v.arr, HOUSES_CNT) != retvOk) { PShell->CmdError(); return; }
         Points::SetNow(v);
-        SendScreenCmd();
+        SendScreenCmd(v);
         PShell->Ok();
     }
 
