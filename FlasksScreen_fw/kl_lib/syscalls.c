@@ -9,21 +9,21 @@
 #include <sys/stat.h>
 
 // See https://sourceware.org/newlib/libc.html#Stubs
-void* _sbrk(int incr) {
-    extern uint8_t __heap_base__;
-    extern uint8_t __heap_end__;
-
-    static uint8_t *current_end = &__heap_base__;
-    uint8_t *current_block_address = current_end;
-
-    incr = (incr + 3) & (~3);
-    if(current_end + incr > &__heap_end__) {
-        errno = ENOMEM;
-        return (void*) -1;
-    }
-    current_end += incr;
-    return (void*)current_block_address;
-}
+//void* _sbrk(int incr) {
+//    extern uint8_t __heap_base__;
+//    extern uint8_t __heap_end__;
+//
+//    static uint8_t *current_end = &__heap_base__;
+//    uint8_t *current_block_address = current_end;
+//
+//    incr = (incr + 3) & (~3);
+//    if(current_end + incr > &__heap_end__) {
+//        errno = ENOMEM;
+//        return (void*) -1;
+//    }
+//    current_end += incr;
+//    return (void*)current_block_address;
+//}
 
 int _write(int file, char *ptr, int len) { // XXX Make it good
 //    int count = len;

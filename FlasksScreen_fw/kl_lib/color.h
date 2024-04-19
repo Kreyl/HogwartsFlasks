@@ -38,9 +38,9 @@ static inline int32_t CalcSmooth_st_from_ms(int32_t Duration_ms) {
 struct Color_t {
 private:
     __always_inline
-    uint8_t SetSingleBrt(int32_t v, const int32_t abrt, const int32_t BrtMax) {
+    uint8_t SetSingleBrt(int32_t v, const int32_t brt, const int32_t BrtMax) {
         if(v > 0) {
-            v = (v * abrt) / BrtMax;
+            v = (v * brt) / BrtMax;
             if(v == 0) v = 1;
         }
         return v;
@@ -188,30 +188,22 @@ public:
         return (Delay2 > Delay)? Delay2 : Delay;
     }
 
-    void SetRGBWBrightness(Color_t &AClr, int32_t abrt, const int32_t BrtMax) {
-        R = SetSingleBrt(AClr.R, abrt, BrtMax);
-        G = SetSingleBrt(AClr.G, abrt, BrtMax);
-        B = SetSingleBrt(AClr.B, abrt, BrtMax);
-        W = SetSingleBrt(AClr.W, abrt, BrtMax);
+    void SetRGBWBrightness(Color_t &AClr, int32_t brt, const int32_t BrtMax) {
+        R = SetSingleBrt(AClr.R, brt, BrtMax);
+        G = SetSingleBrt(AClr.G, brt, BrtMax);
+        B = SetSingleBrt(AClr.B, brt, BrtMax);
+        W = SetSingleBrt(AClr.W, brt, BrtMax);
     }
 
-    void SetRGBBrightness(Color_t &AClr, const int32_t ABrt, const int32_t BrtMax) {
-        R = SetSingleBrt(AClr.R, ABrt, BrtMax);
-        G = SetSingleBrt(AClr.G, ABrt, BrtMax);
-        B = SetSingleBrt(AClr.B, ABrt, BrtMax);
+    void SetRGBBrightness(Color_t &AClr, const int32_t brt, const int32_t BrtMax) {
+        R = SetSingleBrt(AClr.R, brt, BrtMax);
+        G = SetSingleBrt(AClr.G, brt, BrtMax);
+        B = SetSingleBrt(AClr.B, brt, BrtMax);
     }
-    void SetRGBBrightness(const int32_t ABrt, const int32_t BrtMax) {
-        R = SetSingleBrt(R, ABrt, BrtMax);
-        G = SetSingleBrt(G, ABrt, BrtMax);
-        B = SetSingleBrt(B, ABrt, BrtMax);
-    }
-
-    Color_t ToBrightenedColor(const int32_t ABrt, const int32_t BrtMax) {
-        Color_t clr;
-        clr.R = SetSingleBrt(R, ABrt, BrtMax);
-        clr.G = SetSingleBrt(G, ABrt, BrtMax);
-        clr.B = SetSingleBrt(B, ABrt, BrtMax);
-        return clr;
+    void SetRGBBrightness(const int32_t brt, const int32_t BrtMax) {
+        R = SetSingleBrt(R, brt, BrtMax);
+        G = SetSingleBrt(G, brt, BrtMax);
+        B = SetSingleBrt(B, brt, BrtMax);
     }
 
     void Print() {
@@ -222,10 +214,10 @@ public:
     Color_t() : R(0), G(0), B(0), Brt(0) {}
     Color_t(uint8_t AR, uint8_t AG, uint8_t AB) : R(AR), G(AG), B(AB), Brt(0) {}
     Color_t(uint8_t AR, uint8_t AG, uint8_t AB, uint8_t ALum) : R(AR), G(AG), B(AB), Brt(ALum) {}
-    Color_t(const Color_t &Fore, const Color_t &Back, uint32_t abrt) {
-        R = ClrMix(Fore.R, Back.R, abrt);
-        G = ClrMix(Fore.G, Back.G, abrt);
-        B = ClrMix(Fore.B, Back.B, abrt);
+    Color_t(const Color_t &Fore, const Color_t &Back, uint32_t brt) {
+        R = ClrMix(Fore.R, Back.R, brt);
+        G = ClrMix(Fore.G, Back.G, brt);
+        B = ClrMix(Fore.B, Back.B, brt);
     }
 } __attribute__((packed));
 

@@ -998,16 +998,16 @@ extern void PrintfCNow(const char *format, ...);
 #if INDIVIDUAL_EXTI_IRQ_REQUIRED
 IrqHandler_t* ExtiIrqHandler[16];
 #else
-#if defined STM32L1XX || defined STM32F4XX || defined STM32F2XX || defined STM32L4XX || defined STM32F1XX || defined STM32F7XX
+#if defined STM32L1XX || defined STM32F4XX || defined STM32F2XX || defined STM32L4XX || defined STM32F1XX
 ftVoidVoid ExtiIrqHandler[5], ExtiIrqHandler_9_5, ExtiIrqHandler_15_10;
 #elif defined STM32F030 || defined STM32F0
 ftVoidVoid ExtiIrqHandler_0_1, ExtiIrqHandler_2_3, ExtiIrqHandler_4_15;
 #endif
 #endif // INDIVIDUAL_EXTI_IRQ_REQUIRED
 
-#if defined STM32L1XX || defined STM32F2XX || defined STM32L4XX || defined STM32F1XX || defined STM32F7XX
+#if defined STM32L1XX || defined STM32F2XX || defined STM32L4XX || defined STM32F1XX
 // EXTI pending register
-#if defined STM32L1XX || defined STM32F2XX || defined STM32F1XX || defined STM32F7XX
+#if defined STM32L1XX || defined STM32F2XX || defined STM32F1XX
 #define EXTI_PENDING_REG    EXTI->PR
 #elif defined STM32L4XX
 #define EXTI_PENDING_REG    EXTI->PR1
@@ -2861,26 +2861,6 @@ void Clk_t::SetCoreClk80MHz() {
     SetupFlashLatency(80, 3300);
     // APB1 is 54MHz max, APB2 is 108MHz max
     SetupBusDividers(ahbDiv1, apbDiv2, apbDiv1);
-    if(EnablePLL() == retvOk) SwitchToPLL();
-}
-
-void Clk_t::SetCoreClk160MHz() {
-    EnablePrefeth();
-    // First, switch to HSI if clock src is not HSI
-    if((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSI) SwitchToHSI();
-    // Disable PLL and SAI, enable HSE
-    DisablePLL();
-    DisablePLLSai();
-    DisablePLLI2S();
-    if(EnableHSE() != retvOk) return;
-    SetupPllSrc(pllsrcHse);
-    SetVoltageScale(mvScale3);
-    // Setup dividers
-    SetupFlashLatency(160, 3300);
-    // APB1 is 54MHz max, APB2 is 108MHz max
-    SetupBusDividers(ahbDiv1, apbDiv4, apbDiv2);
-    // 12MHz / 6 = 2; 2 * 160 / 2 = 160; Q and R are don't care
-    SetupPllMulDiv(6, 160, 2, 8, 2);
     if(EnablePLL() == retvOk) SwitchToPLL();
 }
 

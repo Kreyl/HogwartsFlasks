@@ -131,12 +131,12 @@ public:
                             if(N == Cnt) {
                                 // Build full filename with path
                                 // Check if root dir. Empty string allowed, too
-                                Len = strlen(DirName);
-                                if((Len > 1) or (Len == 1 and *DirName != '/' and *DirName != '\\')) {
+                                int len = strlen(DirName);
+                                if((len > 1) or (len == 1 and *DirName != '/' and *DirName != '\\')) {
                                     strcpy(AFname, DirName);
-                                    AFname[Len] = '/';
+                                    AFname[len] = '/';
                                 }
-                                strcpy(&AFname[Len+1], FName);
+                                strcpy(&AFname[len+1], FName);
                                 return retvOk;
                             }
                             else Cnt++;

@@ -2168,7 +2168,6 @@ public:
     void DisableLSI() { RCC->CSR &= RCC_CSR_LSION; }
 
     void SetCoreClk80MHz();
-    void SetCoreClk160MHz();
     void SetCoreClk216MHz();
 
     uint32_t GetSysClkHz();
