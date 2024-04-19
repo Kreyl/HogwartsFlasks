@@ -126,6 +126,10 @@ void SendScreenCmd(Points::Values v) {
     RS485.SendBroadcast(0, 1, "Set", "%d %d %d %d %d", v.grif, v.slyze, v.rave, v.huff, v.Sum());
 }
 
+void SendScreenCmdHide() {
+    RS485.SendBroadcast(0, 1, "Hide");
+}
+
 __noreturn
 void ITask() {
     while(true) {
@@ -309,8 +313,16 @@ void OnCmd(Shell_t *PShell) {
 
     else if(PCmd->NameIs("Get")) Points::Print();
 
-    else if(PCmd->NameIs("Hide")) Points::Hide();
-    else if(PCmd->NameIs("Show")) Points::Show();
+    else if(PCmd->NameIs("Hide")) {
+        Points::Hide();
+        SendScreenCmdHide();
+        PShell->Ok();
+    }
+    else if(PCmd->NameIs("Show")) {
+        Points::Show();
+        SendScreenCmd(Points::GetDisplayed());
+        PShell->Ok();
+    }
 
 
     else if(PCmd->NameIs("help")) {

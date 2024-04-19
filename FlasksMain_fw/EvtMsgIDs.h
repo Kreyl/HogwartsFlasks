@@ -19,9 +19,6 @@ enum EvtMsgId_t {
     evtIdPointsAdd,
     evtIdPointsRemove,
 
-    evtIdPointsHide,
-    evtIdPointsShow,
-
     evtIdBckgStop,
 
     evtIdUsbConnect,

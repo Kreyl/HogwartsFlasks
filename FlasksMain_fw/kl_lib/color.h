@@ -206,6 +206,14 @@ public:
         B = SetSingleBrt(B, ABrt, BrtMax);
     }
 
+    Color_t ToBrightenedColor(const int32_t ABrt, const int32_t BrtMax) {
+        Color_t clr;
+        clr.R = SetSingleBrt(R, ABrt, BrtMax);
+        clr.G = SetSingleBrt(G, ABrt, BrtMax);
+        clr.B = SetSingleBrt(B, ABrt, BrtMax);
+        return clr;
+    }
+
     void Print() {
         if(IsRandom()) Printf("{random}");
         else Printf("{%u, %u, %u; %u}", R, G, B, Brt);
