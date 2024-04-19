@@ -5,7 +5,8 @@
  *      Author: Kreyl
  */
 
-#pragma once
+#ifndef EVTMSGIDS_H__
+#define EVTMSGIDS_H__
 
 enum EvtMsgId_t {
     evtIdNone = 0, // Always
@@ -17,9 +18,15 @@ enum EvtMsgId_t {
     evtIdPointsSet,
     evtIdPointsAdd,
     evtIdPointsRemove,
+
+    evtIdPointsHide,
+    evtIdPointsShow,
+
     evtIdBckgStop,
 
     evtIdUsbConnect,
     evtIdUsbDisconnect,
     evtIdUsbReady,
 };
+
+#endif //EVTMSGIDS_H__

@@ -5,7 +5,8 @@
  *      Author: kreyl
  */
 
-#pragma once
+#ifndef KL_TIME_H__
+#define KL_TIME_H__
 
 #include <stdint.h>
 #include "kl_lib.h"
@@ -83,3 +84,5 @@ public:
 };
 
 extern TimeCounter_t Time;
+
+#endif //KL_TIME_H__

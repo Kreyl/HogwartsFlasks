@@ -1,4 +1,5 @@
-#pragma once
+#ifndef AUDIOMIXER_H__
+#define AUDIOMIXER_H__
 
 #include <cstddef>
 #include <cstdint>
@@ -94,3 +95,5 @@ private:
 
     uint16_t level_;
 };
+
+#endif //AUDIOMIXER_H__

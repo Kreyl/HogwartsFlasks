@@ -61,7 +61,7 @@ public:
 } Hypertime;
 #endif
 
-int main() {
+void main() {
     // ==== Setup clock ====
     Clk.SetCoreClk160MHz();
     Clk.Setup48Mhz();
@@ -122,10 +122,8 @@ int main() {
 }
 
 void SendScreenCmd() {
-    int32_t AGrif, ASlyze, ARave, AHuff;
-    Points::GetDisplayed(&AGrif, &ASlyze, &ARave, &AHuff);
-    int32_t Sum = AGrif + ASlyze + ARave + AHuff;
-    RS485.SendBroadcast(0, 1, "Set", "%d %d %d %d %d", AGrif, ASlyze, ARave, AHuff, Sum);
+    Points::Values v = Points::GetDisplayed();
+    RS485.SendBroadcast(0, 1, "Set", "%d %d %d %d %d", v.grif, v.slyze, v.rave, v.huff, v.Sum());
 }
 
 __noreturn
@@ -222,8 +220,6 @@ void IndicateNewSecond() {
 #if 1 // ======================= Command processing ============================
 void OnCmd(Shell_t *PShell) {
     Cmd_t *PCmd = &PShell->Cmd;
-//    Printf("%S  ", PCmd->Name);
-
     // Handle command
     if(PCmd->NameIs("Ping")) PShell->Ok();
     else if(PCmd->NameIs("Version")) PShell->Print("%S %S\r\n", APP_NAME, XSTRINGIFY(BUILD_TIME));
@@ -297,18 +293,24 @@ void OnCmd(Shell_t *PShell) {
 #endif
 
     else if(PCmd->NameIs("Set")) {
-        int32_t Grif, Slyze, Rave, Huff;
-        if(PCmd->GetNext<int32_t>(&Grif) != retvOk) { PShell->CmdError(); return; }
-        if(PCmd->GetNext<int32_t>(&Slyze) != retvOk) { PShell->CmdError(); return; }
-        if(PCmd->GetNext<int32_t>(&Rave) != retvOk) { PShell->CmdError(); return; }
-        if(PCmd->GetNext<int32_t>(&Huff) != retvOk) { PShell->CmdError(); return; }
-        Points::Set(Grif, Slyze, Rave, Huff);
+        Points::Values v;
+        if(PCmd->GetArray(v.arr, HOUSES_CNT) != retvOk) { PShell->CmdError(); return; }
+        Points::Set(v);
         PShell->Ok();
     }
 
-    else if(PCmd->NameIs("Get")) {
-        Points::Print();
+    else if(PCmd->NameIs("SetNow")) {
+        Points::Values v;
+        if(PCmd->GetArray(v.arr, HOUSES_CNT) != retvOk) { PShell->CmdError(); return; }
+        Points::SetNow(v);
+        SendScreenCmd();
+        PShell->Ok();
     }
+
+    else if(PCmd->NameIs("Get")) Points::Print();
+
+    else if(PCmd->NameIs("Hide")) Points::Hide();
+    else if(PCmd->NameIs("Show")) Points::Show();
 
 
     else if(PCmd->NameIs("help")) {
@@ -320,6 +322,8 @@ void OnCmd(Shell_t *PShell) {
                 "ClrM <R> <G> <B>  - color of minute miril\r"
                 "Set <Grif> <Slyze> <Rave> <Huff> - set points\r"
                 "Get - get current points\r"
+                "Hide - hide all points\r"
+                "Show - show points if hidden\r"
         );
     }
 

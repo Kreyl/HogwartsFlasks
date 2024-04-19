@@ -5,7 +5,8 @@
  *      Author: layst
  */
 
-#pragma once
+#ifndef LORA_H__
+#define LORA_H__
 
 #include <inttypes.h>
 #include "kl_lib.h"
@@ -102,3 +103,5 @@ public:
 };
 
 extern Lora_t Lora;
+
+#endif //LORA_H__

@@ -54,7 +54,7 @@ void rLevel1_t::ITask() {
                PktRx.Rave  >= -999 and PktRx.Rave  <= 9999 and
                PktRx.Huff  >= -999 and PktRx.Huff  <= 9999
             ) {
-                Points::Set(PktRx.Grif, PktRx.Slyze, PktRx.Rave, PktRx.Huff);
+                Points::Set(Points::Values(PktRx.Grif, PktRx.Slyze, PktRx.Rave, PktRx.Huff));
                 // Send reply
                 PktTx.Reply = 0xCA115EA1;
                 PktTx.SaltRply = RPKT_SALT;

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef WS2812B_H__
+#define WS2812B_H__
 
 /*
  * ========== WS2812 control module ==========
@@ -50,3 +51,5 @@ extern Neopixels_t Npx;
 #if NPX2_LED_CNT
 extern Neopixels_t Npx2;
 #endif
+
+#endif //WS2812B_H__

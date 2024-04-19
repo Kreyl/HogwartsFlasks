@@ -5,7 +5,8 @@
  *      Author: Kreyl
  */
 
-#pragma once
+#ifndef SDRAM_H__
+#define SDRAM_H__
 
 #include <inttypes.h>
 
@@ -23,3 +24,5 @@ void SdramInit();
 void SdramCheck();
 
 /* else if(PCmd->NameIs("chk")) { SdramCheck(); }  */
+
+#endif //SDRAM_H__

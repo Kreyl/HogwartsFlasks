@@ -1,4 +1,5 @@
-#pragma once
+#ifndef FLASKSSND_H__
+#define FLASKSSND_H__
 
 #include <inttypes.h>
 #include <deque>
@@ -58,3 +59,5 @@ public:
 };
 
 extern FlasksSnd_t Sound;
+
+#endif //FLASKSSND_H__

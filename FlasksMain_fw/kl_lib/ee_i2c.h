@@ -5,7 +5,8 @@
  *      Author: Kreyl
  */
 
-#pragma once
+#ifndef EE_I2C_H__
+#define EE_I2C_H__
 
 #include "board.h"
 #include "kl_lib.h"
@@ -114,3 +115,5 @@ public:
         return Write(MemAddr, Ptr, sizeof(T));
     }
 };
+
+#endif //EE_I2C_H__

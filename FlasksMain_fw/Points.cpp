@@ -29,8 +29,8 @@
 
 #if 1 // ============================ Msg q ====================================
 enum PointCmd_t : uint8_t {
-    pocmdNone, pocmdNewTarget, pocmdRescale, pocmdFlareTimer, pocmdCheckIfAddFlare,
-    pocmdRefresh,
+    pocmdNone, pocmdNewTarget, pocmdSetNow, pocmdRescale, pocmdFlareTimer, pocmdCheckIfAddFlare,
+    pocmdRefresh, pocmdHide, pocmdShow,
 };
 
 union PointMsg_t {
@@ -49,13 +49,13 @@ union PointMsg_t {
     }
     PointMsg_t() : Cmd(pocmdNone) {}
     PointMsg_t(PointCmd_t ACmd) : Cmd(ACmd) {}
-    PointMsg_t(PointCmd_t ACmd, void *ptr) : Cmd(ACmd), ptr(ptr) {}
+    PointMsg_t(PointCmd_t ACmd, void *aptr) : Cmd(ACmd), ptr(aptr) {}
 } __packed;
 
 static EvtMsgQ_t<PointMsg_t, 45> MsgQPoints;
 #endif
 
-static int32_t FlaskMaxValue = FLASK_MAX_VALUE;
+static int32_t flask_max_value = FLASK_MAX_VALUE;
 
 class Flask_t;
 
@@ -87,6 +87,10 @@ public:
     }
     void Draw();
     void Move();
+    void StopI() {
+        chVTResetI(&ITmr);
+        Parent = nullptr;
+    }
 };
 
 class Flask_t {
@@ -122,7 +126,7 @@ public:
     void Redraw() {
         // Redraw value
 //        Printf("CVI: %u / ", CurrValueIndx);
-        CurrValueIndx = (DisplayedPoints * LedCnt) / FlaskMaxValue;
+        CurrValueIndx = (DisplayedPoints * LedCnt) / flask_max_value;
         if(CurrValueIndx == 0 and DisplayedPoints > 0) CurrValueIndx = 1;
         else if(CurrValueIndx < 0) CurrValueIndx = 0;
         else if(CurrValueIndx >= LedCnt) CurrValueIndx = LedCnt - 1;
@@ -185,19 +189,25 @@ public:
 //        Printf("Flre: Y%u\r", flre->CurrY);
         flre->Start();
     }
+
+    void StopFlares() {
+        chSysLock();
+        for(Flare_t& Flre : Flares) Flre.StopI();
+        FlareCnt = 0;
+        PointsInFlight = 0;
+        FlareAddTime = 0;
+        chSysUnlock();
+    }
 };
 
 void Flare_t::Draw() {
     Parent->SetColorAtIndx(CurrY, Parent->Clr);
-    if(Type == flaretypeDown) {
-        Parent->SetColorAtIndx(CurrY+1, FLASK_OFF_CLR);
-    }
-    else {
-        Parent->SetColorAtIndx(CurrY-1, FLASK_OFF_CLR);
-    }
+    if(Type == flaretypeDown) Parent->SetColorAtIndx(CurrY+1, FLASK_OFF_CLR);
+    else                      Parent->SetColorAtIndx(CurrY-1, FLASK_OFF_CLR);
 }
 
 void Flare_t::Move() {
+    if(IsIdle()) return;
     if(Type == flaretypeDown) {
         CurrY--;
         if(CurrY <= Parent->CurrValueIndx) { // Our toil have passed
@@ -254,6 +264,14 @@ static void PointsThread(void *arg) {
                 for(Flask_t &Flask : Flasks) Flask.AddFlareIfNeeded();
                 break;
 
+            case pocmdSetNow:
+                for(Flask_t &Flask : Flasks) {
+                    Flask.StopFlares();
+                    Flask.DisplayedPoints = Flask.TargetPoints;
+                    Flask.Redraw();
+                }
+                break;
+
             case pocmdRescale:
                 for(Flask_t &Flask : Flasks) Flask.Redraw();
                 break;
@@ -283,66 +301,69 @@ static void OnTransmitEndI() {
 namespace Points {
 
 void Init() {
-//    ITmr.StartOrRestart();
-    // Create thread
     MsgQPoints.Init();
     chThdCreateStatic(waPointsThread, sizeof(waPointsThread), NORMALPRIO, PointsThread, NULL);
     // Npx must refresh always
     Npx.OnTransmitEnd = OnTransmitEndI;
     Npx.SetCurrentColors();
     // Load current values
-    int32_t G, S, R, H;
-    G = BackupSpc::ReadRegister(BCKP_REG_GRIF_INDX);
-    S = BackupSpc::ReadRegister(BCKP_REG_SLYZ_INDX);
-    R = BackupSpc::ReadRegister(BCKP_REG_RAVE_INDX);
-    H = BackupSpc::ReadRegister(BCKP_REG_HUFF_INDX);
-    Set(G, S, R, H);
+    Values v;
+    v.grif = BackupSpc::ReadRegister(BCKP_REG_GRIF_INDX);
+    v.slyze = BackupSpc::ReadRegister(BCKP_REG_SLYZ_INDX);
+    v.rave = BackupSpc::ReadRegister(BCKP_REG_RAVE_INDX);
+    v.huff = BackupSpc::ReadRegister(BCKP_REG_HUFF_INDX);
+    Set(v);
 }
 
-void Set(int32_t AGrif, int32_t ASlyze, int32_t ARave, int32_t AHuff) {
-    // Check if changed
-    if(     (Flasks[INDX_GRIF].TargetPoints == AGrif) and
-            (Flasks[INDX_SLYZE].TargetPoints == ASlyze) and
-            (Flasks[INDX_RAVE].TargetPoints == ARave) and
-            (Flasks[INDX_HUFF].TargetPoints == AHuff)) return;
-
+static int32_t ProcessValuesAndReturnMax(Values v) {
     // Store in Backup Regs
-    BackupSpc::WriteRegister(BCKP_REG_GRIF_INDX, AGrif);
-    BackupSpc::WriteRegister(BCKP_REG_SLYZ_INDX, ASlyze);
-    BackupSpc::WriteRegister(BCKP_REG_RAVE_INDX, ARave);
-    BackupSpc::WriteRegister(BCKP_REG_HUFF_INDX, AHuff);
-
-    // Set target values immediately
-    Flasks[INDX_GRIF].TargetPoints = AGrif;
-    Flasks[INDX_SLYZE].TargetPoints = ASlyze;
-    Flasks[INDX_RAVE].TargetPoints = ARave;
-    Flasks[INDX_HUFF].TargetPoints = AHuff;
-
+    BackupSpc::WriteRegister(BCKP_REG_GRIF_INDX, v.grif);
+    BackupSpc::WriteRegister(BCKP_REG_SLYZ_INDX, v.slyze);
+    BackupSpc::WriteRegister(BCKP_REG_RAVE_INDX, v.rave);
+    BackupSpc::WriteRegister(BCKP_REG_HUFF_INDX, v.huff);
+    // Save target values immediately
+    Flasks[INDX_GRIF].TargetPoints = v.grif;
+    Flasks[INDX_SLYZE].TargetPoints = v.slyze;
+    Flasks[INDX_RAVE].TargetPoints = v.rave;
+    Flasks[INDX_HUFF].TargetPoints = v.huff;
     // Calculate scaling. Find max, min is always 0
-    int32_t max = 0;
-    if(AGrif  > max) max = AGrif;
-    if(ASlyze > max) max = ASlyze;
-    if(ARave  > max) max = ARave;
-    if(AHuff  > max) max = AHuff;
+    int32_t max = v.Max();
     // Construct new max value: 1000, 1500, 2000, 2500...
     max = (1 + (max / FLASK_MAX_INCREMENT)) * FLASK_MAX_INCREMENT;
     if(max < FLASK_MAX_VALUE) max = FLASK_MAX_VALUE;
+    return max;
+}
+
+void Set(Values v) {
+    // Check if changed
+    if(     (Flasks[INDX_GRIF].TargetPoints == v.grif) and
+            (Flasks[INDX_SLYZE].TargetPoints == v.slyze) and
+            (Flasks[INDX_RAVE].TargetPoints == v.rave) and
+            (Flasks[INDX_HUFF].TargetPoints == v.huff)) return;
+
+    int32_t max = ProcessValuesAndReturnMax(v);
     // Rescale if needed
-    if(max != FlaskMaxValue) {
-        FlaskMaxValue = max;
+    if(max != flask_max_value) {
+        flask_max_value = max;
         MsgQPoints.SendNowOrExit(PointMsg_t(pocmdRescale));
     }
-
     // Set them
     MsgQPoints.SendNowOrExit(PointMsg_t(pocmdNewTarget));
     EvtQMain.SendNowOrExit(EvtMsg_t(evtIdPointsSet));
 }
 
-void GetDisplayed(int32_t *AGrif, int32_t *ASlyze, int32_t *ARave, int32_t *AHuff) {
-    *AGrif = Flasks[INDX_GRIF].DisplayedPoints;
-    *ASlyze = Flasks[INDX_SLYZE].DisplayedPoints;
-    *ARave = Flasks[INDX_RAVE].DisplayedPoints;
-    *AHuff = Flasks[INDX_HUFF].DisplayedPoints;
+void SetNow(Values v) {
+    flask_max_value = ProcessValuesAndReturnMax(v);
+    MsgQPoints.SendNowOrExit(PointMsg_t(pocmdSetNow)); // Set them
+}
+
+Values GetDisplayed() {
+    Values v;
+    v.grif = Flasks[INDX_GRIF].DisplayedPoints;
+    v.slyze = Flasks[INDX_SLYZE].DisplayedPoints;
+    v.rave = Flasks[INDX_RAVE].DisplayedPoints;
+    v.huff = Flasks[INDX_HUFF].DisplayedPoints;
+    return v;
 }
 
 void Print() {
@@ -358,5 +379,16 @@ void Print() {
             Flasks[INDX_HUFF].DisplayedPoints
     );
 }
+
+void Hide() {
+    MsgQPoints.SendNowOrExit(PointMsg_t(pocmdHide));
+    EvtQMain.SendNowOrExit(EvtMsg_t(evtIdPointsHide));
+}
+
+void Show() {
+    MsgQPoints.SendNowOrExit(PointMsg_t(pocmdShow));
+    EvtQMain.SendNowOrExit(EvtMsg_t(evtIdPointsShow));
+}
+
 
 } // namespace

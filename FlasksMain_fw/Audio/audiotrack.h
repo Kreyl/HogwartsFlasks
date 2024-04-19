@@ -1,4 +1,5 @@
-#pragma once
+#ifndef AUDIOTRACK_H__
+#define AUDIOTRACK_H__
 
 #include <cstddef>
 #include <cstdint>
@@ -112,3 +113,5 @@ private:
     bool running_;
     bool stopping_;
 };
+
+#endif //AUDIOTRACK_H__

@@ -5,7 +5,8 @@
  *      Author: Kreyl
  */
 
-#pragma once
+#ifndef MIRILLI_H__
+#define MIRILLI_H__
 
 #include "color.h"
 
@@ -31,3 +32,5 @@ void SetTargetClrH(uint32_t H, Color_t Clr);
 void SetTargetClrM(uint32_t M, Color_t Clr);
 void WakeMirilli();
 void ResetColorsToOffState(Color_t ClrH, Color_t ClrM);
+
+#endif //MIRILLI_H__

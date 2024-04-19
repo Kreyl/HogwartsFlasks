@@ -130,20 +130,3 @@ void SdramCheck() {
     ms = TIME_I2MS(chVTTimeElapsedSinceX(Start));
     Printf("Read: %u; %f MByte/s\r", ms, ((float)Cnt * 4 / 1000) / (float)ms );
 }
-
-extern "C"
-caddr_t _sbrk(int incr) {
-    extern uint8_t __heap_base__;
-    extern uint8_t __heap_end__;
-
-    static uint8_t *current_end = &__heap_base__;
-    uint8_t *current_block_address = current_end;
-
-    incr = (incr + 3) & (~3);
-    if(current_end + incr > &__heap_end__) {
-        errno = ENOMEM;
-        return (caddr_t) -1;
-    }
-    current_end += incr;
-    return (caddr_t)current_block_address;
-}

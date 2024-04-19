@@ -5,7 +5,8 @@
  *      Author: layst
  */
 
-#pragma once
+#ifndef SX1276_SETTINGS_H__
+#define SX1276_SETTINGS_H__
 
 enum RadioModems_t {
     MODEM_FSK = 0,
@@ -42,3 +43,5 @@ struct FskBandwidth_t {
     uint32_t bandwidth;
     uint8_t  RegValue;
 };
+
+#endif //SX1276_SETTINGS_H__

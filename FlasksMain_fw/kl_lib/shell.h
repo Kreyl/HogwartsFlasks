@@ -5,7 +5,8 @@
  *      Author: Kreyl
  */
 
-#pragma once
+#ifndef SHELL_H__
+#define SHELL_H__
 
 #include <cstring>
 #include <stdarg.h>
@@ -75,11 +76,11 @@ public:
         if(PCmd->GetParams<int32_t>(2, &Indx, &Value) == retvOk) {...}
         else PShell->Ack(retvCmdError);    */
     template <typename T>
-    uint8_t GetParams(uint8_t Cnt, ...) {
+    uint8_t GetParams(uint8_t acnt, ...) {
         uint8_t Rslt = retvOk;
         va_list args;
-        va_start(args, Cnt);
-        while(Cnt--) {
+        va_start(args, acnt);
+        while(acnt--) {
             T* ptr = va_arg(args, T*);
             Rslt = GetNext<T>(ptr);
             if(Rslt != retvOk) break;
@@ -223,3 +224,5 @@ extern "C" {
 void PrintfC(const char *format, ...);
 //void PrintfCNow(const char *format, ...);
 }
+
+#endif //SHELL_H__
