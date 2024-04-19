@@ -203,7 +203,8 @@ void ShowNumber(int32_t N) {
 }
 #endif
 
-#include "ellipsis.h"
+//#include "ellipsis.h"
+#include "minus.h"
 
 #if 1 // ======================= Command processing ============================
 void OnCmd(Shell_t *PShell) {
@@ -247,7 +248,8 @@ void OnCmd(Shell_t *PShell) {
 
     else if(PCmd->NameIs("chck")) {
         Dma2d::WaitCompletion();
-        Dma2d::CopyBufferRGB((void*)ellipsis, FrameBuf1, 0, 0, ellipsis_W, ellipsis_H);
+//        Dma2d::CopyBufferRGB((void*)ellipsis, FrameBuf1, 0, 0, ellipsis_W, ellipsis_H);
+        Dma2d::CopyBufferRGB((void*)DigitMinus, FrameBuf1, 0, 0, Minus_W, Minus_H);
     }
 
 //    else if(PCmd->NameIs("Number")) {
