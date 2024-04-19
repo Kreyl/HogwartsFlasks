@@ -5,7 +5,8 @@
  *      Author: Kreyl
  */
 
-#pragma once
+#ifndef LCDTFT_H__
+#define LCDTFT_H__
 
 #include "color.h"
 
@@ -48,3 +49,5 @@ void WaitCompletion();
 void Suspend();
 void Resume();
 }; // namespace
+
+#endif //LCDTFT_H__

@@ -5,7 +5,8 @@
  *      Author: Kreyl
  */
 
-#pragma once
+#ifndef COLOR_H__
+#define COLOR_H__
 
 #include "inttypes.h"
 #include <sys/cdefs.h>
@@ -37,9 +38,9 @@ static inline int32_t CalcSmooth_st_from_ms(int32_t Duration_ms) {
 struct Color_t {
 private:
     __always_inline
-    uint8_t SetSingleBrt(int32_t v, const int32_t Brt, const int32_t BrtMax) {
+    uint8_t SetSingleBrt(int32_t v, const int32_t abrt, const int32_t BrtMax) {
         if(v > 0) {
-            v = (v * Brt) / BrtMax;
+            v = (v * abrt) / BrtMax;
             if(v == 0) v = 1;
         }
         return v;
@@ -187,11 +188,11 @@ public:
         return (Delay2 > Delay)? Delay2 : Delay;
     }
 
-    void SetRGBWBrightness(Color_t &AClr, int32_t Brt, const int32_t BrtMax) {
-        R = SetSingleBrt(AClr.R, Brt, BrtMax);
-        G = SetSingleBrt(AClr.G, Brt, BrtMax);
-        B = SetSingleBrt(AClr.B, Brt, BrtMax);
-        W = SetSingleBrt(AClr.W, Brt, BrtMax);
+    void SetRGBWBrightness(Color_t &AClr, int32_t abrt, const int32_t BrtMax) {
+        R = SetSingleBrt(AClr.R, abrt, BrtMax);
+        G = SetSingleBrt(AClr.G, abrt, BrtMax);
+        B = SetSingleBrt(AClr.B, abrt, BrtMax);
+        W = SetSingleBrt(AClr.W, abrt, BrtMax);
     }
 
     void SetRGBBrightness(Color_t &AClr, const int32_t ABrt, const int32_t BrtMax) {
@@ -205,6 +206,14 @@ public:
         B = SetSingleBrt(B, ABrt, BrtMax);
     }
 
+    Color_t ToBrightenedColor(const int32_t ABrt, const int32_t BrtMax) {
+        Color_t clr;
+        clr.R = SetSingleBrt(R, ABrt, BrtMax);
+        clr.G = SetSingleBrt(G, ABrt, BrtMax);
+        clr.B = SetSingleBrt(B, ABrt, BrtMax);
+        return clr;
+    }
+
     void Print() {
         if(IsRandom()) Printf("{random}");
         else Printf("{%u, %u, %u; %u}", R, G, B, Brt);
@@ -213,10 +222,10 @@ public:
     Color_t() : R(0), G(0), B(0), Brt(0) {}
     Color_t(uint8_t AR, uint8_t AG, uint8_t AB) : R(AR), G(AG), B(AB), Brt(0) {}
     Color_t(uint8_t AR, uint8_t AG, uint8_t AB, uint8_t ALum) : R(AR), G(AG), B(AB), Brt(ALum) {}
-    Color_t(const Color_t &Fore, const Color_t &Back, uint32_t Brt) {
-        R = ClrMix(Fore.R, Back.R, Brt);
-        G = ClrMix(Fore.G, Back.G, Brt);
-        B = ClrMix(Fore.B, Back.B, Brt);
+    Color_t(const Color_t &Fore, const Color_t &Back, uint32_t abrt) {
+        R = ClrMix(Fore.R, Back.R, abrt);
+        G = ClrMix(Fore.G, Back.G, abrt);
+        B = ClrMix(Fore.B, Back.B, abrt);
     }
 } __attribute__((packed));
 
@@ -431,3 +440,5 @@ struct ColorHSV_t {
 #define clRGBWCyan      ((Color_t){0, 255, 255,   0})
 #define clRGBWWhite     ((Color_t){0,   0,   0, 255})
 #endif
+
+#endif //COLOR_H__

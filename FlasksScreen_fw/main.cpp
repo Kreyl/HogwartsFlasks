@@ -26,7 +26,7 @@ static void OnCmd(Shell_t *PShell);
 
 void ShowNumber(int32_t N);
 
-#define LOAD_DIGS   TRUE
+#define LOAD_DIGS   FALSE
 
 static int32_t SelfIndx = 0xFF; // bad one
 static int32_t CurrN = 999999; // Bad one
@@ -37,7 +37,7 @@ static TmrKL_t TmrOneSecond {TIME_MS2I(999), evtIdEverySecond, tktPeriodic};
 
 FIL IFile;
 
-int main() {
+void main() {
     Iwdg::InitAndStart(4005);
     Iwdg::Reload();
     // ==== Setup clock ====
@@ -203,6 +203,8 @@ void ShowNumber(int32_t N) {
 }
 #endif
 
+#include "ellipsis.h"
+
 #if 1 // ======================= Command processing ============================
 void OnCmd(Shell_t *PShell) {
     Cmd_t *PCmd = &PShell->Cmd;
@@ -243,6 +245,10 @@ void OnCmd(Shell_t *PShell) {
         else Printf("Sum Err\r");
     }
 
+    else if(PCmd->NameIs("chck")) {
+        Dma2d::WaitCompletion();
+        Dma2d::CopyBufferRGB((void*)ellipsis, FrameBuf1, 0, 0, ellipsis_W, ellipsis_H);
+    }
 
 //    else if(PCmd->NameIs("Number")) {
 //        uint32_t N;

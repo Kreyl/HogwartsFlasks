@@ -5,7 +5,8 @@
  *      Author: kreyl
  */
 
-#pragma once
+#ifndef KL_LIB_H__
+#define KL_LIB_H__
 
 #include "ch.h"
 #include "hal.h"
@@ -2167,6 +2168,7 @@ public:
     void DisableLSI() { RCC->CSR &= RCC_CSR_LSION; }
 
     void SetCoreClk80MHz();
+    void SetCoreClk160MHz();
     void SetCoreClk216MHz();
 
     uint32_t GetSysClkHz();
@@ -2219,3 +2221,5 @@ public:
 extern Clk_t Clk;
 
 #endif // Clocking
+
+#endif //KL_LIB_H__

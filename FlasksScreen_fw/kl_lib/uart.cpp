@@ -645,8 +645,8 @@ uint8_t CmdUart_t::TransmitBinaryFromBuf(uint8_t *ptr, uint32_t Len, uint32_t Ti
         if(chVTTimeElapsedSinceX(Start) > TIME_MS2I(Timeout_ms)) return retvTimeout;
     }
     // Wait for previousTX to complete
-    while(!IDmaIsIdle);
-    while(!(Params->Uart->ISR & USART_ISR_TXE));
+    while(!IDmaIsIdle) {}
+    while(!(Params->Uart->ISR & USART_ISR_TXE)) {}
     // Setup DMA to given buffer
     dmaStreamDisable(PDmaTx);
     dmaStreamSetMemory0(PDmaTx, ptr);
@@ -698,7 +698,7 @@ uint8_t HostUart485_t::SendCmd(uint32_t Timeout_ms, int32_t RetryCnt, const char
 
 void HostUart485_t::SendBroadcast(uint32_t Delay_ms, int32_t RepeatCnt, const char* ACmd, const char *format, ...) {
     while(RepeatCnt-- > 0) {
-        Print("%S %u", ACmd, 0xFF); // FF means everybody
+        Print("%S", ACmd); // FF means everybody
         if(format and *format != 0) {
             IPutByte(' '); // Add space after addr if something follows
             va_list args;

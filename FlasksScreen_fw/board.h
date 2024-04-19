@@ -5,7 +5,8 @@
  *      Author: Kreyl
  */
 
-#pragma once
+#ifndef BOARD_H__
+#define BOARD_H__
 
 // ==== General ====
 #define BOARD_NAME          "HogwartsFlasks02"
@@ -189,3 +190,5 @@
 
 
 #endif
+
+#endif //BOARD_H__

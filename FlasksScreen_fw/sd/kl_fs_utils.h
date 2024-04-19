@@ -1,11 +1,12 @@
 /*
  * kl_fs_common.h
  *
- *  Created on: 30 ÿíâ. 2016 ã.
+ *  Created on: 30 ï¿½ï¿½ï¿½. 2016 ï¿½.
  *      Author: Kreyl
  */
 
-#pragma once
+#ifndef KL_FS_UTILS_H__
+#define KL_FS_UTILS_H__
 
 #include "ff.h"
 #include "kl_lib.h"
@@ -130,7 +131,7 @@ public:
                             if(N == Cnt) {
                                 // Build full filename with path
                                 // Check if root dir. Empty string allowed, too
-                                int Len = strlen(DirName);
+                                Len = strlen(DirName);
                                 if((Len > 1) or (Len == 1 and *DirName != '/' and *DirName != '\\')) {
                                     strcpy(AFname, DirName);
                                     AFname[Len] = '/';
@@ -148,3 +149,5 @@ public:
 };
 #endif
 
+
+#endif //KL_FS_UTILS_H__
