@@ -389,6 +389,7 @@ void Init() {
     v.slyze = BackupSpc::ReadRegister(BCKP_REG_SLYZ_INDX);
     v.rave = BackupSpc::ReadRegister(BCKP_REG_RAVE_INDX);
     v.huff = BackupSpc::ReadRegister(BCKP_REG_HUFF_INDX);
+    v.are_hidden = BackupSpc::ReadRegister(BCKP_REG_AREHIDDEN_INDX);
     Set(v);
 }
 
@@ -398,6 +399,7 @@ static int32_t ProcessValuesAndReturnMax(Values v) {
     BackupSpc::WriteRegister(BCKP_REG_SLYZ_INDX, v.slyze);
     BackupSpc::WriteRegister(BCKP_REG_RAVE_INDX, v.rave);
     BackupSpc::WriteRegister(BCKP_REG_HUFF_INDX, v.huff);
+    BackupSpc::WriteRegister(BCKP_REG_AREHIDDEN_INDX, v.are_hidden);
     // Save target values immediately
     flasks[INDX_GRIF].target_points = v.grif;
     flasks[INDX_SLYZE].target_points = v.slyze;
@@ -413,14 +415,28 @@ static int32_t ProcessValuesAndReturnMax(Values v) {
 
 void Set(Values v) {
     // Check if changed
-    if(     (flasks[INDX_GRIF].target_points == v.grif) and
+    if( ((bool)v.are_hidden == points_are_hidden) and
+            (flasks[INDX_GRIF].target_points == v.grif) and
             (flasks[INDX_SLYZE].target_points == v.slyze) and
             (flasks[INDX_RAVE].target_points == v.rave) and
             (flasks[INDX_HUFF].target_points == v.huff)) return;
 
     int32_t max = ProcessValuesAndReturnMax(v);
-    if(points_are_hidden) return; // Just put new target
-    // Rescale if needed
+    // Hide or show if changed
+    if((bool)v.are_hidden != points_are_hidden) {
+        if(v.are_hidden and !points_are_hidden) { // Hide
+            MsgQPoints.SendNowOrExit(PointMsg_t(pocmdHide));
+            EvtQMain.SendNowOrExit(EvtMsg_t(evtIdPointsHide));
+        }
+        else if(!v.are_hidden and points_are_hidden) { // Show
+            points_are_hidden = v.are_hidden;
+            MsgQPoints.SendNowOrExit(PointMsg_t(pocmdShow));
+            EvtQMain.SendNowOrExit(EvtMsg_t(evtIdPointsShow));
+        }
+        points_are_hidden = v.are_hidden;
+        return;
+    }
+    // Visibility not changed. Rescale if needed
     if(max != flask_max_value) {
         flask_max_value = max;
         MsgQPoints.SendNowOrExit(PointMsg_t(pocmdRescale));

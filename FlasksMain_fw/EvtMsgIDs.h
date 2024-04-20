@@ -18,6 +18,8 @@ enum EvtMsgId_t {
     evtIdPointsSet,
     evtIdPointsAdd,
     evtIdPointsRemove,
+    evtIdPointsHide,
+    evtIdPointsShow,
 
     evtIdBckgStop,
 

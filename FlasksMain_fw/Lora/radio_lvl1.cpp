@@ -14,7 +14,7 @@
 #include "Points.h"
 
 
-#define DBG_PINS
+//#define DBG_PINS
 
 #ifdef DBG_PINS
 #define DBG_GPIO1   GPIOB
@@ -43,28 +43,27 @@ static void rLvl1Thread(void *arg) {
 __noreturn
 void rLevel1_t::ITask() {
     while(true) {
-        uint8_t Len = RPKT_LEN;
-        Lora.SetupRxConfigLora(LORA_BW, LORA_SPREADRFCT, LORA_CODERATE, hdrmodeExplicit, Len);
-        uint8_t Rslt = Lora.ReceiveByLora((uint8_t*)&PktRx, &Len, 27000);
-        if(Rslt == retvOk and PktRx.SaltPnt == RPKT_SALT) { // Additional check
-            Printf("SNR: %d; RSSI: %d; Len: %u\r", Lora.RxParams.SNR, Lora.RxParams.RSSI, Len);
-            Printf("%A\r", &PktRx, RPKT_LEN, ' ');
-            if(PktRx.Grif  >= -999 and PktRx.Grif  <= 9999 and
-               PktRx.Slyze >= -999 and PktRx.Slyze <= 9999 and
-               PktRx.Rave  >= -999 and PktRx.Rave  <= 9999 and
-               PktRx.Huff  >= -999 and PktRx.Huff  <= 9999
+        uint8_t len = RPKT_LEN;
+        Lora.SetupRxConfigLora(LORA_BW, LORA_SPREADRFCT, LORA_CODERATE, hdrmodeExplicit, len);
+        uint8_t r = Lora.ReceiveByLora((uint8_t*)&pkt, &len, 27000);
+        if(r == retvOk) {
+            Printf("SNR: %d; RSSI: %d; Len: %u\r", Lora.RxParams.SNR, Lora.RxParams.RSSI, len);
+            Printf("%d %d %d %d; hidden %u\r", pkt.grif, pkt.slyze, pkt.rave, pkt.huff, pkt.points_are_hidden);
+            if(pkt.grif  >= -999 and pkt.grif  <= 9999 and
+               pkt.slyze >= -999 and pkt.slyze <= 9999 and
+               pkt.rave  >= -999 and pkt.rave  <= 9999 and
+               pkt.huff  >= -999 and pkt.huff  <= 9999
             ) {
-                Points::Set(Points::Values(PktRx.Grif, PktRx.Slyze, PktRx.Rave, PktRx.Huff));
+                Points::Set(Points::Values(pkt.grif, pkt.slyze, pkt.rave, pkt.huff, pkt.points_are_hidden));
                 // Send reply
-                PktTx.Reply = 0xCA115EA1;
-                PktTx.SaltRply = RPKT_SALT;
-                //chThdSleepMilliseconds(1);
+                pkt.reply = 0xCa110fEa;
+                pkt.salt_reply = RPKT_SALT;
                 Lora.SetupTxConfigLora(TX_PWR_dBm, LORA_BW, LORA_SPREADRFCT, LORA_CODERATE, hdrmodeExplicit);
-                Lora.TransmitByLora((uint8_t*)&PktTx, RPKT_LEN);
+                Lora.TransmitByLora((uint8_t*)&pkt, RPKT_LEN);
             }
-            else Printf("Bad Values: %d %d %d %d\r", PktRx.Grif, PktRx.Slyze, PktRx.Rave, PktRx.Huff);
+            else Printf("Bad Values\r");
         }
-        else if(Rslt == retvCRCError) Printf("CRC Err\r");
+        else if(r == retvCRCError) Printf("CRC Err\r");
     } // while true
 }
 #endif // task
@@ -75,7 +74,6 @@ uint8_t rLevel1_t::Init() {
     PinSetupOut(DBG_GPIO1, DBG_PIN1, omPushPull);
     PinSetupOut(DBG_GPIO2, DBG_PIN2, omPushPull);
 #endif
-    //RMsgQ.Init();
     if(Lora.Init() == retvOk) {
         Lora.SetChannel(868000000);
         Lora.SetupTxConfigLora(TX_PWR_dBm, LORA_BW, LORA_SPREADRFCT, LORA_CODERATE, hdrmodeExplicit);

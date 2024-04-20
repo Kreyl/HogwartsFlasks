@@ -152,6 +152,12 @@ void ITask() {
                 TmrBckgStop.StartOrRestart();
                 SendScreenCmd(Points::GetDisplayed());
                 break;
+            case evtIdPointsHide:
+                SendScreenCmdHide();
+                break;
+            case evtIdPointsShow:
+                SendScreenCmd(Points::GetDisplayed());
+                break;
 
             case evtIdBckgStop:
                 Sound.StopBackground();
@@ -264,14 +270,14 @@ void OnCmd(Shell_t *PShell) {
 
     else if(PCmd->NameIs("Set")) {
         Points::Values v;
-        if(PCmd->GetArray(v.arr, HOUSES_CNT) != retvOk) { PShell->CmdError(); return; }
+        if(PCmd->GetArray(v.arr, VALUES_CNT) != retvOk) { PShell->CmdError(); return; }
         Points::Set(v);
         PShell->Ok();
     }
 
     else if(PCmd->NameIs("SetNow")) {
         Points::Values v;
-        if(PCmd->GetArray(v.arr, HOUSES_CNT) != retvOk) { PShell->CmdError(); return; }
+        if(PCmd->GetArray(v.arr, VALUES_CNT) != retvOk) { PShell->CmdError(); return; }
         Points::SetNow(v);
         SendScreenCmd(v);
         PShell->Ok();
