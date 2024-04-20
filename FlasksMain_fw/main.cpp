@@ -170,6 +170,7 @@ void ITask() {
 
 #if 1 // ============================== Lume ===================================
 void IndicateNewSecond() {
+    chSysLock();
     Time.GetDateTime();
     Hypertime.ConvertFromTime();
     ResetColorsToOffState(ClrH, ClrM);
@@ -189,9 +190,18 @@ void IndicateNewSecond() {
             SetTargetClrM(N-1, ClrM);
         }
     }
+    chSysUnlock();
     WakeMirilli();
 }
 #endif
+
+uint8_t CheckAndSetTime(DateTime_t &dt) {
+    if(!dt.IsOk()) return retvFail;
+    Time.Curr = dt;
+    Time.SetDateTime();
+    IndicateNewSecond();
+    return retvOk;
+}
 
 #if 1 // ======================= Command processing ============================
 void OnCmd(Shell_t *PShell) {
@@ -231,10 +241,8 @@ void OnCmd(Shell_t *PShell) {
         if(PCmd->GetNext<int32_t>(&dt.Day) != retvOk) return;
         if(PCmd->GetNext<int32_t>(&dt.H) != retvOk) return;
         if(PCmd->GetNext<int32_t>(&dt.M) != retvOk) return;
-        Time.Curr = dt;
-        Time.SetDateTime();
-        IndicateNewSecond();
-        PShell->Ok();
+        if(CheckAndSetTime(dt) == retvOk) PShell->Ok();
+        else PShell->Failure();
     }
 
     // Time speed

@@ -16,12 +16,22 @@ union rPkt_t {
         uint32_t salt_reply;
     };
     struct {
-        int16_t grif, slyze, rave, huff;
-        uint8_t points_are_hidden;
+        uint8_t cmd;
+        union {
+            struct { int16_t grif, slyze, rave, huff; };
+            struct {
+                uint16_t year;
+                uint8_t month, day, hours, minutes;
+            };
+        };
     };
 };
 #pragma pack(pop)
 #endif
+
+static const uint8_t kcmd_set_shown = 0;
+static const uint8_t kcmd_set_hidden = 1;
+static const uint8_t kcmd_set_time = 7;
 
 #define RPKT_SALT   0xF1170511 // Fly to sly
 #define RPKT_LEN    sizeof(rPkt_t)

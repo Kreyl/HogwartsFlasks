@@ -74,6 +74,7 @@ void main() {
     LcdInit();
     Dma2d::Init();
     Dma2d::Cls(FrameBuf1);
+    Dma2d::WaitCompletion();
 
 #if LOAD_DIGS
     ShowNumber(SelfIndx);
@@ -138,6 +139,7 @@ void ShowNumber(int32_t N) {
     }
 
     Dma2d::Cls(FrameBuf1);
+    Dma2d::WaitCompletion();
 
     uint32_t Dig1000 = 0, Dig100 = 0, Dig10 = 0, Dig0 = 0;
     while(N >= 1000) {
@@ -172,28 +174,28 @@ void ShowNumber(int32_t N) {
     int32_t x = (LCD_WIDTH - W) / 2;
 
     if(IsNegative) {
-        Dma2d::WaitCompletion();
         Dma2d::CopyBufferRGB((void*)DigitMinus, FrameBuf1, x, 0, Minus_W, 272);
+        Dma2d::WaitCompletion();
         x += Minus_W;
     }
 
     if(Show1000) {
-        Dma2d::WaitCompletion();
         Dma2d::CopyBufferRGB((void*)PDigTable[Dig1000], FrameBuf1, x, 0, DigW[Dig1000], 272);
+        Dma2d::WaitCompletion();
         x += DigW[Dig1000];
     }
     if(Show100) {
-        Dma2d::WaitCompletion();
         Dma2d::CopyBufferRGB((void*)PDigTable[Dig100], FrameBuf1, x, 0, DigW[Dig100], 272);
+        Dma2d::WaitCompletion();
         x += DigW[Dig100];
     }
     if(Show10) {
-        Dma2d::WaitCompletion();
         Dma2d::CopyBufferRGB((void*)PDigTable[Dig10], FrameBuf1, x, 0, DigW[Dig10], 272);
+        Dma2d::WaitCompletion();
         x += DigW[Dig10];
     }
-    Dma2d::WaitCompletion();
     Dma2d::CopyBufferRGB((void*)PDigTable[Dig0], FrameBuf1, x, 0, DigW[Dig0], 272);
+    Dma2d::WaitCompletion();
 }
 #else
 void ShowNumber(int32_t N) {
@@ -225,6 +227,7 @@ void OnCmd(Shell_t *PShell) {
         if(PCmd->GetNext<uint32_t>(&G) != retvOk) { PShell->CmdError(); return; }
         if(PCmd->GetNext<uint32_t>(&B) != retvOk) { PShell->CmdError(); return; }
         Dma2d::Cls(FrameBuf1, R, G, B);
+        Dma2d::WaitCompletion();
         PShell->Ok();
     }
 
@@ -235,7 +238,7 @@ void OnCmd(Shell_t *PShell) {
         if(PCmd->GetNext<int32_t>(&R) != retvOk) return;
         if(PCmd->GetNext<int32_t>(&H) != retvOk) return;
         if(PCmd->GetNext<int32_t>(&Summ) != retvOk) return;
-        Printf("Set %d %d %d %d; sum %d\r", G, S, R, H, Summ);
+//        Printf("Set %d %d %d %d; sum %d\r", G, S, R, H, Summ);
         if((G + S + R + H) == Summ) {
             if(SelfIndx == 0) ShowNumber(G);
             else if(SelfIndx == 1) ShowNumber(S);
@@ -252,6 +255,7 @@ void OnCmd(Shell_t *PShell) {
         int32_t x = (LCD_WIDTH - ellipsis_W) / 2;
         int32_t y = (LCD_HEIGHT - ellipsis_H) / 2;
         Dma2d::CopyBufferRGB((void*)ellipsis, FrameBuf1, x, y, ellipsis_W, ellipsis_H);
+        Dma2d::WaitCompletion();
     }
 
 //    else if(PCmd->NameIs("Number")) {

@@ -8,7 +8,7 @@
 #include "radio_lvl1.h"
 #include "Lora.h"
 #include "uart.h"
-
+#include "kl_time.h"
 #include "led.h"
 #include "Sequences.h"
 #include "Points.h"
@@ -31,6 +31,7 @@
 #endif
 
 rLevel1_t Radio;
+uint8_t CheckAndSetTime(DateTime_t &dt);
 
 #if 1 // ================================ Task =================================
 static THD_WORKING_AREA(warLvl1Thread, 256);
@@ -48,20 +49,37 @@ void rLevel1_t::ITask() {
         uint8_t r = Lora.ReceiveByLora((uint8_t*)&pkt, &len, 27000);
         if(r == retvOk) {
             Printf("SNR: %d; RSSI: %d; Len: %u\r", Lora.RxParams.SNR, Lora.RxParams.RSSI, len);
-            Printf("%d %d %d %d; hidden %u\r", pkt.grif, pkt.slyze, pkt.rave, pkt.huff, pkt.points_are_hidden);
-            if(pkt.grif  >= -999 and pkt.grif  <= 9999 and
-               pkt.slyze >= -999 and pkt.slyze <= 9999 and
-               pkt.rave  >= -999 and pkt.rave  <= 9999 and
-               pkt.huff  >= -999 and pkt.huff  <= 9999
-            ) {
-                Points::Set(Points::Values(pkt.grif, pkt.slyze, pkt.rave, pkt.huff, pkt.points_are_hidden));
-                // Send reply
-                pkt.reply = 0xCa110fEa;
+            Printf("%u; ", pkt.cmd);
+            if(pkt.cmd == kcmd_set_shown or pkt.cmd == kcmd_set_hidden) {
+                Printf("%d %d %d %d; hidden %u\r", pkt.grif, pkt.slyze, pkt.rave, pkt.huff, pkt.cmd);
+                if(pkt.grif  >= -999 and pkt.grif  <= 9999 and
+                   pkt.slyze >= -999 and pkt.slyze <= 9999 and
+                   pkt.rave  >= -999 and pkt.rave  <= 9999 and
+                   pkt.huff  >= -999 and pkt.huff  <= 9999
+                ) {
+                    Points::Set(Points::Values(pkt.grif, pkt.slyze, pkt.rave, pkt.huff, pkt.cmd));
+                    // Send reply
+                    pkt.reply = 0xCa110fEa;
+                    pkt.salt_reply = RPKT_SALT;
+                    Lora.SetupTxConfigLora(TX_PWR_dBm, LORA_BW, LORA_SPREADRFCT, LORA_CODERATE, hdrmodeExplicit);
+                    Lora.TransmitByLora((uint8_t*)&pkt, RPKT_LEN);
+                }
+                else Printf("Bad Values\r");
+            }
+            else if(pkt.cmd == kcmd_set_time) {
+                DateTime_t dt;
+                dt.Year = pkt.year;
+                dt.Month = pkt.month;
+                dt.Day = pkt.day;
+                dt.H = pkt.hours;
+                dt.M = pkt.minutes;
+                dt.S = 0;
+                pkt.reply = CheckAndSetTime(dt);
                 pkt.salt_reply = RPKT_SALT;
                 Lora.SetupTxConfigLora(TX_PWR_dBm, LORA_BW, LORA_SPREADRFCT, LORA_CODERATE, hdrmodeExplicit);
                 Lora.TransmitByLora((uint8_t*)&pkt, RPKT_LEN);
             }
-            else Printf("Bad Values\r");
+            else Printf("unknown\r");
         }
         else if(r == retvCRCError) Printf("CRC Err\r");
     } // while true

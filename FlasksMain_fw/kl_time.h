@@ -50,6 +50,11 @@ struct DateTime_t {
         else Day--;
     }
 
+    bool IsOk() {
+        return (Month > 0 and Month <= 12 and Day > 0 and Day <= 31 and
+                H >= 0 and H <= 23 and M >= 0 and M <= 59 and S >= 0 and S <= 59);
+    }
+
     DateTime_t& operator = (const DateTime_t &Right) {
        H = Right.H;
        M = Right.M;
