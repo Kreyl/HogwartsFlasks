@@ -10,7 +10,6 @@
 #include "kl_fs_utils.h"
 #include "kl_time.h"
 #include "Mirilli.h"
-//#include "usb_msdcdc.h"
 #include "sdram.h"
 #include "radio_lvl1.h"
 #include "FlasksSnd.h"
@@ -28,7 +27,6 @@ HostUart485_t RS485{RS485Params, RS485_TXEN};
 static void ITask();
 static void OnCmd(Shell_t *PShell);
 
-//static bool UsbPinWasHi = false;
 LedBlinker_t Led{LED_PIN};
 TmrKL_t TmrBckgStop{TIME_MS2I(7200), evtIdBckgStop, tktOneShot};
 #endif
@@ -65,7 +63,6 @@ void main() {
     // ==== Setup clock ====
     Clk.SetCoreClk160MHz();
     Clk.Setup48Mhz();
-//    Clk.SetPllSai1RDiv(3, 8); // SAI R div = 3 => R = 2*96/3 = 64 MHz; LCD_CLK = 64 / 8 = 8MHz
     // SAI clock: PLLSAI1 Q
     Clk.SetPllSai1QDiv(8, 1); // Q = 2 * 96 / 8 = 24; 24/1 = 24
     Clk.SetSai2ClkSrc(saiclkPllSaiQ);
@@ -85,8 +82,6 @@ void main() {
     // Debug LED
     Led.Init();
     Led.StartOrRestart(lsqIdle);
-
-//    SdramCheck();
 
     SD.Init();
 
@@ -113,10 +108,6 @@ void main() {
 
     Radio.Init();
 
-    // USB
-//    UsbMsdCdc.Init();
-//    PinSetupInput(USB_DETECT_PIN, pudPullDown); // Usb detect pin
-
     // ==== Main cycle ====
     ITask();
 }
@@ -141,18 +132,7 @@ void ITask() {
                 break;
 
             case evtIdEverySecond:
-//                Printf("Second\r");
                 IndicateNewSecond();
-//                RS485.SendBroadcast(6, 2, "Ping");
-//                // Check if USB connected/disconnected
-//                if(PinIsHi(USB_DETECT_PIN) and !UsbPinWasHi) {
-//                    UsbPinWasHi = true;
-//                    EvtQMain.SendNowOrExit(EvtMsg_t(evtIdUsbConnect));
-//                }
-//                else if(!PinIsHi(USB_DETECT_PIN) and UsbPinWasHi) {
-//                    UsbPinWasHi = false;
-//                    EvtQMain.SendNowOrExit(EvtMsg_t(evtIdUsbDisconnect));
-//                }
                 break;
 
             // Points
@@ -177,19 +157,6 @@ void ITask() {
                 Sound.StopBackground();
                 break;
 
-#if 0 // ======= USB =======
-            case evtIdUsbConnect:
-                Printf("USB connect\r");
-                UsbMsdCdc.Connect();
-                break;
-            case evtIdUsbDisconnect:
-                UsbMsdCdc.Disconnect();
-                Printf("USB disconnect\r");
-                break;
-            case evtIdUsbReady:
-                Printf("USB ready\r");
-                break;
-#endif
             default: break;
         } // switch
     } // while true
@@ -199,7 +166,6 @@ void ITask() {
 void IndicateNewSecond() {
     Time.GetDateTime();
     Hypertime.ConvertFromTime();
-//    Printf("HyperH: %u; HyperM: %u;   ", Hypertime.H, Hypertime.M);
     ResetColorsToOffState(ClrH, ClrM);
 
     SetTargetClrH(Hypertime.H, ClrH);
