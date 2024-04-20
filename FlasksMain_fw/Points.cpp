@@ -393,14 +393,22 @@ void Init() {
     Set(v);
 }
 
-static int32_t ProcessValuesAndReturnMax(Values v) {
+
+void Set(Values v) {
+    // get out if not changed
+    if( ((bool)v.are_hidden == points_are_hidden) and
+            (flasks[INDX_GRIF].target_points == v.grif) and
+            (flasks[INDX_SLYZE].target_points == v.slyze) and
+            (flasks[INDX_RAVE].target_points == v.rave) and
+            (flasks[INDX_HUFF].target_points == v.huff)) return;
+
     // Store in Backup Regs
     BackupSpc::WriteRegister(BCKP_REG_GRIF_INDX, v.grif);
     BackupSpc::WriteRegister(BCKP_REG_SLYZ_INDX, v.slyze);
     BackupSpc::WriteRegister(BCKP_REG_RAVE_INDX, v.rave);
     BackupSpc::WriteRegister(BCKP_REG_HUFF_INDX, v.huff);
     BackupSpc::WriteRegister(BCKP_REG_AREHIDDEN_INDX, v.are_hidden);
-    // Save target values immediately
+    // Set target values immediately
     flasks[INDX_GRIF].target_points = v.grif;
     flasks[INDX_SLYZE].target_points = v.slyze;
     flasks[INDX_RAVE].target_points = v.rave;
@@ -410,18 +418,7 @@ static int32_t ProcessValuesAndReturnMax(Values v) {
     // Construct new max value: 1000, 1500, 2000, 2500...
     max = (1 + (max / FLASK_MAX_INCREMENT)) * FLASK_MAX_INCREMENT;
     if(max < FLASK_MAX_VALUE) max = FLASK_MAX_VALUE;
-    return max;
-}
 
-void Set(Values v) {
-    // Check if changed
-    if( ((bool)v.are_hidden == points_are_hidden) and
-            (flasks[INDX_GRIF].target_points == v.grif) and
-            (flasks[INDX_SLYZE].target_points == v.slyze) and
-            (flasks[INDX_RAVE].target_points == v.rave) and
-            (flasks[INDX_HUFF].target_points == v.huff)) return;
-
-    int32_t max = ProcessValuesAndReturnMax(v);
     // Hide or show if changed
     if((bool)v.are_hidden != points_are_hidden) {
         if(v.are_hidden and !points_are_hidden) { // Hide
@@ -429,7 +426,7 @@ void Set(Values v) {
             EvtQMain.SendNowOrExit(EvtMsg_t(evtIdPointsHide));
         }
         else if(!v.are_hidden and points_are_hidden) { // Show
-            points_are_hidden = v.are_hidden;
+            flask_max_value = max;
             MsgQPoints.SendNowOrExit(PointMsg_t(pocmdShow));
             EvtQMain.SendNowOrExit(EvtMsg_t(evtIdPointsShow));
         }
@@ -444,12 +441,6 @@ void Set(Values v) {
     // Set them
     MsgQPoints.SendNowOrExit(PointMsg_t(pocmdNewTarget));
     EvtQMain.SendNowOrExit(EvtMsg_t(evtIdPointsSet));
-}
-
-void SetNow(Values v) {
-    flask_max_value = ProcessValuesAndReturnMax(v);
-    if(points_are_hidden) return;
-    MsgQPoints.SendNowOrExit(PointMsg_t(pocmdSetNow)); // Set them
 }
 
 Values GetDisplayed() {

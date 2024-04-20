@@ -275,14 +275,6 @@ void OnCmd(Shell_t *PShell) {
         PShell->Ok();
     }
 
-    else if(PCmd->NameIs("SetNow")) {
-        Points::Values v;
-        if(PCmd->GetArray(v.arr, VALUES_CNT) != retvOk) { PShell->CmdError(); return; }
-        Points::SetNow(v);
-        SendScreenCmd(v);
-        PShell->Ok();
-    }
-
     else if(PCmd->NameIs("Get")) Points::Print();
 
     else if(PCmd->NameIs("Hide")) {

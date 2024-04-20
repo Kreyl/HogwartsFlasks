@@ -246,6 +246,7 @@ void OnCmd(Shell_t *PShell) {
     }
 
     else if(PCmd->NameIs("Hide")) {
+        CurrN = 999999; // Bad one
         Dma2d::Cls(FrameBuf1);
         Dma2d::WaitCompletion();
         int32_t x = (LCD_WIDTH - ellipsis_W) / 2;

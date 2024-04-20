@@ -38,7 +38,6 @@ union Values {
 
 void Init();
 void Set(Values v);
-void SetNow(Values v);
 
 Values GetDisplayed();
 
