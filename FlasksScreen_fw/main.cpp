@@ -26,7 +26,7 @@ static void OnCmd(Shell_t *PShell);
 
 void ShowNumber(int32_t N);
 
-#define LOAD_DIGS   FALSE
+#define LOAD_DIGS   TRUE // Disable it to make binary smaller
 
 static int32_t SelfIndx = 0xFF; // bad one
 static int32_t CurrN = 999999; // Bad one
@@ -208,7 +208,7 @@ void ShowNumber(int32_t N) {
 #if 1 // ======================= Command processing ============================
 void OnCmd(Shell_t *PShell) {
     Cmd_t *PCmd = &PShell->Cmd;
-    Printf("%S  ", PCmd->Name);
+//    Printf("%S  ", PCmd->Name);
 
     // Handle command
     if(PCmd->NameIs("Ping")) PShell->Ok();
@@ -245,9 +245,12 @@ void OnCmd(Shell_t *PShell) {
         else Printf("Sum Err\r");
     }
 
-    else if(PCmd->NameIs("chck")) {
+    else if(PCmd->NameIs("Hide")) {
+        Dma2d::Cls(FrameBuf1);
         Dma2d::WaitCompletion();
-        Dma2d::CopyBufferRGB((void*)ellipsis, FrameBuf1, 120, 0, ellipsis_W, 272);
+        int32_t x = (LCD_WIDTH - ellipsis_W) / 2;
+        int32_t y = (LCD_HEIGHT - ellipsis_H) / 2;
+        Dma2d::CopyBufferRGB((void*)ellipsis, FrameBuf1, x, y, ellipsis_W, ellipsis_H);
     }
 
 //    else if(PCmd->NameIs("Number")) {

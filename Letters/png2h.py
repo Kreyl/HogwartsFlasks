@@ -7,6 +7,7 @@ def main(complete_filename: str):
     name = os.path.splitext(complete_filename)[0]
     img = Image.open(complete_filename).convert("RGB")
     with open(name + '.h', 'w') as target_file:
+        target_file.write("#include <inttypes.h>\n\n")
         target_file.write("static const uint32_t {0}_W = {1};\n".format(name, img.width))
         target_file.write("static const uint32_t {0}_H = {1};\n".format(name, img.height))
         target_file.write("static const uint8_t {0}[] = {{\n".format(name))

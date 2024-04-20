@@ -1,3 +1,5 @@
+#include <inttypes.h>
+
 static const uint32_t Digit5_W = 120;
 static const uint32_t Digit5_H = 272;
 static const uint8_t Digit5 [] = {
