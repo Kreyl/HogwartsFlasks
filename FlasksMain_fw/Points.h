@@ -21,7 +21,7 @@
 namespace Points {
 
 union Values {
-    struct { int32_t grif, slyze, rave, huff, are_hidden; };
+    struct { int32_t grif, slyze, rave, huff, are_shown; };
     int32_t arr[VALUES_CNT]; // 4 houses and are_hidden
     int32_t Sum() { return grif + slyze + rave + huff; }
     int32_t Max() {
@@ -31,9 +31,9 @@ union Values {
         if(huff > max)  max = huff;
         return max;
     }
-    Values() : grif(0), slyze(0), rave(0), huff(0), are_hidden(0) {}
-    Values(int16_t g, int16_t s, int16_t r, int16_t h, uint8_t hidden) :
-        grif(g), slyze(s), rave(r), huff(h), are_hidden(hidden) {}
+    Values() : grif(0), slyze(0), rave(0), huff(0), are_shown(1) {}
+    Values(int16_t g, int16_t s, int16_t r, int16_t h, uint8_t shown) :
+        grif(g), slyze(s), rave(r), huff(h), are_shown(shown) {}
 };
 
 void Init();

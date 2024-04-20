@@ -61,7 +61,7 @@ static EvtMsgQ_t<PointMsg_t, 45> MsgQPoints;
 #endif
 
 static int32_t flask_max_value = FLASK_MAX_VALUE;
-static bool points_are_hidden = false;
+static bool points_are_shown = true;
 
 class Flask_t;
 
@@ -140,7 +140,7 @@ public:
 
     void Redraw() {
         // Redraw value
-        if(points_are_hidden) {
+        if(!points_are_shown) {
             for(int32_t i=start_indx; i<=end_indx; i++) Npx.ClrBuf[i] = FLASK_OFF_CLR; // All LEDs off
         }
         else {  // Points are not hidden
@@ -338,7 +338,7 @@ static void PointsThread(void *arg) {
                 break;
 
             case pocmdHide:
-                points_are_hidden = true;
+                points_are_shown = false;
                 for(Flask_t &flask : flasks) {
                     flask.StopFlares();
                     flask.displayed_points = 0;
@@ -348,7 +348,7 @@ static void PointsThread(void *arg) {
                 break;
 
             case pocmdShow:
-                points_are_hidden = false;
+                points_are_shown = true;
                 for(Flask_t &flask : flasks) {
                     flask.StopFlares();
                     flask.displayed_points = 0;
@@ -389,14 +389,14 @@ void Init() {
     v.slyze = BackupSpc::ReadRegister(BCKP_REG_SLYZ_INDX);
     v.rave = BackupSpc::ReadRegister(BCKP_REG_RAVE_INDX);
     v.huff = BackupSpc::ReadRegister(BCKP_REG_HUFF_INDX);
-    v.are_hidden = BackupSpc::ReadRegister(BCKP_REG_AREHIDDEN_INDX);
+    v.are_shown = BackupSpc::ReadRegister(BCKP_REG_ARE_SHOWN_INDX);
     Set(v);
 }
 
 
 void Set(Values v) {
     // get out if not changed
-    if( ((bool)v.are_hidden == points_are_hidden) and
+    if( ((bool)v.are_shown == points_are_shown) and
             (flasks[INDX_GRIF].target_points == v.grif) and
             (flasks[INDX_SLYZE].target_points == v.slyze) and
             (flasks[INDX_RAVE].target_points == v.rave) and
@@ -407,7 +407,7 @@ void Set(Values v) {
     BackupSpc::WriteRegister(BCKP_REG_SLYZ_INDX, v.slyze);
     BackupSpc::WriteRegister(BCKP_REG_RAVE_INDX, v.rave);
     BackupSpc::WriteRegister(BCKP_REG_HUFF_INDX, v.huff);
-    BackupSpc::WriteRegister(BCKP_REG_AREHIDDEN_INDX, v.are_hidden);
+    BackupSpc::WriteRegister(BCKP_REG_ARE_SHOWN_INDX, v.are_shown);
     // Set target values immediately
     flasks[INDX_GRIF].target_points = v.grif;
     flasks[INDX_SLYZE].target_points = v.slyze;
@@ -420,17 +420,17 @@ void Set(Values v) {
     if(max < FLASK_MAX_VALUE) max = FLASK_MAX_VALUE;
 
     // Hide or show if changed
-    if((bool)v.are_hidden != points_are_hidden) {
-        if(v.are_hidden and !points_are_hidden) { // Hide
+    if((bool)v.are_shown != points_are_shown) {
+        if(!v.are_shown and points_are_shown) { // Hide
             MsgQPoints.SendNowOrExit(PointMsg_t(pocmdHide));
             EvtQMain.SendNowOrExit(EvtMsg_t(evtIdPointsHide));
         }
-        else if(!v.are_hidden and points_are_hidden) { // Show
+        else if(v.are_shown and !points_are_shown) { // Show
             flask_max_value = max;
             MsgQPoints.SendNowOrExit(PointMsg_t(pocmdShow));
             EvtQMain.SendNowOrExit(EvtMsg_t(evtIdPointsShow));
         }
-        points_are_hidden = v.are_hidden;
+        points_are_shown = (bool)v.are_shown;
         return;
     }
     // Visibility not changed. Rescale if needed

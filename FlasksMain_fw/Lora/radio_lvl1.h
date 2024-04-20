@@ -29,8 +29,8 @@ union rPkt_t {
 #pragma pack(pop)
 #endif
 
-static const uint8_t kcmd_set_shown = 0;
-static const uint8_t kcmd_set_hidden = 1;
+static const uint8_t kcmd_set_shown = 1;
+static const uint8_t kcmd_set_hidden = 0;
 static const uint8_t kcmd_set_time = 7;
 
 #define RPKT_SALT   0xF1170511 // Fly to sly

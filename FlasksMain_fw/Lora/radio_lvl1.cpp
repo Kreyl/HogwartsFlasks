@@ -51,7 +51,7 @@ void rLevel1_t::ITask() {
             Printf("SNR: %d; RSSI: %d; Len: %u\r", Lora.RxParams.SNR, Lora.RxParams.RSSI, len);
             Printf("%u; ", pkt.cmd);
             if(pkt.cmd == kcmd_set_shown or pkt.cmd == kcmd_set_hidden) {
-                Printf("%d %d %d %d; hidden %u\r", pkt.grif, pkt.slyze, pkt.rave, pkt.huff, pkt.cmd);
+                Printf("%d %d %d %d; shown %u\r", pkt.grif, pkt.slyze, pkt.rave, pkt.huff, pkt.cmd);
                 if(pkt.grif  >= -999 and pkt.grif  <= 9999 and
                    pkt.slyze >= -999 and pkt.slyze <= 9999 and
                    pkt.rave  >= -999 and pkt.rave  <= 9999 and

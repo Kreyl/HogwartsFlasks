@@ -41,7 +41,7 @@
 #define BCKP_REG_SLYZ_INDX      12
 #define BCKP_REG_RAVE_INDX      13
 #define BCKP_REG_HUFF_INDX      14
-#define BCKP_REG_AREHIDDEN_INDX 15
+#define BCKP_REG_ARE_SHOWN_INDX 15
 
 #endif
 
