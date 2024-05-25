@@ -241,8 +241,8 @@ void OnCmd(Shell_t *PShell) {
         if(PCmd->GetNext<int32_t>(&dt.Day) != retvOk) return;
         if(PCmd->GetNext<int32_t>(&dt.H) != retvOk) return;
         if(PCmd->GetNext<int32_t>(&dt.M) != retvOk) return;
-        if(CheckAndSetTime(dt) == retvOk) PShell->Ok();
-        else PShell->Failure();
+        if(CheckAndSetTime(dt) == retvOk) PShell->Print("Result: Ok\r\n");
+        else PShell->Print("Result: Fail\r\n");
     }
 
     // Time speed
@@ -278,9 +278,12 @@ void OnCmd(Shell_t *PShell) {
 
     else if(PCmd->NameIs("Set")) {
         Points::Values v;
-        if(PCmd->GetArray(v.arr, VALUES_CNT) != retvOk) { PShell->CmdError(); return; }
+        if(PCmd->GetArray(v.arr, VALUES_CNT) != retvOk) {
+            PShell->Print("Result: Fail\r\n");
+            return;
+        }
         Points::Set(v);
-        PShell->Ok();
+        PShell->Print("Result: Ok\r\n");
     }
 
     else if(PCmd->NameIs("Get")) Points::Print();
